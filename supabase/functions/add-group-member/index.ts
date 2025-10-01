@@ -1,0 +1,166 @@
+// グループメンバー追加 Edge Function
+// ユーザーIDで直接メンバーを追加
+import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+declare var Deno: any;
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface AddGroupMemberRequest {
+  group_id: string
+  user_id: string
+  inviter_id: string // 招待者のユーザーID（権限チェック用）
+}
+
+interface AddGroupMemberResponse {
+  success: boolean
+  member?: {
+    id: string
+    group_id: string
+    user_id: string
+    role: string
+    joined_at: string
+  }
+  error?: string
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { group_id, user_id, inviter_id }: AddGroupMemberRequest = await req.json()
+
+    if (!group_id || !user_id || !inviter_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'group_id, user_id, and inviter_id are required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // 招待者がグループのオーナーかチェック
+    const { data: group, error: groupError } = await supabaseClient
+      .from('groups')
+      .select('owner_id')
+      .eq('id', group_id)
+      .single()
+
+    if (groupError || !group) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Group not found' }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    if (group.owner_id !== inviter_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Only group owner can add members' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // 追加するユーザーが存在するかチェック
+    const { data: targetUser, error: userError } = await supabaseClient
+      .from('users')
+      .select('id')
+      .eq('id', user_id)
+      .single()
+
+    if (userError || !targetUser) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'User not found' }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // 既にメンバーかチェック
+    const { data: existingMember } = await supabaseClient
+      .from('group_members')
+      .select('id')
+      .eq('group_id', group_id)
+      .eq('user_id', user_id)
+      .single()
+
+    if (existingMember) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'User is already a member of this group' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // グループメンバーに追加
+    const now = new Date().toISOString()
+
+    const { data: newMember, error: memberError } = await supabaseClient
+      .from('group_members')
+      .insert({
+        group_id: group_id,
+        user_id: user_id,
+        role: 'member',
+        joined_at: now
+      })
+      .select('id, group_id, user_id, role, joined_at')
+      .single()
+
+    if (memberError || !newMember) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to add member: ${memberError?.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const response: AddGroupMemberResponse = {
+      success: true,
+      member: {
+        id: newMember.id,
+        group_id: newMember.group_id,
+        user_id: newMember.user_id,
+        role: newMember.role,
+        joined_at: newMember.joined_at
+      }
+    }
+
+    return new Response(
+      JSON.stringify(response),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    console.error('Add group member error:', error)
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
+  }
+})

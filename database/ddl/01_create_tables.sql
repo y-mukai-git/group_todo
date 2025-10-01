@@ -43,9 +43,8 @@ CREATE TABLE users (
   display_name TEXT NOT NULL,
   avatar_url TEXT,
 
-  -- データ引き継ぎ用
-  transfer_code TEXT UNIQUE, -- 8桁英数字の引き継ぎコード
-  transfer_code_expires_at TIMESTAMPTZ, -- 引き継ぎコード有効期限（24時間）
+  -- データ引き継ぎ用（ユーザーID + パスワード方式）
+  transfer_password_hash TEXT, -- パスワードハッシュ（bcrypt）
 
   -- 通知設定
   notification_deadline BOOLEAN NOT NULL DEFAULT true, -- 期限通知
@@ -60,12 +59,11 @@ CREATE TABLE users (
 
 -- ユーザーテーブルのインデックス
 CREATE INDEX idx_users_device_id ON users(device_id);
-CREATE INDEX idx_users_transfer_code ON users(transfer_code) WHERE transfer_code IS NOT NULL;
 
 COMMENT ON TABLE users IS 'ユーザー情報テーブル（デバイスベース認証）';
 COMMENT ON COLUMN users.device_id IS 'デバイス固有ID（iOS/Android/Web）';
 COMMENT ON COLUMN users.display_name IS 'ユーザー名（自動生成: ユーザー12345678）';
-COMMENT ON COLUMN users.transfer_code IS 'データ引き継ぎコード（8桁英数字・24時間有効）';
+COMMENT ON COLUMN users.transfer_password_hash IS 'データ引き継ぎ用パスワードハッシュ（bcrypt・ユーザーID + パスワード認証）';
 
 -- ===================================
 -- 2. Groups (グループ情報)
@@ -111,11 +109,11 @@ COMMENT ON TABLE group_members IS 'グループメンバー管理テーブル';
 COMMENT ON COLUMN group_members.role IS 'メンバーのロール（owner: オーナー, member: メンバー）';
 
 -- ===================================
--- 4. Todos (TODO情報)
+-- 4. Todos (TODO情報 - 個人TODO・グループTODO統合管理)
 -- ===================================
 CREATE TABLE todos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  group_id UUID REFERENCES groups(id) ON DELETE CASCADE, -- NULL = 個人TODO
   title TEXT NOT NULL CHECK (char_length(title) <= 100),
   description TEXT CHECK (char_length(description) <= 500),
   deadline TIMESTAMPTZ, -- 期限（nullable）
@@ -130,12 +128,14 @@ CREATE TABLE todos (
 
 -- TODOテーブルのインデックス
 CREATE INDEX idx_todos_group_id ON todos(group_id);
+CREATE INDEX idx_todos_personal ON todos(created_by) WHERE group_id IS NULL; -- 個人TODO用インデックス
 CREATE INDEX idx_todos_deadline ON todos(deadline) WHERE deadline IS NOT NULL;
 CREATE INDEX idx_todos_is_completed ON todos(is_completed);
 CREATE INDEX idx_todos_created_by ON todos(created_by);
 CREATE INDEX idx_todos_created_at ON todos(created_at DESC);
 
-COMMENT ON TABLE todos IS 'TODO情報テーブル';
+COMMENT ON TABLE todos IS 'TODO情報テーブル（個人TODO・グループTODO統合管理）';
+COMMENT ON COLUMN todos.group_id IS 'グループID（NULL = 個人TODO、値あり = グループTODO）';
 COMMENT ON COLUMN todos.category IS 'TODOカテゴリ（shopping: 買い物, housework: 家事, other: その他）';
 COMMENT ON COLUMN todos.is_completed IS '完了状態（false: 未完了, true: 完了）';
 

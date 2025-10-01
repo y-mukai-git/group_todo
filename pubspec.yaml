@@ -35,9 +35,27 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # HTTP通信
+  http: ^1.2.0
+
+  # デバイス情報取得
+  device_info_plus: ^10.1.0
+
+  # ローカルストレージ
+  shared_preferences: ^2.2.2
+
+  # UUID生成
+  uuid: ^4.3.3
+
+  # Google AdMob広告
+  google_mobile_ads: ^5.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # アプリアイコン生成
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -58,9 +76,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/config/environments.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -87,3 +104,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# アプリアイコン設定
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path_android: "assets/icons/app_icon.png"
+  image_path_ios: "assets/icons/app_icon_ios.png"
+  adaptive_icon_background: "#5A6978"
+  adaptive_icon_foreground: "assets/icons/app_icon.png"

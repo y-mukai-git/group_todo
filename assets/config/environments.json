@@ -1,0 +1,104 @@
+{
+  "development": {
+    "app": {
+      "name": "グループTODO",
+      "title": "グループTODO (DEV)",
+      "version": "1.0.0-dev",
+      "debug": true,
+      "environment": "development"
+    },
+    "supabase": {
+      "url": "https://jhrcpvihexxkjntleoxi.supabase.co",
+      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocmNwdmloZXh4a2pudGxlb3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTc5NjEsImV4cCI6MjA3NDg3Mzk2MX0.z07GR5xWHZ5sZZ-waTAfiulUZxsraxxGX7kC_ycVrgw",
+      "serviceRoleKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocmNwdmloZXh4a2pudGxlb3hpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTI5Nzk2MSwiZXhwIjoyMDc0ODczOTYxfQ.grVno11fOxS7Ku3A8YOtBz7JEqZiXVwRhwI_z6BezHE",
+      "projectRef": "jhrcpvihexxkjntleoxi"
+    },
+    "admob": {
+      "appId": {
+        "ios": "ca-app-pub-3940256099942544~1458002511",
+        "android": "ca-app-pub-3940256099942544~3347511713"
+      },
+      "adUnitIds": {
+        "ios": {
+          "banner": "ca-app-pub-3940256099942544/2934735716"
+        },
+        "android": {
+          "banner": "ca-app-pub-3940256099942544/6300978111"
+        }
+      }
+    },
+    "features": {
+      "enableAds": true,
+      "enableAnalytics": false,
+      "enableCrashlytics": false
+    }
+  },
+  "staging": {
+    "app": {
+      "name": "グループTODO",
+      "title": "グループTODO (STG)",
+      "version": "1.0.0-staging",
+      "debug": false,
+      "environment": "staging"
+    },
+    "supabase": {
+      "url": "https://your-staging-project.supabase.co",
+      "anonKey": "your-staging-anon-key",
+      "serviceRoleKey": "your-staging-service-role-key",
+      "projectRef": "your-staging-project"
+    },
+    "admob": {
+      "appId": {
+        "ios": "ca-app-pub-3940256099942544~1458002511",
+        "android": "ca-app-pub-3940256099942544~3347511713"
+      },
+      "adUnitIds": {
+        "ios": {
+          "banner": "ca-app-pub-3940256099942544/2934735716"
+        },
+        "android": {
+          "banner": "ca-app-pub-3940256099942544/6300978111"
+        }
+      }
+    },
+    "features": {
+      "enableAds": true,
+      "enableAnalytics": true,
+      "enableCrashlytics": true
+    }
+  },
+  "production": {
+    "app": {
+      "name": "グループTODO",
+      "title": "グループTODO",
+      "version": "1.0.0",
+      "debug": false,
+      "environment": "production"
+    },
+    "supabase": {
+      "url": "https://your-prod-project.supabase.co",
+      "anonKey": "your-prod-anon-key",
+      "serviceRoleKey": "your-prod-service-role-key",
+      "projectRef": "your-prod-project"
+    },
+    "admob": {
+      "appId": {
+        "ios": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX",
+        "android": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
+      },
+      "adUnitIds": {
+        "ios": {
+          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+        },
+        "android": {
+          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+        }
+      }
+    },
+    "features": {
+      "enableAds": true,
+      "enableAnalytics": true,
+      "enableCrashlytics": true
+    }
+  }
+}

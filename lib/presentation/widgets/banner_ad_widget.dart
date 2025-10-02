@@ -38,7 +38,6 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          debugPrint('[BannerAdWidget] ✅ 広告読み込み完了');
           if (mounted) {
             setState(() {
               _isAdLoaded = true;

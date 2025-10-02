@@ -3,6 +3,7 @@ class GroupModel {
   final String id;
   final String name;
   final String? description;
+  final String? category; // カテゴリ (shopping/housework/work/hobby/other)
   final String iconColor;
   final String ownerId;
   final DateTime? createdAt;
@@ -12,6 +13,7 @@ class GroupModel {
     required this.id,
     required this.name,
     this.description,
+    this.category,
     required this.iconColor,
     required this.ownerId,
     this.createdAt,
@@ -24,6 +26,7 @@ class GroupModel {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
+      category: json['category'] as String?,
       iconColor: json['icon_color'] as String,
       ownerId: json['owner_id'] as String,
       createdAt: json['created_at'] != null
@@ -41,6 +44,7 @@ class GroupModel {
       'id': id,
       'name': name,
       'description': description,
+      'category': category,
       'icon_color': iconColor,
       'owner_id': ownerId,
       'created_at': createdAt?.toIso8601String(),
@@ -53,6 +57,7 @@ class GroupModel {
     String? id,
     String? name,
     String? description,
+    String? category,
     String? iconColor,
     String? ownerId,
     DateTime? createdAt,
@@ -62,6 +67,7 @@ class GroupModel {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
+      category: category ?? this.category,
       iconColor: iconColor ?? this.iconColor,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,

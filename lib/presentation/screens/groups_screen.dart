@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../services/group_service.dart';
+import '../widgets/create_group_bottom_sheet.dart';
 
 /// グループ一覧画面
 class GroupsScreen extends StatefulWidget {
@@ -52,50 +53,39 @@ class _GroupsScreenState extends State<GroupsScreen> {
     }
   }
 
-  /// グループ作成ダイアログ表示
+  /// グループ作成ボトムシート表示
   Future<void> _showCreateGroupDialog() async {
-    final TextEditingController controller = TextEditingController();
-
-    await showDialog(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('新しいグループを作成'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'グループ名',
-            hintText: 'グループ名を入力',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('キャンセル'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final groupName = controller.text.trim();
-              if (groupName.isNotEmpty) {
-                Navigator.pop(context);
-                _createGroup(groupName);
-              }
-            },
-            child: const Text('作成'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useRootNavigator: false,
+      builder: (context) => const CreateGroupBottomSheet(),
     );
 
-    controller.dispose();
+    if (result != null && mounted) {
+      _createGroup(
+        name: result['name'] as String,
+        description: result['description'] as String?,
+        category: result['category'] as String?,
+      );
+    }
   }
 
   /// グループ作成実行
-  Future<void> _createGroup(String groupName) async {
+  Future<void> _createGroup({
+    required String name,
+    String? description,
+    String? category,
+  }) async {
     try {
       await _groupService.createGroup(
         userId: widget.user.id,
-        groupName: groupName,
+        groupName: name,
+        description: description,
+        category: category,
       );
 
       _showSuccessSnackBar('グループを作成しました');

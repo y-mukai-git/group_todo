@@ -10,11 +10,20 @@ class GroupService {
   Future<GroupModel> createGroup({
     required String userId,
     required String groupName,
+    String? description,
+    String? category,
   }) async {
     try {
+      final body = {
+        'user_id': userId,
+        'name': groupName,
+        if (description != null && description.isNotEmpty) 'description': description,
+        if (category != null) 'category': category,
+      };
+
       final response = await _apiClient.callFunction(
         functionName: 'create-group',
-        body: {'user_id': userId, 'name': groupName},
+        body: body,
       );
 
       debugPrint('[GroupService] ✅ グループ作成成功');

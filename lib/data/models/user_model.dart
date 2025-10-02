@@ -3,6 +3,7 @@ class UserModel {
   final String id;
   final String deviceId;
   final String displayName;
+  final String? personalGroupId; // 個人用グループID
   final String? transferCode;
   final DateTime? transferCodeExpiresAt;
   final bool notificationDeadline;
@@ -15,6 +16,7 @@ class UserModel {
     required this.id,
     required this.deviceId,
     required this.displayName,
+    this.personalGroupId,
     this.transferCode,
     this.transferCodeExpiresAt,
     required this.notificationDeadline,
@@ -30,6 +32,7 @@ class UserModel {
       id: json['id'] as String,
       deviceId: json['device_id'] as String,
       displayName: json['display_name'] as String,
+      personalGroupId: json['personal_group_id'] as String?,
       transferCode: json['transfer_code'] as String?,
       transferCodeExpiresAt: json['transfer_code_expires_at'] != null
           ? DateTime.parse(json['transfer_code_expires_at'] as String)
@@ -48,6 +51,7 @@ class UserModel {
       'id': id,
       'device_id': deviceId,
       'display_name': displayName,
+      'personal_group_id': personalGroupId,
       'transfer_code': transferCode,
       'transfer_code_expires_at': transferCodeExpiresAt?.toIso8601String(),
       'notification_deadline': notificationDeadline,
@@ -63,6 +67,7 @@ class UserModel {
     String? id,
     String? deviceId,
     String? displayName,
+    String? personalGroupId,
     String? transferCode,
     DateTime? transferCodeExpiresAt,
     bool? notificationDeadline,
@@ -75,6 +80,7 @@ class UserModel {
       id: id ?? this.id,
       deviceId: deviceId ?? this.deviceId,
       displayName: displayName ?? this.displayName,
+      personalGroupId: personalGroupId ?? this.personalGroupId,
       transferCode: transferCode ?? this.transferCode,
       transferCodeExpiresAt:
           transferCodeExpiresAt ?? this.transferCodeExpiresAt,

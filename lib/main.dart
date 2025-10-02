@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'core/config/environment_config.dart';
 import 'presentation/screens/splash_screen.dart';
@@ -43,6 +44,17 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      // 日本語ローカライゼーション設定
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ja', 'JP'), // 日本語
+        Locale('en', 'US'), // 英語（フォールバック）
+      ],
+      locale: const Locale('ja', 'JP'),
       home: const SplashScreen(),
     );
   }

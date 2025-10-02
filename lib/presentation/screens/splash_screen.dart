@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
+import '../../services/group_service.dart';
 import 'main_tab_screen.dart';
 import 'data_transfer_screen.dart';
 
@@ -30,11 +31,27 @@ class _SplashScreenState extends State<SplashScreen> {
         debugPrint('[SplashScreen] ✅ 既存ユーザー検出: $savedUserId');
         final savedDisplayName = await StorageHelper.getDisplayName();
 
+        // 個人用グループID取得
+        String? personalGroupId;
+        try {
+          final groups = await GroupService().getUserGroups(userId: savedUserId);
+          final personalGroup = groups.firstWhere(
+            (group) => group.name == '個人TODO',
+            orElse: () => throw Exception('Personal group not found'),
+          );
+          personalGroupId = personalGroup.id;
+          debugPrint('[SplashScreen] ✅ 個人用グループID取得: $personalGroupId');
+        } catch (e) {
+          debugPrint('[SplashScreen] ❌ 個人用グループID取得エラー: $e');
+          // エラー時はnullのまま続行（後で再取得可能）
+        }
+
         // ユーザーモデル作成（ローカル保存情報から復元）
         final user = UserModel(
           id: savedUserId,
           displayName: savedDisplayName ?? 'ユーザー',
           deviceId: '', // メイン画面では使わないので空でOK
+          personalGroupId: personalGroupId,
           notificationDeadline: true, // デフォルト値
           notificationNewTodo: true, // デフォルト値
           notificationAssigned: true, // デフォルト値

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/todo_service.dart';
-import '../../services/group_service.dart';
 
 /// ホーム画面（My TODO - 自分のTODO表示）
 class HomeScreen extends StatefulWidget {
@@ -140,121 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateTodoDialog,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  /// TODO作成ダイアログ表示
-  Future<void> _showCreateTodoDialog() async {
-    String? title;
-    String? description;
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        final TextEditingController titleController = TextEditingController();
-        final TextEditingController descController = TextEditingController();
-
-        return AlertDialog(
-          title: const Text('新しいTODOを作成'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'タイトル',
-                  hintText: 'TODOのタイトルを入力',
-                ),
-                autofocus: true,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: descController,
-                decoration: const InputDecoration(
-                  labelText: '説明（任意）',
-                  hintText: 'TODOの詳細を入力',
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('キャンセル'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final titleText = titleController.text.trim();
-                if (titleText.isNotEmpty) {
-                  title = titleText;
-                  description = descController.text.trim();
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('作成'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (title != null) {
-      _createTodo(title!, description ?? '');
-    }
-  }
-
-  /// TODO作成実行
-  Future<void> _createTodo(String title, String description) async {
-    try {
-      // 個人用グループIDを取得
-      final personalGroupId = await _getPersonalGroupId();
-
-      if (personalGroupId == null) {
-        _showErrorSnackBar('個人用グループが見つかりません');
-        return;
-      }
-
-      // TODO作成
-      await _todoService.createTodo(
-        userId: widget.user.id,
-        groupId: personalGroupId,
-        title: title,
-        description: description.isNotEmpty ? description : null,
-      );
-
-      if (!mounted) return;
-      _showSuccessSnackBar('TODOを作成しました');
-      _loadMyTodos();
-    } catch (e) {
-      debugPrint('[HomeScreen] ❌ TODO作成エラー: $e');
-      _showErrorSnackBar('TODOの作成に失敗しました');
-    }
-  }
-
-  /// 個人用グループID取得
-  Future<String?> _getPersonalGroupId() async {
-    try {
-      final groups = await GroupService().getUserGroups(userId: widget.user.id);
-      final personalGroup = groups.firstWhere(
-        (group) => group.name == '個人TODO',
-        orElse: () => throw Exception('Personal group not found'),
-      );
-      return personalGroup.id;
-    } catch (e) {
-      debugPrint('[HomeScreen] ❌ 個人グループ取得エラー: $e');
-      return null;
-    }
-  }
-
-  /// 成功メッセージ表示
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 }

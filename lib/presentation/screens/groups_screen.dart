@@ -3,6 +3,7 @@ import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../services/group_service.dart';
 import '../widgets/create_group_bottom_sheet.dart';
+import 'group_detail_screen.dart';
 
 /// グループ一覧画面
 class GroupsScreen extends StatefulWidget {
@@ -154,65 +155,115 @@ class _GroupsScreenState extends State<GroupsScreen> {
             )
           : RefreshIndicator(
               onRefresh: _loadGroups,
-              child: ListView.builder(
-                itemCount: _groups.length,
-                itemBuilder: (context, index) {
-                  final group = _groups[index];
-                  final isPersonalGroup = group.name == '個人TODO';
-
-                  // 案3: リッチカードデザインを採用
-                  return _buildRichCardDesign(group, isPersonalGroup);
-                },
+              child: ListView(
+                children: _buildGroupedList(),
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateGroupDialog,
-        child: const Icon(Icons.add),
+      floatingActionButton: Stack(
+        children: [
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              onPressed: _showCreateGroupDialog,
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// リッチカードデザイン
-  Widget _buildRichCardDesign(GroupModel group, bool isPersonalGroup) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          debugPrint('[GroupsScreen] グループ詳細画面へ遷移: ${group.id}');
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // アイコン
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isPersonalGroup
-                        ? [
-                            Theme.of(context).colorScheme.primaryContainer,
-                            Theme.of(context).colorScheme.primary,
-                          ]
-                        : [
-                            Theme.of(context).colorScheme.secondaryContainer,
-                            Theme.of(context).colorScheme.secondary,
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+  /// グループ分類リストを構築（個人・グループセクション）
+  List<Widget> _buildGroupedList() {
+    // 個人グループ（name == '個人TODO'）とグループグループに分類
+    final personalGroups = _groups.where((g) => g.name == '個人TODO').toList();
+    final teamGroups = _groups.where((g) => g.name != '個人TODO').toList();
+
+    final widgets = <Widget>[];
+
+    // 上部余白
+    widgets.add(const SizedBox(height: 12));
+
+    // 個人セクション
+    if (personalGroups.isNotEmpty) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            '個人',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Icon(
-                  isPersonalGroup ? Icons.person : Icons.group,
-                  color: Colors.white,
-                  size: 28,
+          ),
+        ),
+      );
+
+      for (final group in personalGroups) {
+        widgets.add(_buildGroupItem(group, true));
+      }
+    }
+
+    // グループセクション
+    if (teamGroups.isNotEmpty) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            'グループ',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+      );
+
+      for (final group in teamGroups) {
+        widgets.add(_buildGroupItem(group, false));
+      }
+    }
+
+    return widgets;
+  }
+
+  /// グループアイテムウィジェット
+  Widget _buildGroupItem(GroupModel group, bool isPersonalGroup) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GroupDetailScreen(
+                  user: widget.user,
+                  group: group,
                 ),
               ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                // アイコン
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isPersonalGroup
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isPersonalGroup ? Icons.person : Icons.group,
+                    color: isPersonalGroup
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.secondary,
+                    size: 24,
+                  ),
+                ),
               const SizedBox(width: 16),
               // グループ情報
               Expanded(
@@ -261,14 +312,20 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ],
+                Icon(
+                  Icons.chevron_right,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+        ),
+      ],
     );
   }
 }

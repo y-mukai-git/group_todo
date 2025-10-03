@@ -262,13 +262,18 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                                   ),
                                 ),
                               ),
-                              if (_selectedDeadline != null)
-                                IconButton(
-                                  icon: const Icon(Icons.clear, size: 20),
-                                  onPressed: _clearDeadline,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
+                              // クリアボタンのスペースを常に確保（非表示時は透明）
+                              SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: _selectedDeadline != null
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 20),
+                                        onPressed: _clearDeadline,
+                                        padding: EdgeInsets.zero,
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
                             ],
                           ),
                         ),

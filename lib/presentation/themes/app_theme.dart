@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 /// アプリ全体のテーマ定義（Material Design 3）
-/// アイコンに合わせたダークブルー・グレー基調のシックなデザイン
+/// アイコンに合わせたモダンで洗練されたデザイン
 class AppTheme {
-  // カラースキーマ（グループTODOテーマカラー - ダークブルー・グレー系）
-  static const Color primaryColor = Color(0xFF5A6978); // ミディアムブルーグレー（薄め）
-  static const Color secondaryColor = Color(0xFF6B7A89); // ライトグレー
-  static const Color tertiaryColor = Color(0xFFFF9F43); // アクセントオレンジ（チェックマーク）
+  // カラースキーマ（グループTODOテーマカラー - モダンブルー系）
+  static const Color primaryColor = Color(0xFF2C3E50); // リッチダークブルー
+  static const Color secondaryColor = Color(0xFF3498DB); // 鮮やかブルー
+  static const Color tertiaryColor = Color(0xFFE74C3C); // アクセントレッド
+  static const Color accentColor = Color(0xFF1ABC9C); // ターコイズ（完了状態用）
   static const Color errorColor = Color(0xFFE53935);
-  static const Color backgroundColor = Color(0xFFF5F7FA); // ライトグレー背景
+  static const Color backgroundColor = Color(0xFFF8F9FA); // クリーンホワイト背景
   static const Color surfaceColor = Color(0xFFFFFFFF);
 
   /// ライトテーマ

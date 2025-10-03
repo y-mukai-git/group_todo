@@ -122,11 +122,21 @@ class GroupService {
     required String groupId,
     required String userId,
     required String groupName,
+    String? description,
+    String? category,
   }) async {
     try {
+      final body = {
+        'group_id': groupId,
+        'user_id': userId,
+        'name': groupName,
+        if (description != null && description.isNotEmpty) 'description': description,
+        if (category != null) 'category': category,
+      };
+
       final response = await _apiClient.callFunction(
         functionName: 'update-group',
-        body: {'group_id': groupId, 'user_id': userId, 'name': groupName},
+        body: body,
       );
 
       debugPrint('[GroupService] ✅ グループ更新成功');

@@ -16,6 +16,7 @@ interface GetGroupTodosRequest {
 
 interface TodoWithAssignees {
   id: string
+  group_id: string
   title: string
   description: string | null
   deadline: string | null
@@ -62,7 +63,7 @@ serve(async (req) => {
     // TODOを取得
     let query = supabaseClient
       .from('todos')
-      .select('id, title, description, deadline, category, is_completed, created_by, created_at')
+      .select('id, group_id, title, description, deadline, category, is_completed, created_by, created_at')
       .eq('group_id', group_id)
 
     // 完了状態フィルター
@@ -107,6 +108,7 @@ serve(async (req) => {
 
       todosWithAssignees.push({
         id: todo.id,
+        group_id: todo.group_id,
         title: todo.title,
         description: todo.description,
         deadline: todo.deadline,

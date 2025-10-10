@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
-import '../../services/group_service.dart';
+import '../../services/data_cache_service.dart';
 import '../widgets/create_group_bottom_sheet.dart';
 import 'group_detail_screen.dart';
 
@@ -16,41 +16,42 @@ class GroupsScreen extends StatefulWidget {
 }
 
 class _GroupsScreenState extends State<GroupsScreen> {
-  final GroupService _groupService = GroupService();
+  final DataCacheService _cacheService = DataCacheService();
   List<GroupModel> _groups = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadGroups();
+    // キャッシュリスナー登録
+    _cacheService.addListener(_updateGroups);
+    // 初回データ取得
+    _updateGroups();
   }
 
-  /// グループ一覧読み込み
-  Future<void> _loadGroups() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    // リスナー解除
+    _cacheService.removeListener(_updateGroups);
+    super.dispose();
+  }
 
-    try {
-      final groups = await _groupService.getUserGroups(userId: widget.user.id);
+  /// キャッシュからグループ取得
+  void _updateGroups() {
+    final groups = List<GroupModel>.from(_cacheService.groups);
 
-      // 個人用グループを最上部に表示
-      groups.sort((a, b) {
-        if (a.name == '個人TODO') return -1;
-        if (b.name == '個人TODO') return 1;
-        return (a.createdAt ?? DateTime.now())
-            .compareTo(b.createdAt ?? DateTime.now());
-      });
+    // 個人用グループを最上部に表示
+    groups.sort((a, b) {
+      if (a.name == '個人TODO') return -1;
+      if (b.name == '個人TODO') return 1;
+      return (a.createdAt ?? DateTime.now()).compareTo(
+        b.createdAt ?? DateTime.now(),
+      );
+    });
 
-      if (!mounted) return;
+    if (mounted) {
       setState(() {
         _groups = groups;
-        _isLoading = false;
       });
-    } catch (e) {
-      debugPrint('[GroupsScreen] ❌ グループ読み込みエラー: $e');
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      _showErrorSnackBar('グループの読み込みに失敗しました');
     }
   }
 
@@ -75,14 +76,15 @@ class _GroupsScreenState extends State<GroupsScreen> {
     }
   }
 
-  /// グループ作成実行
+  /// グループ作成実行（キャッシュサービス経由）
   Future<void> _createGroup({
     required String name,
     String? description,
     String? category,
   }) async {
     try {
-      await _groupService.createGroup(
+      // DataCacheService経由でDB作成+キャッシュ追加
+      await _cacheService.createGroup(
         userId: widget.user.id,
         groupName: name,
         description: description,
@@ -90,10 +92,20 @@ class _GroupsScreenState extends State<GroupsScreen> {
       );
 
       _showSuccessSnackBar('グループを作成しました');
-      _loadGroups();
     } catch (e) {
       debugPrint('[GroupsScreen] ❌ グループ作成エラー: $e');
       _showErrorSnackBar('グループの作成に失敗しました');
+    }
+  }
+
+  /// 手動リフレッシュ
+  Future<void> _refreshData() async {
+    try {
+      await _cacheService.refreshCache();
+      _showSuccessSnackBar('データを更新しました');
+    } catch (e) {
+      debugPrint('[GroupsScreen] ❌ データ更新エラー: $e');
+      _showErrorSnackBar('データの更新に失敗しました');
     }
   }
 
@@ -122,14 +134,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadGroups,
+            onPressed: _refreshData,
             tooltip: '更新',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _groups.isEmpty
+      body: _groups.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -154,10 +164,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
               ),
             )
           : RefreshIndicator(
-              onRefresh: _loadGroups,
-              child: ListView(
-                children: _buildGroupedList(),
-              ),
+              onRefresh: _refreshData,
+              child: ListView(children: _buildGroupedList()),
             ),
       floatingActionButton: Stack(
         children: [
@@ -192,9 +200,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text(
             '個人',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
       );
@@ -211,9 +219,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text(
             'グループ',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
       );
@@ -226,8 +234,26 @@ class _GroupsScreenState extends State<GroupsScreen> {
     return widgets;
   }
 
+  /// カテゴリ情報取得
+  Map<String, dynamic>? _getCategoryInfo(String? category) {
+    if (category == null || category == 'none') return null;
+
+    const categoryMap = {
+      'shopping': {'name': '買い物', 'icon': Icons.shopping_cart},
+      'housework': {'name': '家事', 'icon': Icons.home},
+      'work': {'name': '仕事', 'icon': Icons.work},
+      'hobby': {'name': '趣味', 'icon': Icons.palette},
+      'other': {'name': 'その他', 'icon': Icons.label},
+    };
+
+    return categoryMap[category];
+  }
+
   /// グループアイテムウィジェット
   Widget _buildGroupItem(GroupModel group, bool isPersonalGroup) {
+    // カテゴリ情報取得
+    final categoryInfo = _getCategoryInfo(group.category);
+
     return Column(
       children: [
         InkWell(
@@ -235,10 +261,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => GroupDetailScreen(
-                  user: widget.user,
-                  group: group,
-                ),
+                builder: (context) =>
+                    GroupDetailScreen(user: widget.user, group: group),
               ),
             );
           },
@@ -264,54 +288,100 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     size: 24,
                   ),
                 ),
-              const SizedBox(width: 16),
-              // グループ情報
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      group.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                const SizedBox(width: 16),
+                // グループ情報
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              group.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          // カテゴリ表示
+                          if (group.category != null &&
+                              categoryInfo != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.tertiaryContainer,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    categoryInfo['icon'] as IconData,
+                                    size: 14,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onTertiaryContainer,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    categoryInfo['name'] as String,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onTertiaryContainer,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.people_outline,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '1人',
-                          style: TextStyle(
-                            fontSize: 13,
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: 16,
                             color: Theme.of(context).colorScheme.outline,
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '0件のTODO',
-                          style: TextStyle(
-                            fontSize: 13,
+                          const SizedBox(width: 4),
+                          Text(
+                            '1人',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
                             color: Theme.of(context).colorScheme.outline,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 4),
+                          Text(
+                            '0件のTODO',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
                 Icon(
                   Icons.chevron_right,
                   color: Theme.of(context).colorScheme.outline,

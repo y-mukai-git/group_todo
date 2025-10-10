@@ -41,6 +41,7 @@ CREATE TABLE users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   device_id TEXT UNIQUE NOT NULL,
   display_name TEXT NOT NULL,
+  display_id TEXT UNIQUE NOT NULL, -- 8桁英数字ランダムID（表示・引き継ぎ用）
   avatar_url TEXT,
 
   -- データ引き継ぎ用（ユーザーID + パスワード方式）
@@ -59,11 +60,13 @@ CREATE TABLE users (
 
 -- ユーザーテーブルのインデックス
 CREATE INDEX idx_users_device_id ON users(device_id);
+CREATE INDEX idx_users_display_id ON users(display_id);
 
 COMMENT ON TABLE users IS 'ユーザー情報テーブル（デバイスベース認証）';
 COMMENT ON COLUMN users.device_id IS 'デバイス固有ID（iOS/Android/Web）';
 COMMENT ON COLUMN users.display_name IS 'ユーザー名（自動生成: ユーザー12345678）';
-COMMENT ON COLUMN users.transfer_password_hash IS 'データ引き継ぎ用パスワードハッシュ（bcrypt・ユーザーID + パスワード認証）';
+COMMENT ON COLUMN users.display_id IS '8桁英数字ランダムID（表示・データ引き継ぎ・ユーザー招待用）';
+COMMENT ON COLUMN users.transfer_password_hash IS 'データ引き継ぎ用パスワードハッシュ（bcrypt・display_id + パスワード認証）';
 
 -- ===================================
 -- 2. Groups (グループ情報)
@@ -73,6 +76,7 @@ CREATE TABLE groups (
   name TEXT NOT NULL CHECK (char_length(name) <= 50),
   description TEXT CHECK (char_length(description) <= 200),
   icon_color TEXT NOT NULL, -- カラーコード（#RRGGBB形式）
+  category TEXT, -- カテゴリ（shopping: 買い物, housework: 家事, work: 仕事, hobby: 趣味, other: その他, none: 未設定）
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

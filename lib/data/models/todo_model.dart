@@ -39,9 +39,13 @@ class TodoModel {
           .map((a) => (a as Map<String, dynamic>)['user_id'] as String)
           .toList();
     } else if (json['assigned_users'] != null) {
-      assignedUserIds = List<String>.from(json['assigned_users'] as List<dynamic>);
+      assignedUserIds = List<String>.from(
+        json['assigned_users'] as List<dynamic>,
+      );
     } else if (json['assigned_user_ids'] != null) {
-      assignedUserIds = List<String>.from(json['assigned_user_ids'] as List<dynamic>);
+      assignedUserIds = List<String>.from(
+        json['assigned_user_ids'] as List<dynamic>,
+      );
     }
 
     return TodoModel(

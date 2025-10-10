@@ -15,6 +15,7 @@ interface UpdateGroupRequest {
   name?: string
   description?: string
   icon_color?: string
+  category?: string
 }
 
 interface UpdateGroupResponse {
@@ -24,6 +25,8 @@ interface UpdateGroupResponse {
     name: string
     description: string | null
     icon_color: string
+    owner_id: string
+    category: string | null
   }
   error?: string
 }
@@ -39,7 +42,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { group_id, user_id, name, description, icon_color }: UpdateGroupRequest = await req.json()
+    const { group_id, user_id, name, description, icon_color, category }: UpdateGroupRequest = await req.json()
 
     if (!group_id || !user_id) {
       return new Response(
@@ -83,13 +86,14 @@ serve(async (req) => {
     if (name !== undefined) updateData.name = name
     if (description !== undefined) updateData.description = description
     if (icon_color !== undefined) updateData.icon_color = icon_color
+    if (category !== undefined) updateData.category = category
 
     // グループ更新
     const { data: updatedGroup, error: updateError } = await supabaseClient
       .from('groups')
       .update(updateData)
       .eq('id', group_id)
-      .select('id, name, description, icon_color')
+      .select('id, name, description, icon_color, owner_id, category')
       .single()
 
     if (updateError || !updatedGroup) {
@@ -108,7 +112,9 @@ serve(async (req) => {
         id: updatedGroup.id,
         name: updatedGroup.name,
         description: updatedGroup.description,
-        icon_color: updatedGroup.icon_color
+        icon_color: updatedGroup.icon_color,
+        owner_id: updatedGroup.owner_id,
+        category: updatedGroup.category
       }
     }
 

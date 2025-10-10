@@ -35,9 +35,12 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.todo.title);
-    _descriptionController = TextEditingController(text: widget.todo.description ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.todo.description ?? '',
+    );
     _selectedDeadline = widget.todo.dueDate;
-    _selectedAssigneeIds = widget.todo.assignedUserIds?.toSet() ?? {widget.user.id};
+    _selectedAssigneeIds =
+        widget.todo.assignedUserIds?.toSet() ?? {widget.user.id};
   }
 
   @override
@@ -75,9 +78,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   Future<void> _updateTodo() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('タイトルを入力してください')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
       return;
     }
 
@@ -153,7 +156,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                   _titleController.text = widget.todo.title;
                   _descriptionController.text = widget.todo.description ?? '';
                   _selectedDeadline = widget.todo.dueDate;
-                  _selectedAssigneeIds = widget.todo.assignedUserIds?.toSet() ?? {widget.user.id};
+                  _selectedAssigneeIds =
+                      widget.todo.assignedUserIds?.toSet() ?? {widget.user.id};
                 });
               },
               tooltip: 'キャンセル',
@@ -185,9 +189,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                   else
                     Text(
                       widget.todo.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
 
                   const SizedBox(height: 24),
@@ -196,8 +199,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                   Text(
                     '説明',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   if (_isEditing)
@@ -219,7 +222,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -227,10 +232,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                             ? widget.todo.description!
                             : '説明なし',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: widget.todo.description?.isNotEmpty == true
-                                  ? Theme.of(context).colorScheme.onSurface
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                          color: widget.todo.description?.isNotEmpty == true
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
 
@@ -240,8 +245,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                   Text(
                     '期限',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   if (_isEditing)
@@ -266,13 +271,17 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                             Expanded(
                               child: Text(
                                 _selectedDeadline != null
-                                    ? DateFormat('yyyy年MM月dd日（E）', 'ja')
-                                        .format(_selectedDeadline!)
+                                    ? DateFormat(
+                                        'yyyy年MM月dd日（E）',
+                                        'ja',
+                                      ).format(_selectedDeadline!)
                                     : '期限なし',
                                 style: TextStyle(
                                   color: _selectedDeadline != null
                                       ? Theme.of(context).colorScheme.onSurface
-                                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -297,7 +306,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -310,8 +321,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                           const SizedBox(width: 12),
                           Text(
                             widget.todo.dueDate != null
-                                ? DateFormat('yyyy年MM月dd日（E）', 'ja')
-                                    .format(widget.todo.dueDate!)
+                                ? DateFormat(
+                                    'yyyy年MM月dd日（E）',
+                                    'ja',
+                                  ).format(widget.todo.dueDate!)
                                 : '期限なし',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
@@ -325,15 +338,19 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                   Text(
                     '担当者',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  if (_isEditing && widget.availableAssignees != null && widget.availableAssignees!.isNotEmpty)
+                  if (_isEditing &&
+                      widget.availableAssignees != null &&
+                      widget.availableAssignees!.isNotEmpty)
                     ...widget.availableAssignees!.map((assignee) {
                       final assigneeId = assignee['id']!;
                       final assigneeName = assignee['name']!;
-                      final isSelected = _selectedAssigneeIds.contains(assigneeId);
+                      final isSelected = _selectedAssigneeIds.contains(
+                        assigneeId,
+                      );
 
                       return CheckboxListTile(
                         value: isSelected,
@@ -348,11 +365,15 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                         },
                         title: Text(assigneeName),
                         secondary: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
                           child: Text(
                             assigneeName.isNotEmpty ? assigneeName[0] : '?',
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ),
@@ -366,16 +387,22 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
                             child: Icon(
                               Icons.person,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
                             ),
                           ),
                           const SizedBox(width: 12),

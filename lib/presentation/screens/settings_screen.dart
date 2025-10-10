@@ -154,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (!mounted) return;
       _showTransferCredentialsDialog(
-        credentials['user_id']!,
+        credentials['display_id']!,
         credentials['password']!,
       );
     } catch (e) {
@@ -164,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   /// 引き継ぎ情報ダイアログ表示
-  void _showTransferCredentialsDialog(String userId, String password) {
+  void _showTransferCredentialsDialog(String displayId, String password) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -177,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Text('以下の情報を新しい端末で入力してください', textAlign: TextAlign.center),
               const SizedBox(height: 24),
               const Text(
-                'ユーザーID',
+                'ユーザーID（8桁）',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -188,8 +188,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SelectableText(
-                  userId,
-                  style: const TextStyle(fontSize: 14),
+                  displayId,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -216,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () {
               Clipboard.setData(
-                ClipboardData(text: 'ユーザーID: $userId\nパスワード: $password'),
+                ClipboardData(text: 'ユーザーID: $displayId\nパスワード: $password'),
               );
               _showSuccessSnackBar('引き継ぎ情報をコピーしました');
             },
@@ -278,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'ユーザーID: ${widget.user.id.substring(0, 8)}...',
+                      'ユーザーID: ${widget.user.displayId}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],

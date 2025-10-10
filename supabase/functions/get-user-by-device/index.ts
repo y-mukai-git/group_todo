@@ -19,6 +19,7 @@ interface GetUserResponse {
     id: string
     device_id: string
     display_name: string
+    display_id: string // 8桁ユーザーID
     avatar_url: string | null
     notification_deadline: boolean
     notification_new_todo: boolean
@@ -56,7 +57,7 @@ serve(async (req) => {
     // ユーザー取得
     const { data: user, error: userError } = await supabaseClient
       .from('users')
-      .select('id, device_id, display_name, avatar_url, notification_deadline, notification_new_todo, notification_assigned, created_at, last_accessed_at')
+      .select('id, device_id, display_name, display_id, avatar_url, notification_deadline, notification_new_todo, notification_assigned, created_at, last_accessed_at')
       .eq('device_id', device_id)
       .single()
 
@@ -82,6 +83,7 @@ serve(async (req) => {
         id: user.id,
         device_id: user.device_id,
         display_name: user.display_name,
+        display_id: user.display_id,
         avatar_url: user.avatar_url,
         notification_deadline: user.notification_deadline,
         notification_new_todo: user.notification_new_todo,

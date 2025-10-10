@@ -17,7 +17,8 @@ class GroupService {
       final body = {
         'user_id': userId,
         'name': groupName,
-        if (description != null && description.isNotEmpty) 'description': description,
+        if (description != null && description.isNotEmpty)
+          'description': description,
         if (category != null) 'category': category,
       };
 
@@ -130,7 +131,8 @@ class GroupService {
         'group_id': groupId,
         'user_id': userId,
         'name': groupName,
-        if (description != null && description.isNotEmpty) 'description': description,
+        if (description != null && description.isNotEmpty)
+          'description': description,
         if (category != null) 'category': category,
       };
 

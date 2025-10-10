@@ -23,11 +23,20 @@ interface UpdateTodoResponse {
   success: boolean
   todo?: {
     id: string
+    group_id: string
     title: string
     description: string | null
     deadline: string | null
     category: string
+    is_completed: boolean
+    created_by: string
+    created_at: string
     updated_at: string
+    assignees: {
+      user_id: string
+      display_name: string
+      avatar_url: string | null
+    }[]
   }
   error?: string
 }
@@ -103,7 +112,7 @@ serve(async (req) => {
       .from('todos')
       .update(updateData)
       .eq('id', todo_id)
-      .select('id, title, description, deadline, category, updated_at')
+      .select('id, group_id, title, description, deadline, category, is_completed, created_by, created_at, updated_at')
       .single()
 
     if (updateError || !updatedTodo) {
@@ -137,15 +146,38 @@ serve(async (req) => {
         .insert(assignmentInserts)
     }
 
+    // 担当者情報を取得
+    const { data: assignments } = await supabaseClient
+      .from('todo_assignments')
+      .select(`
+        user_id,
+        users:user_id (
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq('todo_id', todo_id)
+
+    const assignees = (assignments || []).map((a: any) => ({
+      user_id: a.user_id,
+      display_name: a.users?.display_name || '',
+      avatar_url: a.users?.avatar_url || null
+    }))
+
     const response: UpdateTodoResponse = {
       success: true,
       todo: {
         id: updatedTodo.id,
+        group_id: updatedTodo.group_id,
         title: updatedTodo.title,
         description: updatedTodo.description,
         deadline: updatedTodo.deadline,
         category: updatedTodo.category,
-        updated_at: updatedTodo.updated_at
+        is_completed: updatedTodo.is_completed,
+        created_by: updatedTodo.created_by,
+        created_at: updatedTodo.created_at,
+        updated_at: updatedTodo.updated_at,
+        assignees: assignees
       }
     }
 

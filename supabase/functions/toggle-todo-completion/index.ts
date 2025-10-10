@@ -18,8 +18,17 @@ interface ToggleTodoResponse {
   success: boolean
   todo?: {
     id: string
+    group_id: string
+    title: string
+    description: string | null
+    deadline: string | null
+    category: string
     is_completed: boolean
     completed_at: string | null
+    created_by: string
+    created_at: string
+    updated_at: string
+    assigned_user_ids: string[]
   }
   error?: string
 }
@@ -94,7 +103,7 @@ serve(async (req) => {
         updated_at: now
       })
       .eq('id', todo_id)
-      .select('id, is_completed, completed_at')
+      .select('id, group_id, title, description, deadline, category, is_completed, completed_at, created_by, created_at, updated_at')
       .single()
 
     if (updateError || !updatedTodo) {
@@ -107,12 +116,29 @@ serve(async (req) => {
       )
     }
 
+    // 担当者ID一覧を取得
+    const { data: assignments } = await supabaseClient
+      .from('todo_assignments')
+      .select('user_id')
+      .eq('todo_id', todo_id)
+
+    const assignedUserIds = assignments?.map((a: { user_id: string }) => a.user_id) ?? []
+
     const response: ToggleTodoResponse = {
       success: true,
       todo: {
         id: updatedTodo.id,
+        group_id: updatedTodo.group_id,
+        title: updatedTodo.title,
+        description: updatedTodo.description,
+        deadline: updatedTodo.deadline,
+        category: updatedTodo.category,
         is_completed: updatedTodo.is_completed,
-        completed_at: updatedTodo.completed_at
+        completed_at: updatedTodo.completed_at,
+        created_by: updatedTodo.created_by,
+        created_at: updatedTodo.created_at,
+        updated_at: updatedTodo.updated_at,
+        assigned_user_ids: assignedUserIds
       }
     }
 
@@ -121,10 +147,10 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Toggle todo completion error:', error)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

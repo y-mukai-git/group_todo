@@ -13,7 +13,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  String? _selectedCategory; // null = 未設定
+  String? _selectedCategory = 'none'; // デフォルト：未設定
 
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
@@ -27,19 +27,23 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1), // 画面下から
-      end: Offset.zero, // 通常位置へ
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(
+          begin: const Offset(0, 1), // 画面下から
+          end: Offset.zero, // 通常位置へ
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     // アニメーション開始
     _animationController.forward();
   }
 
   final Map<String, String> _categoryNames = {
+    'none': '未設定',
     'shopping': '買い物',
     'housework': '家事',
     'work': '仕事',
@@ -48,6 +52,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
   };
 
   final Map<String, IconData> _categoryIcons = {
+    'none': Icons.label_off,
     'shopping': Icons.shopping_cart,
     'housework': Icons.home,
     'work': Icons.work,
@@ -67,9 +72,9 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
   void _createGroup() {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('グループ名を入力してください')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('グループ名を入力してください')));
       return;
     }
 
@@ -83,13 +88,14 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return SlideTransition(
       position: _slideAnimation,
-      child: AnimatedPadding(
-        padding: MediaQuery.of(context).viewInsets,
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
+      child: GestureDetector(
+        onTap: () {},
         child: Container(
+          height: screenHeight - 100,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -101,189 +107,172 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
               ),
             ],
           ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ハンドル
-                  Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(2),
+          child: Column(
+            children: [
+              // ヘッダー
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.group_add,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
                     ),
-                  ),
-
-                  // ヘッダー
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.group_add,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 28,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '新しいグループ',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '新しいグループ',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-
-                  const Divider(height: 1),
-
-                  // コンテンツ
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // グループ名入力
-                        TextField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            labelText: 'グループ名',
-                            hintText: 'グループ名を入力',
-                            prefixIcon: const Icon(Icons.group),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          autofocus: true,
-                          textInputAction: TextInputAction.next,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // 説明入力
-                        TextField(
-                          controller: _descriptionController,
-                          decoration: InputDecoration(
-                            labelText: '説明（任意）',
-                            hintText: 'グループの説明を入力',
-                            prefixIcon: const Icon(Icons.description),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          maxLines: 3,
-                          textInputAction: TextInputAction.done,
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // カテゴリ選択
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'カテゴリ',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                            if (_selectedCategory != null)
-                              TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedCategory = null;
-                                  });
-                                },
-                                child: const Text('未設定に戻す'),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _categoryNames.entries.map((entry) {
-                            final isSelected = _selectedCategory == entry.key;
-                            return InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategory = entry.key;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                width: (MediaQuery.of(context).size.width - 72) / 3,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.primaryContainer
-                                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      _categoryIcons[entry.key],
-                                      color: isSelected
-                                          ? Theme.of(context).colorScheme.onPrimaryContainer
-                                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      entry.value,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isSelected
-                                            ? Theme.of(context).colorScheme.onPrimaryContainer
-                                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        // 作成ボタン
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: _createGroup,
-                            icon: const Icon(Icons.add),
-                            label: const Text('作成'),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+
+              const Divider(height: 1),
+
+              // コンテンツ（スクロール可能）
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    // グループ名入力
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'グループ名',
+                        hintText: 'グループ名を入力',
+                        prefixIcon: const Icon(Icons.group),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      autofocus: true,
+                      textInputAction: TextInputAction.next,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 説明入力
+                    TextField(
+                      controller: _descriptionController,
+                      decoration: InputDecoration(
+                        labelText: '説明（任意）',
+                        hintText: 'グループの説明を入力',
+                        prefixIcon: const Icon(Icons.description),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      maxLines: 3,
+                      textInputAction: TextInputAction.done,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // カテゴリ選択
+                    Text(
+                      'カテゴリ',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _categoryNames.entries.map((entry) {
+                        final isSelected = _selectedCategory == entry.key;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = entry.key;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: (MediaQuery.of(context).size.width - 72) / 3,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  _categoryIcons[entry.key],
+                                  color: isSelected
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  entry.value,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isSelected
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimaryContainer
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // 作成ボタン
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _createGroup,
+                        icon: const Icon(Icons.add),
+                        label: const Text('作成'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

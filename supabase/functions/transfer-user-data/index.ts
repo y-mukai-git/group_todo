@@ -10,8 +10,8 @@ const corsHeaders = {
 }
 
 interface TransferUserDataRequest {
-  source_user_id: string
-  transfer_code: string
+  display_id: string // 8桁ユーザーID
+  password: string
   new_device_id: string
 }
 
@@ -21,6 +21,7 @@ interface TransferUserDataResponse {
     id: string
     device_id: string
     display_name: string
+    display_id: string
   }
   error?: string
 }
@@ -36,11 +37,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { source_user_id, transfer_code, new_device_id }: TransferUserDataRequest = await req.json()
+    const { display_id, password, new_device_id }: TransferUserDataRequest = await req.json()
 
-    if (!source_user_id || !transfer_code || !new_device_id) {
+    if (!display_id || !password || !new_device_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'source_user_id, transfer_code, and new_device_id are required' }),
+        JSON.stringify({ success: false, error: 'display_id, password, and new_device_id are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -48,11 +49,11 @@ serve(async (req) => {
       )
     }
 
-    // ユーザー取得と引き継ぎコード検証
+    // ユーザー取得（8桁IDで検索）
     const { data: user, error: userError } = await supabaseClient
       .from('users')
-      .select('id, device_id, display_name, transfer_code, transfer_code_expires_at')
-      .eq('id', source_user_id)
+      .select('id, device_id, display_name, display_id, transfer_password_hash')
+      .eq('display_id', display_id)
       .single()
 
     if (userError || !user) {
@@ -65,10 +66,10 @@ serve(async (req) => {
       )
     }
 
-    // 引き継ぎコード検証
-    if (user.transfer_code !== transfer_code) {
+    // パスワード未設定チェック
+    if (!user.transfer_password_hash) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid transfer code' }),
+        JSON.stringify({ success: false, error: 'Transfer password not set. Please set password first.' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -76,31 +77,29 @@ serve(async (req) => {
       )
     }
 
-    // 有効期限チェック
-    if (user.transfer_code_expires_at) {
-      const expiresAt = new Date(user.transfer_code_expires_at)
-      if (expiresAt < new Date()) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Transfer code has expired' }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
+    // パスワード検証（bcrypt）
+    const bcrypt = await import('https://deno.land/x/bcrypt@v0.4.1/mod.ts')
+    const isPasswordValid = await bcrypt.compare(password, user.transfer_password_hash)
+
+    if (!isPasswordValid) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid password' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
-    // 新しいデバイスIDに紐付け
+    // 新しいデバイスIDに紐付け（デバイスIDを書き換え）
     const { data: updatedUser, error: updateError } = await supabaseClient
       .from('users')
       .update({
         device_id: new_device_id,
-        transfer_code: null,
-        transfer_code_expires_at: null,
         updated_at: new Date().toISOString()
       })
-      .eq('id', source_user_id)
-      .select('id, device_id, display_name')
+      .eq('id', user.id)
+      .select('id, device_id, display_name, display_id')
       .single()
 
     if (updateError || !updatedUser) {
@@ -118,7 +117,8 @@ serve(async (req) => {
       user: {
         id: updatedUser.id,
         device_id: updatedUser.device_id,
-        display_name: updatedUser.display_name
+        display_name: updatedUser.display_name,
+        display_id: updatedUser.display_id
       }
     }
 

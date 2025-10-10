@@ -85,7 +85,7 @@ class UserService {
       );
 
       final result = {
-        'user_id': response['user_id'] as String,
+        'display_id': response['display_id'] as String, // 8桁displayIdを返す
         'password': password,
       };
       debugPrint('[UserService] ✅ 引き継ぎ用パスワード設定成功');
@@ -96,9 +96,9 @@ class UserService {
     }
   }
 
-  /// データ引き継ぎ実行
+  /// データ引き継ぎ実行（8桁ユーザーID + パスワード）
   Future<UserModel> transferUserData({
-    required String userId,
+    required String userId, // 8桁displayId
     required String password,
   }) async {
     try {
@@ -107,7 +107,7 @@ class UserService {
       final response = await _apiClient.callFunction(
         functionName: 'transfer-user-data',
         body: {
-          'user_id': userId,
+          'display_id': userId, // 8桁displayIdをパラメータとして送信
           'password': password,
           'new_device_id': newDeviceId,
         },

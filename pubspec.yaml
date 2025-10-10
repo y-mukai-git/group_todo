@@ -54,6 +54,12 @@ dependencies:
   # 日付フォーマット
   intl: ^0.20.2
 
+  # 画像選択（カメラ/ギャラリー）
+  image_picker: ^1.0.7
+
+  # Supabase（Storage含む）
+  supabase_flutter: ^2.5.0
+
   # Google AdMob広告
   google_mobile_ads: ^5.1.0
 

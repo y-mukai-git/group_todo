@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
-import '../../services/group_service.dart';
+import '../../services/data_cache_service.dart';
 import 'main_tab_screen.dart';
 import 'data_transfer_screen.dart';
 
@@ -13,7 +13,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -57,25 +58,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         debugPrint('[SplashScreen] ✅ 既存ユーザー検出: $savedUserId');
         final savedDisplayName = await StorageHelper.getDisplayName();
 
-        // 個人用グループID取得
-        String? personalGroupId;
-        try {
-          final groups = await GroupService().getUserGroups(userId: savedUserId);
-          final personalGroup = groups.firstWhere(
-            (group) => group.name == '個人TODO',
-            orElse: () => throw Exception('Personal group not found'),
-          );
-          personalGroupId = personalGroup.id;
-          debugPrint('[SplashScreen] ✅ 個人用グループID取得: $personalGroupId');
-        } catch (e) {
-          debugPrint('[SplashScreen] ❌ 個人用グループID取得エラー: $e');
-          // エラー時はnullのまま続行（後で再取得可能）
-        }
+        // personalGroupIdはnullで初期化（DataCacheServiceで全グループ取得済み）
+        const String? personalGroupId = null;
 
         // ユーザーモデル作成（ローカル保存情報から復元）
         final user = UserModel(
           id: savedUserId,
           displayName: savedDisplayName ?? 'ユーザー',
+          displayId: '', // 初期表示では空、起動後にAPI取得
           deviceId: '', // メイン画面では使わないので空でOK
           personalGroupId: personalGroupId,
           notificationDeadline: true, // デフォルト値
@@ -84,6 +74,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           createdAt: DateTime.now(), // 正確な値は不要
           updatedAt: DateTime.now(), // 正確な値は不要
         );
+
+        // キャッシュ初期化（全データ取得）
+        debugPrint('[SplashScreen] 📦 キャッシュ初期化開始');
+        await DataCacheService().initializeCache(user);
+        debugPrint('[SplashScreen] ✅ キャッシュ初期化完了');
 
         if (!mounted) return;
         Navigator.pushReplacement(

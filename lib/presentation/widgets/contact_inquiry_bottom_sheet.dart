@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../data/models/inquiry_type.dart';
 import '../../data/models/user_model.dart';
 import '../../services/contact_service.dart';
+import '../../services/error_log_service.dart';
+import 'error_dialog.dart';
 
 /// お問い合わせボトムシート
 class ContactInquiryBottomSheet extends StatefulWidget {
@@ -40,7 +42,7 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
     });
 
     try {
-      final success = await ContactService().submitInquiry(
+      await ContactService().submitInquiry(
         userId: widget.user.id,
         type: _selectedType,
         message: message,
@@ -48,16 +50,29 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
 
       if (!mounted) return;
 
-      if (success) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('お問い合わせを送信しました')));
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('送信に失敗しました。もう一度お試しください')));
-      }
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('お問い合わせを送信しました')));
+    } catch (e, stackTrace) {
+      debugPrint('[ContactInquiryBottomSheet] ❌ お問い合わせ送信エラー: $e');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'お問い合わせ送信エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'お問い合わせ',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'お問い合わせの送信に失敗しました',
+      );
     } finally {
       if (mounted) {
         setState(() {

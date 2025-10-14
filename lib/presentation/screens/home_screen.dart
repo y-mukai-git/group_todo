@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/error_log_service.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
+import '../widgets/error_dialog.dart';
 
 /// ホーム画面（My TODO - 自分のTODO表示）
 class HomeScreen extends StatefulWidget {
@@ -90,9 +92,25 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         _showSuccessSnackBar('TODOを完了しました');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[HomeScreen] ❌ TODO完了切り替えエラー: $e');
-      _showErrorSnackBar('完了状態の更新に失敗しました');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'TODO完了切り替えエラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'ホーム画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '完了状態の更新に失敗しました',
+      );
     }
   }
 
@@ -109,20 +127,26 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await _cacheService.refreshCache();
       _showSuccessSnackBar('データを更新しました');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[HomeScreen] ❌ データ更新エラー: $e');
-      _showErrorSnackBar('データの更新に失敗しました');
-    }
-  }
 
-  /// エラーメッセージ表示
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'データ更新エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'ホーム画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'データの更新に失敗しました',
+      );
+    }
   }
 
   /// 成功メッセージ表示
@@ -208,7 +232,12 @@ class _HomeScreenState extends State<HomeScreen> {
         // その他のエラー → エラーメッセージ表示
         // TODO: 将来的にエラー画面遷移に変更
         if (mounted) {
-          _showErrorSnackBar(message);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
         }
       },
     );

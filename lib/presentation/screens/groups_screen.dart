@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/error_log_service.dart';
 import '../widgets/create_group_bottom_sheet.dart';
+import '../widgets/error_dialog.dart';
 import 'group_detail_screen.dart';
 
 /// グループ一覧画面
@@ -92,9 +94,25 @@ class _GroupsScreenState extends State<GroupsScreen> {
       );
 
       _showSuccessSnackBar('グループを作成しました');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[GroupsScreen] ❌ グループ作成エラー: $e');
-      _showErrorSnackBar('グループの作成に失敗しました');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'グループ作成エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ一覧画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'グループの作成に失敗しました',
+      );
     }
   }
 
@@ -103,9 +121,25 @@ class _GroupsScreenState extends State<GroupsScreen> {
     try {
       await _cacheService.refreshCache();
       _showSuccessSnackBar('データを更新しました');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[GroupsScreen] ❌ データ更新エラー: $e');
-      _showErrorSnackBar('データの更新に失敗しました');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'データ更新エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ一覧画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'データの更新に失敗しました',
+      );
     }
   }
 
@@ -113,16 +147,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
-  }
-
-  /// エラーメッセージ表示
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
     );
   }
 

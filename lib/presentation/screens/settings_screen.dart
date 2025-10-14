@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/models/user_model.dart';
 import '../../services/user_service.dart';
+import '../../services/error_log_service.dart';
 import '../../core/config/environment_config.dart';
 import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
 import '../widgets/transfer_password_bottom_sheet.dart';
+import '../widgets/error_dialog.dart';
 import 'announcements_screen.dart';
 
 /// 設定画面
@@ -45,8 +47,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _signedAvatarUrl = response['signed_avatar_url'] as String?;
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[SettingsScreen] ❌ アバターURL取得エラー: $e');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'アバターURL取得エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: '設定画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'プロフィール画像の読み込みに失敗しました',
+      );
     }
   }
 

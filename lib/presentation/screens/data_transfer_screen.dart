@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
+import '../../services/error_log_service.dart';
 import '../../core/utils/storage_helper.dart';
+import '../widgets/error_dialog.dart';
 import 'main_tab_screen.dart';
 
 /// データ引き継ぎ画面（初回起動時のみ表示）
@@ -43,10 +45,25 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         context,
         MaterialPageRoute(builder: (context) => MainTabScreen(user: newUser)),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[DataTransferScreen] ❌ 新規ユーザー作成エラー: $e');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: null, // 新規ユーザー作成失敗時はユーザーIDなし
+        errorType: '新規ユーザー作成エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'データ引き継ぎ画面',
+      );
+
+      // エラーダイアログ表示
       if (!mounted) return;
-      _showErrorSnackBar('ユーザー作成に失敗しました');
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'ユーザー作成に失敗しました',
+      );
       setState(() => _isLoading = false);
     }
   }
@@ -57,7 +74,12 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
     final password = _passwordController.text.trim();
 
     if (userId.isEmpty || password.isEmpty) {
-      _showErrorSnackBar('ユーザーIDとパスワードを入力してください');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ユーザーIDとパスワードを入力してください'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 
@@ -80,22 +102,27 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         context,
         MaterialPageRoute(builder: (context) => MainTabScreen(user: user)),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[DataTransferScreen] ❌ データ引き継ぎエラー: $e');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: null, // データ引き継ぎ失敗時はユーザーIDなし
+        errorType: 'データ引き継ぎエラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'データ引き継ぎ画面',
+      );
+
+      // エラーダイアログ表示
       if (!mounted) return;
-      _showErrorSnackBar('ユーザーIDまたはパスワードが正しくありません');
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'データ引き継ぎに失敗しました',
+      );
       setState(() => _isLoading = false);
     }
-  }
-
-  /// エラーメッセージ表示
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
   }
 
   @override

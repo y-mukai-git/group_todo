@@ -535,6 +535,36 @@ COMMENT ON COLUMN contact_inquiries.message IS 'お問い合わせ内容（1000�
 COMMENT ON COLUMN contact_inquiries.status IS '対応状況（open: 未対応, in_progress: 対応中, resolved: 解決済み）';
 
 -- ===================================
+-- 11. Error Logs (エラーログ)
+-- ===================================
+CREATE TABLE error_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  error_type TEXT NOT NULL,
+  error_message TEXT NOT NULL,
+  stack_trace TEXT,
+  screen_name TEXT,
+  device_info JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- エラーログテーブルのインデックス
+CREATE INDEX idx_error_logs_user_id ON error_logs(user_id);
+CREATE INDEX idx_error_logs_created_at ON error_logs(created_at DESC);
+CREATE INDEX idx_error_logs_error_type ON error_logs(error_type);
+
+-- テーブルコメント
+COMMENT ON TABLE error_logs IS 'システムエラーログテーブル';
+COMMENT ON COLUMN error_logs.id IS 'エラーログID（UUID）';
+COMMENT ON COLUMN error_logs.user_id IS 'ユーザーID（外部キー）';
+COMMENT ON COLUMN error_logs.error_type IS 'エラー種別';
+COMMENT ON COLUMN error_logs.error_message IS 'エラーメッセージ';
+COMMENT ON COLUMN error_logs.stack_trace IS 'スタックトレース';
+COMMENT ON COLUMN error_logs.screen_name IS 'エラー発生画面名';
+COMMENT ON COLUMN error_logs.device_info IS 'デバイス情報（JSON）';
+COMMENT ON COLUMN error_logs.created_at IS 'エラー発生日時';
+
+-- ===================================
 -- 初期データ投入完了通知
 -- ===================================
 DO $$

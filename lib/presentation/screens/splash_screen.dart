@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/error_log_service.dart';
+import '../widgets/error_dialog.dart';
 import 'main_tab_screen.dart';
 import 'data_transfer_screen.dart';
 
@@ -80,6 +82,11 @@ class _SplashScreenState extends State<SplashScreen>
         await DataCacheService().initializeCache(user);
         debugPrint('[SplashScreen] ✅ キャッシュ初期化完了');
 
+        // 未送信エラーログの再送信
+        debugPrint('[SplashScreen] 📤 未送信エラーログ再送信開始');
+        await ErrorLogService().sendPendingErrors();
+        debugPrint('[SplashScreen] ✅ 未送信エラーログ再送信完了');
+
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -94,32 +101,26 @@ class _SplashScreenState extends State<SplashScreen>
           MaterialPageRoute(builder: (context) => const DataTransferScreen()),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[SplashScreen] ❌ 初期化エラー: $e');
-      if (!mounted) return;
-      _showErrorDialog();
-    }
-  }
 
-  /// エラーダイアログ表示
-  void _showErrorDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('エラー'),
-        content: const Text('アプリの初期化に失敗しました。\nネットワーク接続を確認して、アプリを再起動してください。'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _initializeApp();
-            },
-            child: const Text('再試行'),
-          ),
-        ],
-      ),
-    );
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: null, // 初期化失敗時はユーザーIDなし
+        errorType: 'アプリ初期化エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'スプラッシュ画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'アプリの初期化に失敗しました',
+      );
+    }
   }
 
   @override

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
+import '../../services/error_log_service.dart';
+import 'error_dialog.dart';
 
 /// データ引き継ぎ用パスワード設定ボトムシート
 class TransferPasswordBottomSheet extends StatefulWidget {
@@ -60,9 +62,25 @@ class _TransferPasswordBottomSheetState
 
       // 成功時は認証情報を返す
       Navigator.pop(context, credentials);
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[TransferPasswordBottomSheet] ❌ 引き継ぎ用パスワード設定エラー: $e');
-      _showErrorSnackBar('パスワードの設定に失敗しました');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.userId,
+        errorType: 'データ引き継ぎ設定エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'データ引き継ぎ設定',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'パスワードの設定に失敗しました',
+      );
     }
   }
 

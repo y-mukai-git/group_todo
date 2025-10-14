@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../data/models/user_model.dart';
 import '../../services/user_service.dart';
+import '../../services/error_log_service.dart';
+import 'error_dialog.dart';
 
 /// プロフィール編集ボトムシート
 class EditUserProfileBottomSheet extends StatefulWidget {
@@ -62,9 +64,25 @@ class _EditUserProfileBottomSheetState
           _selectedImageBase64 = 'data:$mimeType;base64,$base64Image';
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[EditUserProfileBottomSheet] ❌ 画像選択エラー: $e');
-      _showErrorSnackBar('画像の選択に失敗しました');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '画像選択エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'プロフィール編集',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '画像の選択に失敗しました',
+      );
     }
   }
 
@@ -124,9 +142,25 @@ class _EditUserProfileBottomSheetState
       _showSuccessSnackBar('プロフィールを更新しました');
       widget.onProfileUpdated();
       Navigator.pop(context);
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[EditUserProfileBottomSheet] ❌ プロフィール更新エラー: $e');
-      _showErrorSnackBar('プロフィールの更新に失敗しました');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'プロフィール更新エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'プロフィール編集',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: 'プロフィールの更新に失敗しました',
+      );
     } finally {
       if (mounted) {
         setState(() {

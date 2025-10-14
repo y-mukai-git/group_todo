@@ -25,7 +25,7 @@ interface GroupDetail {
   id: string
   name: string
   description: string | null
-  icon_color: string
+  icon_url: string | null
   category: string | null
   owner_id: string
   owner_name: string
@@ -70,7 +70,7 @@ serve(async (req) => {
         id,
         name,
         description,
-        icon_color,
+        icon_url,
         category,
         owner_id,
         owner:owner_id (
@@ -128,7 +128,7 @@ serve(async (req) => {
       id: group.id,
       name: group.name,
       description: group.description,
-      icon_color: group.icon_color,
+      icon_url: group.icon_url,
       category: group.category,
       owner_id: group.owner_id,
       owner_name: (group.owner as any)?.display_name || '',

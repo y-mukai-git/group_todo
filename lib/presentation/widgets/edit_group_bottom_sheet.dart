@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/models/group_model.dart';
 
 /// グループ編集ボトムシート
@@ -13,10 +15,12 @@ class EditGroupBottomSheet extends StatefulWidget {
 
 class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
     with SingleTickerProviderStateMixin {
+  final ImagePicker _imagePicker = ImagePicker();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
 
   String? _selectedCategory; // null = 未設定
+  String? _selectedImageBase64; // 選択された画像（base64）
 
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
@@ -70,6 +74,64 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
     'other': Icons.label,
   };
 
+  /// 画像選択
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        final mimeType = pickedFile.mimeType ?? 'image/jpeg';
+
+        setState(() {
+          _selectedImageBase64 = 'data:$mimeType;base64,$base64Image';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('画像の読み込みに失敗しました: $e')));
+      }
+    }
+  }
+
+  /// 画像ソース選択ダイアログ
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('カメラで撮影'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('ギャラリーから選択'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -93,6 +155,7 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
       'name': name,
       'description': _descriptionController.text.trim(),
       'category': _selectedCategory,
+      'image_data': _selectedImageBase64,
     });
   }
 
@@ -153,6 +216,58 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
                 child: ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
+                    // グループアイコン画像選択
+                    Center(
+                      child: GestureDetector(
+                        onTap: _showImageSourceDialog,
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 60,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              backgroundImage: _selectedImageBase64 != null
+                                  ? MemoryImage(
+                                      base64Decode(
+                                        _selectedImageBase64!.split(',')[1],
+                                      ),
+                                    )
+                                  : null,
+                              child: _selectedImageBase64 == null
+                                  ? Icon(
+                                      Icons.group,
+                                      size: 60,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  size: 20,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
                     // グループ名入力
                     TextField(
                       controller: _nameController,

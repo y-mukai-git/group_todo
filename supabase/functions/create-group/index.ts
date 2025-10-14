@@ -13,7 +13,7 @@ interface CreateGroupRequest {
   user_id: string
   name: string
   description?: string
-  icon_color: string
+  image_data?: string // base64エンコードされた画像データ（オプション）
 }
 
 interface CreateGroupResponse {
@@ -22,7 +22,7 @@ interface CreateGroupResponse {
     id: string
     name: string
     description: string | null
-    icon_color: string
+    icon_url: string | null
     owner_id: string
     created_at: string
   }
@@ -40,16 +40,67 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { user_id, name, description, icon_color }: CreateGroupRequest = await req.json()
+    const { user_id, name, description, image_data }: CreateGroupRequest = await req.json()
 
-    if (!user_id || !name || !icon_color) {
+    if (!user_id || !name) {
       return new Response(
-        JSON.stringify({ success: false, error: 'user_id, name, and icon_color are required' }),
+        JSON.stringify({ success: false, error: 'user_id and name are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
+    }
+
+    // 画像アップロード処理（image_dataがある場合）
+    let uploadedIconUrl: string | null = null
+    if (image_data) {
+      try {
+        // base64デコード
+        const base64Data = image_data.replace(/^data:image\/\w+;base64,/, '')
+        const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+
+        // 画像形式判定（JPEG or PNG）
+        let fileExtension = 'jpg'
+        if (image_data.startsWith('data:image/png')) {
+          fileExtension = 'png'
+        }
+
+        // グループID生成（アップロード前に必要）
+        const tempGroupId = crypto.randomUUID()
+
+        // Storageにアップロード
+        const filePath = `${tempGroupId}/icon.${fileExtension}`
+        const { error: uploadError } = await supabaseClient
+          .storage
+          .from('group-icons')
+          .upload(filePath, imageBuffer, {
+            contentType: `image/${fileExtension}`,
+            upsert: true
+          })
+
+        if (uploadError) {
+          console.error('Image upload error:', uploadError)
+          return new Response(
+            JSON.stringify({ success: false, error: `Failed to upload image: ${uploadError.message}` }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+
+        uploadedIconUrl = filePath
+      } catch (error) {
+        console.error('Image processing error:', error)
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to process image: ${error.message}` }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
     }
 
     const now = new Date().toISOString()
@@ -60,12 +111,12 @@ serve(async (req) => {
       .insert({
         name: name,
         description: description || null,
-        icon_color: icon_color,
+        icon_url: uploadedIconUrl,
         owner_id: user_id,
         created_at: now,
         updated_at: now
       })
-      .select('id, name, description, icon_color, owner_id, created_at')
+      .select('id, name, description, icon_url, owner_id, created_at')
       .single()
 
     if (groupError || !newGroup) {
@@ -110,7 +161,7 @@ serve(async (req) => {
         id: newGroup.id,
         name: newGroup.name,
         description: newGroup.description,
-        icon_color: newGroup.icon_color,
+        icon_url: newGroup.icon_url,
         owner_id: newGroup.owner_id,
         created_at: newGroup.created_at
       }

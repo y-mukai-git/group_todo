@@ -21,11 +21,13 @@ interface GetUserResponse {
     display_name: string
     display_id: string // 8桁ユーザーID
     avatar_url: string | null
+    signed_avatar_url?: string // 署名付きURL（有効期限1時間）
     notification_deadline: boolean
     notification_new_todo: boolean
     notification_assigned: boolean
     created_at: string
     last_accessed_at: string
+    updated_at: string
   }
   error?: string
 }
@@ -57,7 +59,7 @@ serve(async (req) => {
     // ユーザー取得
     const { data: user, error: userError } = await supabaseClient
       .from('users')
-      .select('id, device_id, display_name, display_id, avatar_url, notification_deadline, notification_new_todo, notification_assigned, created_at, last_accessed_at')
+      .select('id, device_id, display_name, display_id, avatar_url, notification_deadline, notification_new_todo, notification_assigned, created_at, last_accessed_at, updated_at')
       .eq('device_id', device_id)
       .single()
 
@@ -77,6 +79,27 @@ serve(async (req) => {
       .update({ last_accessed_at: new Date().toISOString() })
       .eq('id', user.id)
 
+    // 署名付きURL生成（avatar_urlが存在する場合）
+    console.log('[DEBUG] avatar_url:', user.avatar_url)
+    let signedAvatarUrl: string | null = null
+    if (user.avatar_url) {
+      try {
+        const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+          .storage
+          .from('user-avatars')
+          .createSignedUrl(user.avatar_url, 3600) // 有効期限1時間
+
+        if (!signedUrlError && signedUrlData?.signedUrl) {
+          signedAvatarUrl = signedUrlData.signedUrl
+        }
+      } catch (error) {
+        console.error('Failed to create signed URL:', error)
+        // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+      }
+    }
+
+    console.log('[DEBUG] signedAvatarUrl:', signedAvatarUrl)
+
     const response: GetUserResponse = {
       success: true,
       user: {
@@ -85,13 +108,18 @@ serve(async (req) => {
         display_name: user.display_name,
         display_id: user.display_id,
         avatar_url: user.avatar_url,
+        signed_avatar_url: signedAvatarUrl,
         notification_deadline: user.notification_deadline,
         notification_new_todo: user.notification_new_todo,
         notification_assigned: user.notification_assigned,
         created_at: user.created_at,
-        last_accessed_at: user.last_accessed_at
+        last_accessed_at: user.last_accessed_at,
+        updated_at: user.updated_at
       }
     }
+
+    console.log('[DEBUG] response object:', response)
+    console.log('[DEBUG] response JSON:', JSON.stringify(response))
 
     return new Response(
       JSON.stringify(response),

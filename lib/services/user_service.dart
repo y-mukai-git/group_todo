@@ -26,7 +26,8 @@ class UserService {
   }
 
   /// デバイスIDでユーザー取得
-  Future<UserModel?> getUserByDevice() async {
+  /// 戻り値: { 'user': UserModel, 'signed_avatar_url': String? }
+  Future<Map<String, dynamic>?> getUserByDevice() async {
     try {
       final deviceId = await DeviceIdHelper.getDeviceId();
 
@@ -40,8 +41,11 @@ class UserService {
         return null;
       }
 
+      final user = UserModel.fromJson(response['user'] as Map<String, dynamic>);
+      final signedAvatarUrl = response['user']['signed_avatar_url'] as String?;
+
       debugPrint('[UserService] ✅ ユーザー取得成功');
-      return UserModel.fromJson(response['user'] as Map<String, dynamic>);
+      return {'user': user, 'signed_avatar_url': signedAvatarUrl};
     } catch (e) {
       // 404エラーは新規ユーザーとして扱う（エラーではなくnullを返す）
       if (e is ApiException && e.statusCode == 404) {
@@ -55,18 +59,27 @@ class UserService {
   }
 
   /// ユーザープロフィール更新
-  Future<UserModel> updateUserProfile({
+  /// 戻り値: { 'user': UserModel, 'signed_avatar_url': String? }
+  Future<Map<String, dynamic>> updateUserProfile({
     required String userId,
-    required String displayName,
+    String? displayName,
+    String? imageData, // base64エンコードされた画像データ（オプション）
   }) async {
     try {
+      final Map<String, dynamic> body = {'user_id': userId};
+      if (displayName != null) body['display_name'] = displayName;
+      if (imageData != null) body['image_data'] = imageData;
+
       final response = await _apiClient.callFunction(
         functionName: 'update-user-profile',
-        body: {'user_id': userId, 'display_name': displayName},
+        body: body,
       );
 
+      final user = UserModel.fromJson(response['user'] as Map<String, dynamic>);
+      final signedAvatarUrl = response['user']['signed_avatar_url'] as String?;
+
       debugPrint('[UserService] ✅ プロフィール更新成功');
-      return UserModel.fromJson(response['user'] as Map<String, dynamic>);
+      return {'user': user, 'signed_avatar_url': signedAvatarUrl};
     } catch (e) {
       debugPrint('[UserService] ❌ プロフィール更新エラー: $e');
       rethrow;

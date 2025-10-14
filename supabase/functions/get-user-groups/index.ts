@@ -17,7 +17,7 @@ interface GroupWithStats {
   id: string
   name: string
   description: string | null
-  icon_color: string
+  icon_url: string | null
   owner_id: string
   member_count: number
   incomplete_todo_count: number
@@ -64,7 +64,7 @@ serve(async (req) => {
           id,
           name,
           description,
-          icon_color,
+          icon_url,
           owner_id
         )
       `)
@@ -105,7 +105,7 @@ serve(async (req) => {
         id: group.id,
         name: group.name,
         description: group.description,
-        icon_color: group.icon_color,
+        icon_url: group.icon_url,
         owner_id: group.owner_id,
         member_count: memberCount || 0,
         incomplete_todo_count: todoCount || 0,

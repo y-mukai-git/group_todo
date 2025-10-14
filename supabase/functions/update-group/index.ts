@@ -14,7 +14,7 @@ interface UpdateGroupRequest {
   user_id: string // オーナーチェック用
   name?: string
   description?: string
-  icon_color?: string
+  image_data?: string // base64エンコードされた画像データ（オプション）
   category?: string
 }
 
@@ -24,7 +24,7 @@ interface UpdateGroupResponse {
     id: string
     name: string
     description: string | null
-    icon_color: string
+    icon_url: string | null
     owner_id: string
     category: string | null
   }
@@ -42,7 +42,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { group_id, user_id, name, description, icon_color, category }: UpdateGroupRequest = await req.json()
+    const { group_id, user_id, name, description, image_data, category }: UpdateGroupRequest = await req.json()
 
     if (!group_id || !user_id) {
       return new Response(
@@ -52,6 +52,54 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
+    }
+
+    // 画像アップロード処理（image_dataがある場合）
+    let uploadedIconUrl: string | null = null
+    if (image_data) {
+      try {
+        // base64デコード
+        const base64Data = image_data.replace(/^data:image\/\w+;base64,/, '')
+        const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+
+        // 画像形式判定（JPEG or PNG）
+        let fileExtension = 'jpg'
+        if (image_data.startsWith('data:image/png')) {
+          fileExtension = 'png'
+        }
+
+        // Storageにアップロード
+        const filePath = `${group_id}/icon.${fileExtension}`
+        const { error: uploadError } = await supabaseClient
+          .storage
+          .from('group-icons')
+          .upload(filePath, imageBuffer, {
+            contentType: `image/${fileExtension}`,
+            upsert: true
+          })
+
+        if (uploadError) {
+          console.error('Image upload error:', uploadError)
+          return new Response(
+            JSON.stringify({ success: false, error: `Failed to upload image: ${uploadError.message}` }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+
+        uploadedIconUrl = filePath
+      } catch (error) {
+        console.error('Image processing error:', error)
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to process image: ${error.message}` }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
     }
 
     // オーナーチェック
@@ -85,7 +133,7 @@ serve(async (req) => {
     const updateData: any = { updated_at: new Date().toISOString() }
     if (name !== undefined) updateData.name = name
     if (description !== undefined) updateData.description = description
-    if (icon_color !== undefined) updateData.icon_color = icon_color
+    if (uploadedIconUrl !== null) updateData.icon_url = uploadedIconUrl
     if (category !== undefined) updateData.category = category
 
     // グループ更新
@@ -93,7 +141,7 @@ serve(async (req) => {
       .from('groups')
       .update(updateData)
       .eq('id', group_id)
-      .select('id, name, description, icon_color, owner_id, category')
+      .select('id, name, description, icon_url, owner_id, category')
       .single()
 
     if (updateError || !updatedGroup) {
@@ -112,7 +160,7 @@ serve(async (req) => {
         id: updatedGroup.id,
         name: updatedGroup.name,
         description: updatedGroup.description,
-        icon_color: updatedGroup.icon_color,
+        icon_url: updatedGroup.icon_url,
         owner_id: updatedGroup.owner_id,
         category: updatedGroup.category
       }

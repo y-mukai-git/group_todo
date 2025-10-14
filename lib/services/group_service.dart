@@ -10,6 +10,7 @@ class GroupService {
   Future<GroupModel> createGroup({
     required String userId,
     required String groupName,
+    String? imageData,
     String? description,
     String? category,
   }) async {
@@ -17,6 +18,7 @@ class GroupService {
       final body = {
         'user_id': userId,
         'name': groupName,
+        if (imageData != null) 'image_data': imageData,
         if (description != null && description.isNotEmpty)
           'description': description,
         if (category != null) 'category': category,
@@ -123,6 +125,7 @@ class GroupService {
     required String groupId,
     required String userId,
     required String groupName,
+    String? imageData,
     String? description,
     String? category,
   }) async {
@@ -131,6 +134,7 @@ class GroupService {
         'group_id': groupId,
         'user_id': userId,
         'name': groupName,
+        if (imageData != null) 'image_data': imageData,
         if (description != null && description.isNotEmpty)
           'description': description,
         if (category != null) 'category': category,

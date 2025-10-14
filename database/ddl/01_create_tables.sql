@@ -75,7 +75,7 @@ CREATE TABLE groups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL CHECK (char_length(name) <= 50),
   description TEXT CHECK (char_length(description) <= 200),
-  icon_color TEXT NOT NULL, -- カラーコード（#RRGGBB形式）
+  icon_url TEXT, -- グループアイコン画像URL（Supabase Storage）
   category TEXT, -- カテゴリ（shopping: 買い物, housework: 家事, work: 仕事, hobby: 趣味, other: その他, none: 未設定）
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
@@ -87,7 +87,7 @@ CREATE TABLE groups (
 CREATE INDEX idx_groups_owner_id ON groups(owner_id);
 
 COMMENT ON TABLE groups IS 'グループ情報テーブル';
-COMMENT ON COLUMN groups.icon_color IS 'グループアイコンのカラーコード';
+COMMENT ON COLUMN groups.icon_url IS 'グループアイコン画像URL（Supabase Storageのパス）';
 COMMENT ON COLUMN groups.owner_id IS 'グループオーナーのユーザーID';
 
 -- ===================================
@@ -248,6 +248,8 @@ ALTER TABLE todo_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE todo_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_todo_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contact_inquiries ENABLE ROW LEVEL SECURITY;
 
 -- Users: 本人のみアクセス可能
 CREATE POLICY users_select_own ON users FOR SELECT USING (id = auth.uid());
@@ -438,6 +440,20 @@ CREATE POLICY recurring_todo_assignments_delete_member ON recurring_todo_assignm
     AND group_members.user_id = auth.uid()
   ));
 
+-- Announcements: すべてのユーザーが閲覧可能
+CREATE POLICY announcements_select_all ON announcements FOR SELECT
+  USING (published_at <= NOW());
+
+-- Contact Inquiries: 本人のみアクセス可能
+CREATE POLICY contact_inquiries_select_own ON contact_inquiries FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY contact_inquiries_insert_own ON contact_inquiries FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY contact_inquiries_update_own ON contact_inquiries FOR UPDATE
+  USING (user_id = auth.uid());
+
 -- ===================================
 -- 自動更新トリガー
 -- ===================================
@@ -467,6 +483,57 @@ CREATE TRIGGER update_todo_comments_updated_at BEFORE UPDATE ON todo_comments
 CREATE TRIGGER update_recurring_todos_updated_at BEFORE UPDATE ON recurring_todos
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_contact_inquiries_updated_at BEFORE UPDATE ON contact_inquiries
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ===================================
+-- 9. Announcements (お知らせ)
+-- ===================================
+CREATE TABLE announcements (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  version TEXT NOT NULL CHECK (char_length(version) <= 20), -- バージョン番号（例: "1.0.0", "1.2.3"）
+  title TEXT NOT NULL CHECK (char_length(title) <= 100), -- お知らせタイトル
+  content TEXT NOT NULL CHECK (char_length(content) <= 1000), -- お知らせ内容
+  published_at TIMESTAMPTZ NOT NULL, -- 公開日時（この日時以降に表示される）
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() -- 作成日時
+);
+
+-- お知らせテーブルのインデックス
+CREATE INDEX idx_announcements_published_at ON announcements(published_at DESC);
+CREATE INDEX idx_announcements_version ON announcements(version);
+
+-- テーブルコメント
+COMMENT ON TABLE announcements IS 'お知らせ情報テーブル（アプリバージョン更新情報・重要なお知らせ）';
+COMMENT ON COLUMN announcements.version IS 'バージョン番号（例: "1.0.0"）';
+COMMENT ON COLUMN announcements.title IS 'お知らせタイトル（100文字以内）';
+COMMENT ON COLUMN announcements.content IS 'お知らせ内容（1000文字以内、改行可能）';
+COMMENT ON COLUMN announcements.published_at IS '公開日時（この日時以降にアプリに表示される）';
+
+-- ===================================
+-- 10. Contact Inquiries (お問い合わせ)
+-- ===================================
+CREATE TABLE contact_inquiries (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  inquiry_type TEXT NOT NULL CHECK (inquiry_type IN ('bug_report', 'feature_request', 'other')),
+  message TEXT NOT NULL CHECK (char_length(message) <= 1000),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved')),
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- お問い合わせテーブルのインデックス
+CREATE INDEX idx_contact_inquiries_user_id ON contact_inquiries(user_id);
+CREATE INDEX idx_contact_inquiries_status ON contact_inquiries(status);
+CREATE INDEX idx_contact_inquiries_created_at ON contact_inquiries(created_at DESC);
+
+-- テーブルコメント
+COMMENT ON TABLE contact_inquiries IS 'お問い合わせ情報テーブル（不具合報告・機能要望・その他）';
+COMMENT ON COLUMN contact_inquiries.inquiry_type IS 'お問い合わせ種別（bug_report: 不具合報告, feature_request: 機能要望, other: その他）';
+COMMENT ON COLUMN contact_inquiries.message IS 'お問い合わせ内容（1000文字以内）';
+COMMENT ON COLUMN contact_inquiries.status IS '対応状況（open: 未対応, in_progress: 対応中, resolved: 解決済み）';
+
 -- ===================================
 -- 初期データ投入完了通知
 -- ===================================
@@ -475,7 +542,7 @@ BEGIN
   RAISE NOTICE '========================================';
   RAISE NOTICE 'GroupTODO Database Schema Created Successfully';
   RAISE NOTICE '========================================';
-  RAISE NOTICE 'Tables Created: 8';
+  RAISE NOTICE 'Tables Created: 10';
   RAISE NOTICE '  - users';
   RAISE NOTICE '  - groups';
   RAISE NOTICE '  - group_members';
@@ -484,6 +551,8 @@ BEGIN
   RAISE NOTICE '  - todo_comments';
   RAISE NOTICE '  - recurring_todos';
   RAISE NOTICE '  - recurring_todo_assignments';
+  RAISE NOTICE '  - announcements';
+  RAISE NOTICE '  - contact_inquiries';
   RAISE NOTICE 'RLS Policies: Enabled for all tables';
   RAISE NOTICE 'Indexes: Created for performance optimization';
   RAISE NOTICE '========================================';

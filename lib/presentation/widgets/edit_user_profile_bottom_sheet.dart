@@ -165,8 +165,34 @@ class _EditUserProfileBottomSheetState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // タイトル
-          Text('プロフィール編集', style: Theme.of(context).textTheme.titleLarge),
+          // ヘッダー
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'プロフィール編集',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
           const SizedBox(height: 24),
 
           // アバター画像

@@ -5,6 +5,7 @@ import '../../services/user_service.dart';
 import '../../core/config/environment_config.dart';
 import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
+import '../widgets/transfer_password_bottom_sheet.dart';
 import 'announcements_screen.dart';
 
 /// 設定画面
@@ -57,195 +58,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 引き継ぎ用パスワード設定
   Future<void> _setupTransferPassword() async {
-    final TextEditingController passwordController = TextEditingController();
-    final TextEditingController confirmController = TextEditingController();
-
-    await showModalBottomSheet(
+    final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.8,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // ヘッダー
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.phone_android,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '引き継ぎ用パスワード設定',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(height: 1),
-
-              // コンテンツ
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 説明
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  size: 20,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'データ引き継ぎについて',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              '新しい端末でデータを引き継ぐには、ユーザーID（8桁）とパスワードの両方が必要です。',
-                              style: TextStyle(fontSize: 13),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'パスワード設定後に表示される情報を必ず控えておいてください。',
-                              style: TextStyle(fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // パスワード入力
-                      TextField(
-                        controller: passwordController,
-                        decoration: const InputDecoration(
-                          labelText: 'パスワード',
-                          hintText: '8文字以上',
-                          prefixIcon: Icon(Icons.lock),
-                          border: OutlineInputBorder(),
-                        ),
-                        obscureText: true,
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // パスワード確認入力
-                      TextField(
-                        controller: confirmController,
-                        decoration: const InputDecoration(
-                          labelText: 'パスワード（確認）',
-                          hintText: '再度入力',
-                          prefixIcon: Icon(Icons.lock),
-                          border: OutlineInputBorder(),
-                        ),
-                        obscureText: true,
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // 設定ボタン
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () {
-                            final password = passwordController.text;
-                            final confirm = confirmController.text;
-
-                            if (password.length < 8) {
-                              _showErrorSnackBar('パスワードは8文字以上で設定してください');
-                              return;
-                            }
-
-                            if (password != confirm) {
-                              _showErrorSnackBar('パスワードが一致しません');
-                              return;
-                            }
-
-                            Navigator.pop(context);
-                            _saveTransferPassword(password);
-                          },
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('設定'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => TransferPasswordBottomSheet(userId: widget.user.id),
     );
 
-    passwordController.dispose();
-    confirmController.dispose();
-  }
-
-  /// 引き継ぎ用パスワード保存
-  Future<void> _saveTransferPassword(String password) async {
-    try {
-      final credentials = await _userService.setTransferPassword(
-        userId: widget.user.id,
-        password: password,
-      );
-
-      if (!mounted) return;
+    if (result != null && result is Map<String, String>) {
       _showTransferCredentialsDialog(
-        credentials['display_id']!,
-        credentials['password']!,
+        result['display_id']!,
+        result['password']!,
       );
-    } catch (e) {
-      debugPrint('[SettingsScreen] ❌ 引き継ぎ用パスワード設定エラー: $e');
-      _showErrorSnackBar('パスワードの設定に失敗しました');
     }
   }
 
@@ -328,23 +151,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// エラーメッセージ表示
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
-  }
-
   /// 設定項目リスト構築
   List<Widget> _buildSettingsItems() {
     final items = <Widget>[
-      // データ引き継ぎ
+      // データ引き継ぎ設定
       ListTile(
         leading: const Icon(Icons.phone_android),
-        title: const Text('データ引き継ぎ'),
+        title: const Text('データ引き継ぎ設定'),
         subtitle: const Text('他の端末にデータを移行'),
         trailing: const Icon(Icons.chevron_right),
         onTap: _setupTransferPassword,

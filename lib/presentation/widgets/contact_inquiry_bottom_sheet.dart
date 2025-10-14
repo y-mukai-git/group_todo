@@ -72,7 +72,7 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
-      height: screenHeight * 0.8,
+      height: screenHeight * 0.7,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

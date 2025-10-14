@@ -132,7 +132,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
       child: GestureDetector(
         onTap: () {}, // シート内のタップが外側（バリア）に抜けないように
         child: Container(
-          height: screenHeight - 100, // 固定高さ（画面 - 100px）
+          height: screenHeight * 0.7,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

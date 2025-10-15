@@ -2,10 +2,77 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 
 /// グループメンバー一覧ボトムシート
-class GroupMembersBottomSheet extends StatelessWidget {
+class GroupMembersBottomSheet extends StatefulWidget {
   final List<UserModel> members;
+  final String currentUserId;
+  final String groupOwnerId; // グループオーナーID
+  final Function(String userId) onRemoveMember;
+  final Function(String userId) onInviteMember;
 
-  const GroupMembersBottomSheet({super.key, required this.members});
+  const GroupMembersBottomSheet({
+    super.key,
+    required this.members,
+    required this.currentUserId,
+    required this.groupOwnerId,
+    required this.onRemoveMember,
+    required this.onInviteMember,
+  });
+
+  @override
+  State<GroupMembersBottomSheet> createState() =>
+      _GroupMembersBottomSheetState();
+}
+
+class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
+  final TextEditingController _userIdController = TextEditingController();
+
+  @override
+  void dispose() {
+    _userIdController.dispose();
+    super.dispose();
+  }
+
+  /// メンバー削除確認ダイアログ
+  Future<void> _showRemoveConfirmDialog(UserModel member) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('メンバー削除'),
+        content: Text('${member.displayName}をグループから削除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      widget.onRemoveMember(member.id);
+    }
+  }
+
+  /// ユーザー招待実行
+  void _inviteUser() {
+    final userId = _userIdController.text.trim();
+    if (userId.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ユーザーIDを入力してください')));
+      return;
+    }
+
+    widget.onInviteMember(userId);
+    _userIdController.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +81,7 @@ class GroupMembersBottomSheet extends StatelessWidget {
     return GestureDetector(
       onTap: () {},
       child: Container(
-        height: screenHeight - 100,
+        height: screenHeight * 0.7,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -49,7 +116,10 @@ class GroupMembersBottomSheet extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      if (!mounted) return;
+                      Navigator.pop(context);
+                    },
                   ),
                 ],
               ),
@@ -61,9 +131,15 @@ class GroupMembersBottomSheet extends StatelessWidget {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: members.length,
+                itemCount: widget.members.length,
                 itemBuilder: (context, index) {
-                  final member = members[index];
+                  final member = widget.members[index];
+                  final isCurrentUser = member.id == widget.currentUserId;
+                  final isOwner = member.id == widget.groupOwnerId;
+                  final canDelete =
+                      widget.currentUserId == widget.groupOwnerId &&
+                      !isCurrentUser;
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
@@ -83,29 +159,114 @@ class GroupMembersBottomSheet extends StatelessWidget {
                           ),
                         ),
                       ),
-                      title: Text(
-                        member.displayName,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      title: Row(
+                        children: [
+                          Text(
+                            member.displayName,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          if (isOwner) ...[
+                            const SizedBox(width: 8),
+                            Icon(Icons.star, color: Colors.amber, size: 18),
+                          ],
+                        ],
                       ),
                       subtitle: Text('ID: ${member.displayId}'),
+                      trailing: canDelete
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.delete,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              onPressed: () => _showRemoveConfirmDialog(member),
+                            )
+                          : null,
                     ),
                   );
                 },
               ),
             ),
 
-            // ユーザー招待ボタン
+            const Divider(height: 1),
+
+            // ユーザー招待UI
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    // TODO: 招待コード生成画面に遷移
-                  },
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('ユーザーを招待'),
-                ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ユーザーを招待',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // 非オーナー時のメッセージ
+                  if (widget.currentUserId != widget.groupOwnerId) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'オーナーのみがユーザー招待できます',
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // オーナー時の招待UI
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _userIdController,
+                            decoration: InputDecoration(
+                              labelText: 'ユーザーID',
+                              hintText: 'ユーザーIDを入力',
+                              prefixIcon: const Icon(Icons.person_add),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton(
+                          onPressed: _inviteUser,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 20,
+                            ),
+                          ),
+                          child: const Text('招待'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ],

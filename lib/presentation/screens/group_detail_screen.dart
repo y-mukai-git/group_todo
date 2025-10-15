@@ -72,8 +72,76 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => GroupMembersBottomSheet(members: _groupMembers),
+      builder: (context) => GroupMembersBottomSheet(
+        members: _groupMembers,
+        currentUserId: widget.user.id,
+        groupOwnerId: widget.group.ownerId,
+        onRemoveMember: _removeMember,
+        onInviteMember: _inviteMember,
+      ),
     );
+  }
+
+  /// メンバー削除
+  Future<void> _removeMember(String userId) async {
+    try {
+      // TODO: グループメンバー削除APIが実装されたら修正
+      debugPrint('[GroupDetailScreen] メンバー削除: userId=$userId');
+
+      setState(() {
+        _groupMembers.removeWhere((member) => member.id == userId);
+      });
+
+      if (!mounted) return;
+      Navigator.pop(context); // ボトムシートを閉じる
+      _showSuccessSnackBar('メンバーを削除しました');
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ メンバー削除エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'メンバー削除エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: 'メンバーの削除に失敗しました',
+        );
+      }
+    }
+  }
+
+  /// メンバー招待
+  Future<void> _inviteMember(String userId) async {
+    try {
+      // TODO: グループメンバー招待APIが実装されたら修正
+      debugPrint('[GroupDetailScreen] メンバー招待: userId=$userId');
+
+      // 仮実装: ユーザーIDでユーザーを検索し、グループに追加
+      // 実装時はSupabase APIを呼び出す
+
+      if (!mounted) return;
+      _showSuccessSnackBar('メンバーを招待しました');
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ メンバー招待エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'メンバー招待エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: 'メンバーの招待に失敗しました',
+        );
+      }
+    }
   }
 
   /// 定期TODO一覧読み込み
@@ -591,9 +659,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 // ユーザー招待ボタン
                 IconButton(
                   icon: const Icon(Icons.person_add),
-                  onPressed: () {
-                    // TODO: 招待コード生成画面に遷移
-                  },
+                  onPressed: _showGroupMembers,
                   tooltip: 'ユーザー招待',
                 ),
               ],

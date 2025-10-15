@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/todo_model.dart';
 
@@ -8,6 +9,7 @@ class CreateTodoBottomSheet extends StatefulWidget {
   final String? fixedGroupName; // グループ名（表示用）
   final List<Map<String, String>>? availableAssignees; // 担当者候補リスト [{id, name}]
   final String currentUserId; // 現在のユーザーID
+  final String currentUserName; // 現在のユーザー名（固定表示用）
   final TodoModel? existingTodo; // 編集モード時の既存TODOデータ
 
   const CreateTodoBottomSheet({
@@ -16,6 +18,7 @@ class CreateTodoBottomSheet extends StatefulWidget {
     this.fixedGroupName,
     this.availableAssignees,
     required this.currentUserId,
+    required this.currentUserName,
     this.existingTodo, // 編集モード用
   });
 
@@ -79,21 +82,53 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     super.dispose();
   }
 
-  /// 期限選択ダイアログ
+  /// 期限選択ピッカー表示
   Future<void> _selectDeadline() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDeadline ?? now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 1),
-    );
+    DateTime tempDate = _selectedDeadline ?? now;
 
-    if (picked != null) {
-      setState(() {
-        _selectedDeadline = picked;
-      });
-    }
+    await showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('キャンセル'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedDeadline = tempDate;
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('完了'),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: _selectedDeadline ?? now,
+                  minimumDate: now,
+                  maximumDate: DateTime(now.year + 1),
+                  onDateTimeChanged: (DateTime newDate) {
+                    tempDate = newDate;
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// 期限クリア
@@ -101,6 +136,72 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     setState(() {
       _selectedDeadline = null;
     });
+  }
+
+  /// 担当者選択ピッカー表示
+  void _showAssigneePicker() {
+    if (widget.availableAssignees == null ||
+        widget.availableAssignees!.isEmpty) {
+      return;
+    }
+
+    final assignees = widget.availableAssignees!;
+    final currentAssigneeId = _selectedAssigneeIds.isEmpty
+        ? null
+        : _selectedAssigneeIds.first;
+    final currentIndex = assignees.indexWhere(
+      (a) => a['id'] == currentAssigneeId,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        int selectedIndex = currentIndex >= 0 ? currentIndex : 0;
+
+        return Container(
+          height: 250,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('キャンセル'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedAssigneeIds = {
+                          assignees[selectedIndex]['id']!,
+                        };
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('完了'),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: selectedIndex,
+                  ),
+                  onSelectedItemChanged: (index) {
+                    selectedIndex = index;
+                  },
+                  children: assignees
+                      .map((assignee) => Center(child: Text(assignee['name']!)))
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// TODO作成・更新実行
@@ -303,44 +404,82 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...widget.availableAssignees!.map((assignee) {
-                        final assigneeId = assignee['id']!;
-                        final assigneeName = assignee['name']!;
-                        final isSelected = _selectedAssigneeIds.contains(
-                          assigneeId,
-                        );
-
-                        return CheckboxListTile(
-                          value: isSelected,
-                          onChanged: (value) {
-                            setState(() {
-                              if (value == true) {
-                                _selectedAssigneeIds.add(assigneeId);
-                              } else {
-                                _selectedAssigneeIds.remove(assigneeId);
-                              }
-                            });
-                          },
-                          title: Text(assigneeName),
-                          secondary: CircleAvatar(
-                            backgroundColor: Theme.of(
+                      // グループに1人のみ：表示のみ（変更不可）
+                      if (widget.availableAssignees!.length == 1)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Theme.of(
                               context,
-                            ).colorScheme.primaryContainer,
-                            child: Text(
-                              assigneeName.isNotEmpty ? assigneeName[0] : '?',
-                              style: TextStyle(
+                            ).colorScheme.surfaceContainerHighest,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person,
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.onPrimaryContainer,
+                                ).colorScheme.onSurfaceVariant,
                               ),
+                              const SizedBox(width: 12),
+                              Text(
+                                widget.availableAssignees!.first['name']!,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ],
+                          ),
+                        )
+                      // グループに複数人：ピッカーで選択可能
+                      else
+                        InkWell(
+                          onTap: _showAssigneePicker,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _selectedAssigneeIds.isEmpty
+                                      ? '担当者を選択'
+                                      : widget.availableAssignees!.firstWhere(
+                                          (a) =>
+                                              a['id'] ==
+                                              _selectedAssigneeIds.first,
+                                        )['name']!,
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ],
                             ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }),
+                        ),
                       const SizedBox(height: 8),
                     ] else ...[
                       // MY TODO: 自分のみ固定（表示のみ）
@@ -374,7 +513,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              '自分',
+                              widget.currentUserName,
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                             const Spacer(),

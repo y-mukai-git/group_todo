@@ -220,7 +220,10 @@ class _EditUserProfileBottomSheetState
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                  },
                 ),
               ],
             ),

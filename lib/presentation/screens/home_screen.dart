@@ -173,6 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
         fixedGroupName: group?.name ?? 'グループ',
         availableAssignees: null, // TODO: メンバー一覧取得して渡す
         currentUserId: widget.user.id,
+        currentUserName: widget.user.displayName,
         existingTodo: todo, // 編集モード：既存TODOデータを渡す
       ),
     );

@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/todo_model.dart';
+import '../../data/models/recurring_todo_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/recurring_todo_service.dart';
+import '../../services/error_log_service.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
+import '../widgets/create_recurring_todo_bottom_sheet.dart';
+import '../widgets/error_dialog.dart';
 
 /// グループ詳細画面
 class GroupDetailScreen extends StatefulWidget {
@@ -21,6 +26,7 @@ class GroupDetailScreen extends StatefulWidget {
 class _GroupDetailScreenState extends State<GroupDetailScreen>
     with SingleTickerProviderStateMixin {
   final DataCacheService _cacheService = DataCacheService();
+  final RecurringTodoService _recurringTodoService = RecurringTodoService();
   List<TodoModel> _todos = [];
   late GroupModel _currentGroup;
   String _selectedFilter =
@@ -28,6 +34,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   late TabController _tabController;
   int _currentTabIndex = 0;
   List<UserModel> _groupMembers = []; // グループメンバーリスト
+  List<RecurringTodoModel> _recurringTodos = []; // 定期TODOリスト
+  bool _isLoadingRecurringTodos = false;
 
   @override
   void initState() {
@@ -38,6 +46,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       setState(() {
         _currentTabIndex = _tabController.index;
       });
+      // グループ設定タブに切り替えた時に定期TODOを読み込む
+      if (_currentTabIndex == 1) {
+        _loadRecurringTodos();
+      }
     });
     // キャッシュリスナー登録
     _cacheService.addListener(_updateGroupData);
@@ -62,6 +74,168 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       backgroundColor: Colors.transparent,
       builder: (context) => GroupMembersBottomSheet(members: _groupMembers),
     );
+  }
+
+  /// 定期TODO一覧読み込み
+  Future<void> _loadRecurringTodos() async {
+    if (_isLoadingRecurringTodos) return;
+
+    setState(() {
+      _isLoadingRecurringTodos = true;
+    });
+
+    try {
+      final recurringTodos = await _recurringTodoService.getRecurringTodos(
+        userId: widget.user.id,
+        groupId: widget.group.id,
+      );
+
+      if (mounted) {
+        setState(() {
+          _recurringTodos = recurringTodos;
+          _isLoadingRecurringTodos = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ 定期TODO一覧取得エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '定期TODO一覧取得エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        setState(() {
+          _isLoadingRecurringTodos = false;
+        });
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '定期TODO一覧の取得に失敗しました',
+        );
+      }
+    }
+  }
+
+  /// 定期TODO作成ボトムシート表示
+  Future<void> _showCreateRecurringTodoDialog() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useRootNavigator: false,
+      builder: (context) => CreateRecurringTodoBottomSheet(
+        groupId: widget.group.id,
+        groupName: widget.group.name,
+        userId: widget.user.id,
+        availableAssignees: _groupMembers
+            .map((member) => {'id': member.id, 'name': member.displayName})
+            .toList(),
+      ),
+    );
+
+    if (result == true && mounted) {
+      _loadRecurringTodos(); // 一覧を再取得
+      _showSuccessSnackBar('定期TODOを作成しました');
+    }
+  }
+
+  /// 定期TODO編集ボトムシート表示
+  Future<void> _showEditRecurringTodoDialog(
+    RecurringTodoModel recurringTodo,
+  ) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useRootNavigator: false,
+      builder: (context) => CreateRecurringTodoBottomSheet(
+        groupId: widget.group.id,
+        groupName: widget.group.name,
+        userId: widget.user.id,
+        availableAssignees: _groupMembers
+            .map((member) => {'id': member.id, 'name': member.displayName})
+            .toList(),
+        existingRecurringTodo: recurringTodo,
+      ),
+    );
+
+    if (result == true && mounted) {
+      _loadRecurringTodos(); // 一覧を再取得
+      _showSuccessSnackBar('定期TODOを更新しました');
+    }
+  }
+
+  /// 定期TODO削除
+  Future<void> _deleteRecurringTodo(RecurringTodoModel recurringTodo) async {
+    try {
+      await _recurringTodoService.deleteRecurringTodo(
+        userId: widget.user.id,
+        recurringTodoId: recurringTodo.id,
+      );
+
+      if (mounted) {
+        _loadRecurringTodos(); // 一覧を再取得
+        _showSuccessSnackBar('定期TODOを削除しました');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ 定期TODO削除エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '定期TODO削除エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '定期TODOの削除に失敗しました',
+        );
+      }
+    }
+  }
+
+  /// 定期TODO ON/OFF切り替え
+  Future<void> _toggleRecurringTodoActive(
+    RecurringTodoModel recurringTodo,
+  ) async {
+    try {
+      await _recurringTodoService.toggleRecurringTodoActive(
+        userId: widget.user.id,
+        recurringTodoId: recurringTodo.id,
+      );
+
+      if (mounted) {
+        _loadRecurringTodos(); // 一覧を再取得
+        final message = recurringTodo.isActive
+            ? '定期TODOを無効にしました'
+            : '定期TODOを有効にしました';
+        _showSuccessSnackBar(message);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ 定期TODO切り替えエラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '定期TODO切り替えエラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '定期TODOの切り替えに失敗しました',
+        );
+      }
+    }
   }
 
   @override
@@ -134,7 +308,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         fixedGroupId: widget.group.id,
         fixedGroupName: widget.group.name,
         currentUserId: widget.user.id,
-        availableAssignees: null, // TODO: メンバー一覧取得して渡す
+        currentUserName: widget.user.displayName,
+        availableAssignees: null,
       ),
     );
 
@@ -263,6 +438,39 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
+  /// 定期TODOの繰り返しパターンをテキスト化
+  String _formatRecurrencePattern(RecurringTodoModel recurringTodo) {
+    final timeParts = recurringTodo.generationTime.split(':');
+    final timeStr = '${timeParts[0]}:${timeParts[1]}';
+
+    switch (recurringTodo.recurrencePattern) {
+      case 'daily':
+        return '毎日 $timeStr';
+      case 'weekly':
+        if (recurringTodo.recurrenceDays == null ||
+            recurringTodo.recurrenceDays!.isEmpty) {
+          return '毎週 $timeStr';
+        }
+        final weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+        final dayNames = recurringTodo.recurrenceDays!
+            .map((day) => weekdays[day])
+            .join('・');
+        return '毎週$dayNames $timeStr';
+      case 'monthly':
+        if (recurringTodo.recurrenceDays == null ||
+            recurringTodo.recurrenceDays!.isEmpty) {
+          return '毎月 $timeStr';
+        }
+        final day = recurringTodo.recurrenceDays!.first;
+        if (day == -1) {
+          return '毎月末 $timeStr';
+        }
+        return '毎月$day日 $timeStr';
+      default:
+        return timeStr;
+    }
+  }
+
   /// TODO削除（キャッシュサービス経由）
   Future<void> _deleteTodo(TodoModel todo) async {
     try {
@@ -285,8 +493,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       builder: (context) => CreateTodoBottomSheet(
         fixedGroupId: widget.group.id,
         fixedGroupName: widget.group.name,
-        availableAssignees: null, // TODO: メンバー一覧取得して渡す
+        availableAssignees: null,
         currentUserId: widget.user.id,
+        currentUserName: widget.user.displayName,
         existingTodo: todo, // 編集モード：既存TODOデータを渡す
       ),
     );
@@ -584,36 +793,168 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               ),
                         ),
                       ),
-                      // グループ設定エリア（カード化）
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.shadow.withOpacity(0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '設定がありません',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
+                      // 定期TODO一覧
+                      if (_isLoadingRecurringTodos)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_recurringTodos.isEmpty)
+                        Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.onSurfaceVariant,
+                                ).colorScheme.shadow.withValues(alpha: 0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
+                            ],
+                          ),
+                          child: Text(
+                            '定期TODOがありません',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        )
+                      else
+                        ..._recurringTodos.map(
+                          (recurringTodo) => Dismissible(
+                            key: Key(recurringTodo.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.error,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.delete,
+                                color: Theme.of(context).colorScheme.onError,
+                              ),
+                            ),
+                            confirmDismiss: (direction) async {
+                              return await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('削除確認'),
+                                  content: Text(
+                                    '「${recurringTodo.title}」を削除しますか？',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('キャンセル'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: Text(
+                                        '削除',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.error,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            onDismissed: (direction) =>
+                                _deleteRecurringTodo(recurringTodo),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context).colorScheme.shadow
+                                        .withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: InkWell(
+                                onTap: () =>
+                                    _showEditRecurringTodoDialog(recurringTodo),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              recurringTodo.title,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyLarge
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              _formatRecurrencePattern(
+                                                recurringTodo,
+                                              ),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // ON/OFFスイッチ
+                                      Switch(
+                                        value: recurringTodo.isActive,
+                                        onChanged: (_) =>
+                                            _toggleRecurringTodoActive(
+                                              recurringTodo,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -630,11 +971,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               child: const Icon(Icons.add_task),
             )
           : FloatingActionButton(
-              onPressed: () {
-                // TODO: グループ設定追加画面に遷移
-              },
-              tooltip: 'グループ設定追加',
-              child: const Icon(Icons.playlist_add),
+              onPressed: _showCreateRecurringTodoDialog,
+              tooltip: '定期TODO追加',
+              child: const Icon(Icons.repeat),
             ),
     );
   }

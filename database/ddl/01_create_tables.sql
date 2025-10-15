@@ -587,3 +587,39 @@ BEGIN
   RAISE NOTICE 'Indexes: Created for performance optimization';
   RAISE NOTICE '========================================';
 END $$;
+
+-- ===================================
+-- Cron Jobs設定
+-- ===================================
+
+-- pg_cron エクステンション有効化
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- 定期TODO自動生成Cron Job
+-- 実行前に以下のプレースホルダーを環境固有の値に置換してください:
+--   {{SUPABASE_PROJECT_URL}} → 環境のSupabase URL (例: https://xxxxx.supabase.co)
+--   {{SERVICE_ROLE_KEY}} → 環境のService Role Key
+
+SELECT cron.schedule(
+  'execute-recurring-todos',
+  '*/1 * * * *',
+  $$
+  SELECT net.http_post(
+    url := '{{SUPABASE_PROJECT_URL}}/functions/v1/execute-recurring-todos',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer {{SERVICE_ROLE_KEY}}'
+    )
+  );
+  $$
+);
+
+-- Cron Job設定完了通知
+DO $$
+BEGIN
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'Cron Jobs Configured';
+  RAISE NOTICE '  - execute-recurring-todos (*/1 * * * *)';
+  RAISE NOTICE '注意: プレースホルダー ({{SUPABASE_PROJECT_URL}}, {{SERVICE_ROLE_KEY}}) を環境固有の値に置換してください';
+  RAISE NOTICE '========================================';
+END $$;

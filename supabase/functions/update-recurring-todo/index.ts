@@ -116,7 +116,7 @@ serve(async (req) => {
       .from('recurring_todos')
       .update(updateData)
       .eq('id', recurring_todo_id)
-      .select('id, is_active, updated_at')
+      .select('*, recurring_todo_assignments(user_id)')
       .single()
 
     if (updateError || !updated) {
@@ -151,9 +151,8 @@ serve(async (req) => {
     const response: UpdateRecurringTodoResponse = {
       success: true,
       recurring_todo: {
-        id: updated.id,
-        is_active: updated.is_active,
-        updated_at: updated.updated_at
+        ...updated,
+        assigned_user_ids: (updated.recurring_todo_assignments || []).map((a: any) => a.user_id)
       }
     }
 

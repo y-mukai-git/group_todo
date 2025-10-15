@@ -155,7 +155,7 @@ serve(async (req) => {
         created_at: now,
         updated_at: now
       })
-      .select('id, group_id, title, recurrence_pattern, next_generation_at')
+      .select('*, recurring_todo_assignments(user_id)')
       .single()
 
     if (recurringError || !newRecurringTodo) {

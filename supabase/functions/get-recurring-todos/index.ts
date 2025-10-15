@@ -61,7 +61,7 @@ serve(async (req) => {
     // 定期TODO取得
     const { data: recurringTodos, error: recurringError } = await supabaseClient
       .from('recurring_todos')
-      .select('id, title, description, category, recurrence_pattern, recurrence_days, generation_time, next_generation_at, is_active')
+      .select('*')
       .eq('group_id', group_id)
       .order('next_generation_at', { ascending: true })
 
@@ -95,15 +95,7 @@ serve(async (req) => {
       }))
 
       todosWithAssignees.push({
-        id: todo.id,
-        title: todo.title,
-        description: todo.description,
-        category: todo.category,
-        recurrence_pattern: todo.recurrence_pattern,
-        recurrence_days: todo.recurrence_days,
-        generation_time: todo.generation_time,
-        next_generation_at: todo.next_generation_at,
-        is_active: todo.is_active,
+        ...todo,
         assignees: assignees
       })
     }

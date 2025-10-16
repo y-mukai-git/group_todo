@@ -23,6 +23,8 @@ class DataCacheService extends ChangeNotifier {
   List<TodoModel> _todos = [];
   List<GroupModel> _groups = [];
   UserModel? _currentUser;
+  // グループID -> メンバー一覧 + オーナーID
+  Map<String, Map<String, dynamic>> _groupMembers = {};
 
   // ゲッター
   List<TodoModel> get todos => _todos;
@@ -42,14 +44,33 @@ class DataCacheService extends ChangeNotifier {
       // グループデータ取得
       final userGroups = await _groupService.getUserGroups(userId: user.id);
 
-      // グループごとのTODOを取得
+      // グループごとのTODOとメンバーを取得
       final List<TodoModel> allTodos = List.from(myTodos);
       for (final group in userGroups) {
+        // TODO取得
         final groupTodos = await _todoService.getGroupTodos(
           userId: user.id,
           groupId: group.id,
         );
         allTodos.addAll(groupTodos);
+
+        // メンバー取得
+        try {
+          final membersResponse = await _groupService.getGroupMembers(
+            groupId: group.id,
+            requesterId: user.id,
+          );
+          _groupMembers[group.id] = membersResponse;
+          debugPrint('[DataCacheService] ✅ グループ ${group.id} のメンバー取得完了');
+        } catch (e) {
+          debugPrint('[DataCacheService] ❌ グループ ${group.id} のメンバー取得エラー: $e');
+          // メンバー取得失敗時は空のデータを設定
+          _groupMembers[group.id] = {
+            'success': false,
+            'members': [],
+            'owner_id': group.ownerId,
+          };
+        }
       }
 
       // 重複を除去（同じidのTODOは1つにする）
@@ -325,6 +346,25 @@ class DataCacheService extends ChangeNotifier {
     }
   }
 
+  /// グループメンバーキャッシュを更新
+  Future<void> refreshGroupMembers({
+    required String groupId,
+    required String requesterId,
+  }) async {
+    try {
+      final membersResponse = await _groupService.getGroupMembers(
+        groupId: groupId,
+        requesterId: requesterId,
+      );
+      _groupMembers[groupId] = membersResponse;
+      debugPrint('[DataCacheService] ✅ グループメンバーキャッシュ更新: id=$groupId');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ グループメンバーキャッシュ更新エラー: $e');
+      rethrow;
+    }
+  }
+
   // ==================== ヘルパーメソッド ====================
 
   /// グループIDからグループを取得
@@ -334,6 +374,11 @@ class DataCacheService extends ChangeNotifier {
     } catch (e) {
       return null;
     }
+  }
+
+  /// グループメンバー情報を取得
+  Map<String, dynamic>? getGroupMembers(String groupId) {
+    return _groupMembers[groupId];
   }
 
   /// グループに紐づくTODO一覧を取得

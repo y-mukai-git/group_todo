@@ -12,7 +12,7 @@ const corsHeaders = {
 
 interface AddGroupMemberRequest {
   group_id: string
-  user_id: string
+  display_id: string // 招待するユーザーの display_id（8桁英数字）
   inviter_id: string // 招待者のユーザーID（権限チェック用）
 }
 
@@ -39,11 +39,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { group_id, user_id, inviter_id }: AddGroupMemberRequest = await req.json()
+    const { group_id, display_id, inviter_id }: AddGroupMemberRequest = await req.json()
 
-    if (!group_id || !user_id || !inviter_id) {
+    if (!group_id || !display_id || !inviter_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'group_id, user_id, and inviter_id are required' }),
+        JSON.stringify({ success: false, error: 'group_id, display_id, and inviter_id are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -78,11 +78,11 @@ serve(async (req) => {
       )
     }
 
-    // 追加するユーザーが存在するかチェック
+    // 追加するユーザーが存在するかチェック（display_id で検索）
     const { data: targetUser, error: userError } = await supabaseClient
       .from('users')
       .select('id')
-      .eq('id', user_id)
+      .eq('display_id', display_id)
       .single()
 
     if (userError || !targetUser) {
@@ -94,6 +94,9 @@ serve(async (req) => {
         }
       )
     }
+
+    // display_id から取得した user_id (UUID) を使用
+    const user_id = targetUser.id
 
     // 既にメンバーかチェック
     const { data: existingMember } = await supabaseClient

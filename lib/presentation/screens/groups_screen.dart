@@ -191,17 +191,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
               onRefresh: _refreshData,
               child: ListView(children: _buildGroupedList()),
             ),
-      floatingActionButton: Stack(
-        children: [
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton(
-              onPressed: _showCreateGroupDialog,
-              child: const Icon(Icons.add),
-            ),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'groups_fab',
+        onPressed: _showCreateGroupDialog,
+        child: const Icon(Icons.add),
       ),
     );
   }

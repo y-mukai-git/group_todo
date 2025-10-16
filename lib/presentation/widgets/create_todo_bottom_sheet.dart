@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/todo_model.dart';
+import '../../services/data_cache_service.dart';
 
 /// TODO作成・編集ボトムシート
 class CreateTodoBottomSheet extends StatefulWidget {
@@ -30,9 +31,17 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     with SingleTickerProviderStateMixin {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _groupNameController = TextEditingController();
+  final TextEditingController _groupDescriptionController =
+      TextEditingController();
 
   DateTime? _selectedDeadline;
   Set<String> _selectedAssigneeIds = {}; // 選択された担当者IDのセット
+
+  // グループ選択用（fixedGroupIdがnullの場合に使用）
+  String? _selectedGroupId;
+  bool _isCreatingNewGroup = false;
+  String? _selectedCategory = 'none'; // デフォルト：未設定
 
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
@@ -78,6 +87,8 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _groupNameController.dispose();
+    _groupDescriptionController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -214,6 +225,22 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
       return;
     }
 
+    // グループ選択モードの場合、グループが選択されているかチェック
+    if (widget.fixedGroupId == null) {
+      if (!_isCreatingNewGroup && _selectedGroupId == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('グループを選択してください')));
+        return;
+      }
+      if (_isCreatingNewGroup && _groupNameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('グループ名を入力してください')));
+        return;
+      }
+    }
+
     // 結果を返す（編集モード時はtodo_idも含める）
     Navigator.pop(context, {
       if (widget.existingTodo != null) 'todo_id': widget.existingTodo!.id,
@@ -221,6 +248,16 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
       'description': _descriptionController.text.trim(),
       'deadline': _selectedDeadline,
       'assignee_ids': _selectedAssigneeIds.toList(),
+      // グループ選択モードの場合の情報
+      if (widget.fixedGroupId == null) ...{
+        'is_creating_new_group': _isCreatingNewGroup,
+        if (!_isCreatingNewGroup) 'group_id': _selectedGroupId,
+        if (_isCreatingNewGroup) ...{
+          'group_name': _groupNameController.text.trim(),
+          'group_description': _groupDescriptionController.text.trim(),
+          'group_category': _selectedCategory,
+        },
+      },
     });
   }
 
@@ -527,7 +564,54 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       ),
                     ],
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    // グループ選択（fixedGroupIdがnullの場合のみ表示）
+                    if (widget.fixedGroupId == null) ...[
+                      Text(
+                        'グループ',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildGroupSelector(),
+                      const SizedBox(height: 16),
+                      // 新規グループ作成時の入力項目
+                      if (_isCreatingNewGroup) ...[
+                        TextField(
+                          controller: _groupNameController,
+                          decoration: InputDecoration(
+                            labelText: 'グループ名',
+                            hintText: 'グループ名を入力',
+                            prefixIcon: const Icon(Icons.group),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _groupDescriptionController,
+                          decoration: InputDecoration(
+                            labelText: 'グループ説明（任意）',
+                            hintText: 'グループの説明を入力',
+                            prefixIcon: const Icon(Icons.description),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          maxLines: 2,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCategorySelector(),
+                        const SizedBox(height: 16),
+                      ],
+                    ],
+
+                    const SizedBox(height: 4),
 
                     // 作成・更新ボタン
                     SizedBox(
@@ -553,6 +637,122 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
           ),
         ),
       ),
+    );
+  }
+
+  /// グループ選択プルダウン
+  Widget _buildGroupSelector() {
+    final cacheService = DataCacheService();
+    final groups = cacheService.groups;
+
+    return DropdownButtonFormField<String>(
+      value: _isCreatingNewGroup ? 'new' : _selectedGroupId,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.folder),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      hint: const Text('グループを選択'),
+      items: [
+        // 既存グループ
+        ...groups.map((group) {
+          return DropdownMenuItem<String>(
+            value: group.id,
+            child: Text(group.name),
+          );
+        }),
+        // 新規グループ作成
+        const DropdownMenuItem<String>(value: 'new', child: Text('新しいグループを作成')),
+      ],
+      onChanged: (value) {
+        setState(() {
+          if (value == 'new') {
+            _isCreatingNewGroup = true;
+            _selectedGroupId = null;
+          } else {
+            _isCreatingNewGroup = false;
+            _selectedGroupId = value;
+          }
+        });
+      },
+    );
+  }
+
+  /// カテゴリ選択（カード形式）
+  Widget _buildCategorySelector() {
+    final categoryMap = {
+      'none': {'name': '未設定', 'icon': Icons.label_off},
+      'shopping': {'name': '買い物', 'icon': Icons.shopping_cart},
+      'housework': {'name': '家事', 'icon': Icons.home},
+      'work': {'name': '仕事', 'icon': Icons.work},
+      'hobby': {'name': '趣味', 'icon': Icons.palette},
+      'other': {'name': 'その他', 'icon': Icons.label},
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'カテゴリ',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: categoryMap.entries.map((entry) {
+            final isSelected = _selectedCategory == entry.key;
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedCategory = entry.key;
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: (MediaQuery.of(context).size.width - 72) / 3,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      entry.value['icon'] as IconData,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.value['name'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

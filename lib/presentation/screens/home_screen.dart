@@ -295,6 +295,98 @@ class _HomeScreenState extends State<HomeScreen> {
               onRefresh: _refreshData,
               child: ListView(children: _buildGroupedTodoList()),
             ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'home_fab',
+        onPressed: () async {
+          final result = await showModalBottomSheet<Map<String, dynamic>>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            enableDrag: true,
+            isDismissible: true,
+            useRootNavigator: false,
+            builder: (context) => CreateTodoBottomSheet(
+              fixedGroupId: null, // グループ選択モード
+              fixedGroupName: null,
+              availableAssignees: null,
+              currentUserId: widget.user.id,
+              currentUserName: widget.user.displayName,
+              existingTodo: null,
+            ),
+          );
+
+          if (result != null && mounted) {
+            final isCreatingNewGroup = result['is_creating_new_group'] as bool?;
+            final title = result['title'] as String;
+            final description = result['description'] as String?;
+            final deadline = result['deadline'] as DateTime?;
+            final assigneeIds =
+                (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
+                [widget.user.id];
+
+            try {
+              String groupId;
+
+              // 新規グループ作成の場合
+              if (isCreatingNewGroup == true) {
+                final groupName = result['group_name'] as String;
+                final groupDescription = result['group_description'] as String?;
+                final groupCategory = result['group_category'] as String?;
+
+                // グループ作成
+                final newGroup = await _cacheService.createGroup(
+                  userId: widget.user.id,
+                  groupName: groupName,
+                  description: groupDescription,
+                  category: groupCategory,
+                );
+                groupId = newGroup.id;
+                _showSuccessSnackBar('グループを作成しました');
+              } else {
+                // 既存グループ選択の場合
+                groupId = result['group_id'] as String;
+              }
+
+              // TODO作成
+              await _cacheService.createTodo(
+                userId: widget.user.id,
+                groupId: groupId,
+                title: title,
+                description: description?.isNotEmpty == true
+                    ? description
+                    : null,
+                dueDate: deadline,
+                category: 'other',
+                assignedUserIds: assigneeIds,
+              );
+
+              _showSuccessSnackBar('TODOを作成しました');
+            } catch (e, stackTrace) {
+              debugPrint('[HomeScreen] ❌ TODO/グループ作成エラー: $e');
+
+              // エラーログ記録
+              final errorLog = await ErrorLogService().logError(
+                userId: widget.user.id,
+                errorType: 'TODO作成エラー',
+                errorMessage: e.toString(),
+                stackTrace: stackTrace.toString(),
+                screenName: 'ホーム画面',
+              );
+
+              // エラーダイアログ表示
+              if (mounted) {
+                await ErrorDialog.show(
+                  context: context,
+                  errorId: errorLog.id,
+                  errorMessage: 'TODO/グループの作成に失敗しました',
+                );
+              }
+            }
+          }
+        },
+        tooltip: 'TODO作成',
+        child: const Icon(Icons.add),
+      ),
     );
   }
 

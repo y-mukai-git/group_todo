@@ -94,9 +94,15 @@ serve(async (req) => {
         joined_at,
         users (
           id,
+          device_id,
           display_name,
           display_id,
-          avatar_url
+          avatar_url,
+          notification_deadline,
+          notification_new_todo,
+          notification_assigned,
+          created_at,
+          updated_at
         )
       `)
       .eq('group_id', group_id)
@@ -114,11 +120,17 @@ serve(async (req) => {
     // レスポンス構築
     const membersList = (members || []).map((member: any) => ({
       id: member.users.id,
+      device_id: member.users.device_id,
       display_name: member.users.display_name,
       display_id: member.users.display_id,
       avatar_url: member.users.avatar_url,
       role: member.role,
-      joined_at: member.joined_at
+      joined_at: member.joined_at,
+      notification_deadline: member.users.notification_deadline,
+      notification_new_todo: member.users.notification_new_todo,
+      notification_assigned: member.users.notification_assigned,
+      created_at: member.users.created_at,
+      updated_at: member.users.updated_at
     }))
 
     const response: GetGroupMembersResponse = {

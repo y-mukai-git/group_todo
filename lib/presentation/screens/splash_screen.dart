@@ -60,16 +60,12 @@ class _SplashScreenState extends State<SplashScreen>
         debugPrint('[SplashScreen] ✅ 既存ユーザー検出: $savedUserId');
         final savedDisplayName = await StorageHelper.getDisplayName();
 
-        // personalGroupIdはnullで初期化（DataCacheServiceで全グループ取得済み）
-        const String? personalGroupId = null;
-
         // ユーザーモデル作成（ローカル保存情報から復元）
         final user = UserModel(
           id: savedUserId,
           displayName: savedDisplayName ?? 'ユーザー',
           displayId: '', // 初期表示では空、起動後にAPI取得
           deviceId: '', // メイン画面では使わないので空でOK
-          personalGroupId: personalGroupId,
           notificationDeadline: true, // デフォルト値
           notificationNewTodo: true, // デフォルト値
           notificationAssigned: true, // デフォルト値

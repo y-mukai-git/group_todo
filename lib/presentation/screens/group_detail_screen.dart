@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/todo_model.dart';
@@ -6,6 +8,7 @@ import '../../data/models/recurring_todo_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/config/environment_config.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
@@ -55,15 +58,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     _cacheService.addListener(_updateGroupData);
     // 初回データ取得
     _updateGroupData();
-    _loadGroupMembers();
-  }
-
-  /// グループメンバー読み込み（仮実装：現在のユーザーのみ）
-  Future<void> _loadGroupMembers() async {
-    // TODO: グループメンバー取得APIが実装されたら修正
-    setState(() {
-      _groupMembers = [widget.user];
-    });
   }
 
   /// グループメンバー一覧ボトムシート表示
@@ -114,19 +108,65 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// メンバー招待
-  Future<void> _inviteMember(String userId) async {
+  /// メンバー招待（display_id で招待）
+  Future<void> _inviteMember(String displayId) async {
     try {
-      // TODO: グループメンバー招待APIが実装されたら修正
-      debugPrint('[GroupDetailScreen] メンバー招待: userId=$userId');
+      debugPrint('[GroupDetailScreen] メンバー招待: displayId=$displayId');
 
-      // 仮実装: ユーザーIDでユーザーを検索し、グループに追加
-      // 実装時はSupabase APIを呼び出す
+      // Supabase Edge Function (add-group-member) を呼び出し
+      final config = EnvironmentConfig.instance;
+      final url = Uri.parse(
+        '${config.supabaseUrl}/functions/v1/add-group-member',
+      );
 
-      if (!mounted) return;
-      _showSuccessSnackBar('メンバーを招待しました');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${config.supabaseAnonKey}',
+        },
+        body: jsonEncode({
+          'group_id': widget.group.id,
+          'display_id': displayId,
+          'inviter_id': widget.user.id,
+        }),
+      );
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        // 成功時
+        if (!mounted) return;
+        // キャッシュを更新
+        await _cacheService.refreshGroupMembers(
+          groupId: widget.group.id,
+          requesterId: widget.user.id,
+        );
+        _showSuccessSnackBar('メンバーを招待しました');
+      } else {
+        // エラーレスポンス
+        final errorMessage = responseData['error'] ?? '不明なエラー';
+        throw Exception(errorMessage);
+      }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ メンバー招待エラー: $e');
+
+      // ユーザー入力エラー（User not found、既にメンバー）の場合はSnackBarで通知
+      final errorMessage = e.toString();
+      if (errorMessage.contains('User not found')) {
+        if (mounted) {
+          _showErrorSnackBar('該当するユーザーが見つかりませんでした');
+        }
+        return;
+      }
+      if (errorMessage.contains('User is already a member of this group')) {
+        if (mounted) {
+          _showErrorSnackBar('このユーザーは既にメンバーです');
+        }
+        return;
+      }
+
+      // システムエラーの場合はErrorDialogで表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'メンバー招待エラー',
@@ -333,9 +373,25 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     final todos = _cacheService.getTodosByGroupId(widget.group.id);
     debugPrint('[GroupDetailScreen] 🔍 TODO取得結果: ${todos.length}件');
 
+    // キャッシュからメンバー情報取得
+    final membersData = _cacheService.getGroupMembers(widget.group.id);
+    List<UserModel> members = [];
+    if (membersData != null && membersData['success'] == true) {
+      final membersList = membersData['members'] as List<dynamic>;
+      members = membersList.map((memberData) {
+        return UserModel.fromJson(memberData as Map<String, dynamic>);
+      }).toList();
+      debugPrint('[GroupDetailScreen] 🔍 メンバー取得結果: ${members.length}人');
+    } else {
+      debugPrint('[GroupDetailScreen] ⚠️ メンバー情報取得失敗');
+      // フォールバックとして現在のユーザーのみ表示
+      members = [widget.user];
+    }
+
     if (mounted) {
       setState(() {
         _todos = todos;
+        _groupMembers = members;
       });
     }
   }
@@ -1032,11 +1088,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       ),
       floatingActionButton: _currentTabIndex == 0
           ? FloatingActionButton(
+              heroTag: 'group_detail_fab_todo',
               onPressed: _showCreateTodoDialog,
               tooltip: 'TODO追加',
               child: const Icon(Icons.add_task),
             )
           : FloatingActionButton(
+              heroTag: 'group_detail_fab_recurring',
               onPressed: _showCreateRecurringTodoDialog,
               tooltip: '定期TODO追加',
               child: const Icon(Icons.repeat),
@@ -1155,7 +1213,9 @@ class _TodoListTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+              color: Theme.of(
+                context,
+              ).colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

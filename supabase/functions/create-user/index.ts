@@ -73,46 +73,6 @@ serve(async (req) => {
       .single()
 
     if (existingUser) {
-      // 既存ユーザーの個人グループ存在チェック（データ整合性検証）
-      const { data: personalGroup, error: groupCheckError } = await supabaseClient
-        .from('groups')
-        .select('id')
-        .eq('owner_id', existingUser.id)
-        .eq('name', '個人TODO')
-        .maybeSingle()
-
-      if (groupCheckError) {
-        console.error('Personal group check failed:', groupCheckError.message)
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: `個人グループチェックエラー: ${groupCheckError.message}`
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-
-      // データ不整合検知：既存ユーザーに個人グループが存在しない
-      if (!personalGroup) {
-        console.error('Data inconsistency detected: User exists but personal group does not exist', {
-          user_id: existingUser.id,
-          device_id: existingUser.device_id
-        })
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'データ不整合: ユーザーは存在しますが個人TODOグループが見つかりません。データメンテナンスが必要です。'
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-
       return new Response(
         JSON.stringify({
           success: true,
@@ -190,39 +150,6 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
-    }
-
-    // 個人用グループ自動作成
-    const { data: personalGroup, error: groupError } = await supabaseClient
-      .from('groups')
-      .insert({
-        name: '個人TODO',
-        description: '個人用のTODOグループ',
-        icon_color: '#5A6978',
-        owner_id: newUser.id,
-        created_at: now,
-        updated_at: now
-      })
-      .select('id')
-      .single()
-
-    if (groupError || !personalGroup) {
-      console.error('Personal group creation failed:', groupError?.message)
-      // グループ作成失敗してもユーザー作成は成功として返す
-    } else {
-      // グループメンバーに自分を追加
-      const { error: memberError } = await supabaseClient
-        .from('group_members')
-        .insert({
-          group_id: personalGroup.id,
-          user_id: newUser.id,
-          role: 'owner',
-          joined_at: now
-        })
-
-      if (memberError) {
-        console.error('Personal group member creation failed:', memberError?.message)
-      }
     }
 
     const response: CreateUserResponse = {

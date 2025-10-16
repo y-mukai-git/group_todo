@@ -74,6 +74,25 @@ class GroupService {
     }
   }
 
+  /// グループメンバー一覧取得
+  Future<Map<String, dynamic>> getGroupMembers({
+    required String groupId,
+    required String requesterId,
+  }) async {
+    try {
+      final response = await _apiClient.callFunction(
+        functionName: 'get-group-members',
+        body: {'group_id': groupId, 'requester_id': requesterId},
+      );
+
+      debugPrint('[GroupService] ✅ メンバー一覧取得成功');
+      return response;
+    } catch (e) {
+      debugPrint('[GroupService] ❌ メンバー一覧取得エラー: $e');
+      rethrow;
+    }
+  }
+
   /// グループメンバー追加
   Future<void> addGroupMember({
     required String groupId,

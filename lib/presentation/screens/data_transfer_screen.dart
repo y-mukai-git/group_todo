@@ -133,109 +133,115 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
-              // アプリ説明
-              Text(
-                'グループTODOへようこそ',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '家族やチーム、友人と一緒に\nTODOを共有・管理できるアプリです',
-                style: Theme.of(context).textTheme.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-
-              // 新規ユーザー作成ボタン
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _createNewUser,
-                icon: const Icon(Icons.person_add),
-                label: const Text('新規ユーザーとして始める'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
+                // アプリ説明
+                Text(
+                  'グループTODOへようこそ',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
                 ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // 区切り線
-              Row(
-                children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'または',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const Expanded(child: Divider()),
-                ],
-              ),
-
-              const SizedBox(height: 32),
-
-              // データ引き継ぎセクション
-              Text(
-                'データを引き継ぐ',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _userIdController,
-                decoration: const InputDecoration(
-                  labelText: 'ユーザーID',
-                  hintText: 'ユーザーIDを入力',
-                  prefixIcon: Icon(Icons.person),
+                const SizedBox(height: 16),
+                Text(
+                  '家族やチーム、友人と一緒に\nTODOを共有・管理できるアプリです',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
                 ),
-                keyboardType: TextInputType.text,
-                enabled: !_isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'パスワード',
-                  hintText: 'パスワードを入力',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () {
-                      setState(() => _isPasswordVisible = !_isPasswordVisible);
-                    },
+                const SizedBox(height: 48),
+
+                // 新規ユーザー作成ボタン
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _createNewUser,
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('新規ユーザーとして始める'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
-                obscureText: !_isPasswordVisible,
-                keyboardType: TextInputType.text,
-                enabled: !_isLoading,
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: _isLoading ? null : _transferData,
-                icon: const Icon(Icons.download),
-                label: const Text('データを引き継ぐ'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+
+                const SizedBox(height: 32),
+
+                // 区切り線
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'または',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
                 ),
-              ),
 
-              const Spacer(),
+                const SizedBox(height: 32),
 
-              // ローディング表示
-              if (_isLoading) const Center(child: CircularProgressIndicator()),
-            ],
+                // データ引き継ぎセクション
+                Text(
+                  'データを引き継ぐ',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _userIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'ユーザーID',
+                    hintText: 'ユーザーIDを入力',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  keyboardType: TextInputType.text,
+                  enabled: !_isLoading,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: 'パスワード',
+                    hintText: 'パスワードを入力',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(
+                          () => _isPasswordVisible = !_isPasswordVisible,
+                        );
+                      },
+                    ),
+                  ),
+                  obscureText: !_isPasswordVisible,
+                  keyboardType: TextInputType.text,
+                  enabled: !_isLoading,
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _transferData,
+                  icon: const Icon(Icons.download),
+                  label: const Text('データを引き継ぐ'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // ローディング表示
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),

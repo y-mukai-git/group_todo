@@ -46,3 +46,8 @@ app.*.map.json
 
 # Session logs
 session_logs/
+
+# Node.js related
+node_modules/
+package.json
+package-lock.json

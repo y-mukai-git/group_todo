@@ -459,6 +459,7 @@ class _CreateRecurringTodoBottomSheetState
                     ),
                     autofocus: true,
                     textInputAction: TextInputAction.next,
+                    maxLength: 30,
                   ),
 
                   const SizedBox(height: 12),

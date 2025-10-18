@@ -8,6 +8,7 @@ import '../../services/data_cache_service.dart';
 class CreateTodoBottomSheet extends StatefulWidget {
   final String? fixedGroupId; // グループID（常に固定）
   final String? fixedGroupName; // グループ名（表示用）
+  final String? defaultGroupId; // グループID（デフォルト値、変更可能）
   final List<Map<String, String>>? availableAssignees; // 担当者候補リスト [{id, name}]
   final String currentUserId; // 現在のユーザーID
   final String currentUserName; // 現在のユーザー名（固定表示用）
@@ -17,6 +18,7 @@ class CreateTodoBottomSheet extends StatefulWidget {
     super.key,
     this.fixedGroupId,
     this.fixedGroupName,
+    this.defaultGroupId,
     this.availableAssignees,
     required this.currentUserId,
     required this.currentUserName,
@@ -61,6 +63,11 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     } else {
       // 新規作成モード：自分を担当者に設定
       _selectedAssigneeIds = {widget.currentUserId};
+
+      // デフォルトグループが設定されている場合は初期値として設定
+      if (widget.defaultGroupId != null) {
+        _selectedGroupId = widget.defaultGroupId;
+      }
     }
 
     // アニメーション設定
@@ -98,6 +105,12 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     final now = DateTime.now();
     DateTime tempDate = _selectedDeadline ?? now;
 
+    // minimumDateの計算：既存の期限が現在時刻より僅かに過去の場合でも編集可能にする
+    final minimumDate =
+        _selectedDeadline != null && _selectedDeadline!.isBefore(now)
+        ? _selectedDeadline!
+        : now;
+
     await showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
@@ -128,7 +141,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.date,
                   initialDateTime: _selectedDeadline ?? now,
-                  minimumDate: now,
+                  minimumDate: minimumDate,
                   maximumDate: DateTime(now.year + 1),
                   onDateTimeChanged: (DateTime newDate) {
                     tempDate = newDate;
@@ -219,24 +232,33 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
   void _createTodo() {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('タイトルを入力してください'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 
     // グループ選択モードの場合、グループが選択されているかチェック
     if (widget.fixedGroupId == null) {
       if (!_isCreatingNewGroup && _selectedGroupId == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('グループを選択してください')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('グループを選択してください'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
         return;
       }
       if (_isCreatingNewGroup && _groupNameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('グループ名を入力してください')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('グループ名を入力してください'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
         return;
       }
     }
@@ -345,6 +367,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       ),
                       autofocus: true,
                       textInputAction: TextInputAction.next,
+                      maxLength: 30,
                     ),
 
                     const SizedBox(height: 12),
@@ -566,15 +589,17 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
 
                     const SizedBox(height: 16),
 
-                    // グループ選択（fixedGroupIdがnullの場合のみ表示）
-                    if (widget.fixedGroupId == null) ...[
-                      Text(
-                        'グループ',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    // グループ選択・表示
+                    Text(
+                      'グループ',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 8),
+                    ),
+                    const SizedBox(height: 8),
+                    // グループ選択可能（新規作成時・fixedGroupIdがnull）
+                    if (widget.fixedGroupId == null &&
+                        widget.existingTodo == null) ...[
                       _buildGroupSelector(),
                       const SizedBox(height: 16),
                       // 新規グループ作成時の入力項目
@@ -609,6 +634,40 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                         _buildCategorySelector(),
                         const SizedBox(height: 16),
                       ],
+                    ]
+                    // グループ表示のみ（編集時・fixedGroupIdがある場合）
+                    else ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              widget.fixedGroupName ?? 'グループ',
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.lock,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                     ],
 
                     const SizedBox(height: 4),
@@ -640,40 +699,129 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     );
   }
 
-  /// グループ選択プルダウン
+  /// グループ選択ピッカー表示
+  void _showGroupPicker() {
+    final cacheService = DataCacheService();
+    final groups = cacheService.groups;
+
+    // グループリスト（既存グループ + 新規作成）
+    final groupItems = [
+      ...groups.map((g) => {'id': g.id, 'name': g.name}),
+      {'id': 'new', 'name': '新しいグループを作成'},
+    ];
+
+    // 現在選択されているインデックスを取得
+    int currentIndex = 0;
+    if (_isCreatingNewGroup) {
+      currentIndex = groupItems.length - 1; // 「新しいグループを作成」
+    } else if (_selectedGroupId != null) {
+      currentIndex = groupItems.indexWhere(
+        (item) => item['id'] == _selectedGroupId,
+      );
+      if (currentIndex < 0) currentIndex = 0;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        int selectedIndex = currentIndex;
+
+        return Container(
+          height: 250,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('キャンセル'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      final selectedItem = groupItems[selectedIndex];
+                      setState(() {
+                        if (selectedItem['id'] == 'new') {
+                          _isCreatingNewGroup = true;
+                          _selectedGroupId = null;
+                        } else {
+                          _isCreatingNewGroup = false;
+                          _selectedGroupId = selectedItem['id'];
+                        }
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('完了'),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: selectedIndex,
+                  ),
+                  onSelectedItemChanged: (index) {
+                    selectedIndex = index;
+                  },
+                  children: groupItems
+                      .map((item) => Center(child: Text(item['name']!)))
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// グループ選択UI（ピッカー形式）
   Widget _buildGroupSelector() {
     final cacheService = DataCacheService();
     final groups = cacheService.groups;
 
-    return DropdownButtonFormField<String>(
-      value: _isCreatingNewGroup ? 'new' : _selectedGroupId,
-      decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.folder),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    // 選択されているグループ名を取得
+    String displayText;
+    if (_isCreatingNewGroup) {
+      displayText = '新しいグループを作成';
+    } else if (_selectedGroupId != null) {
+      final selectedGroup = groups.firstWhere(
+        (g) => g.id == _selectedGroupId,
+        orElse: () => groups.first,
+      );
+      displayText = selectedGroup.name;
+    } else {
+      displayText = 'グループを選択';
+    }
+
+    return InkWell(
+      onTap: _showGroupPicker,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.folder, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                displayText,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
-      hint: const Text('グループを選択'),
-      items: [
-        // 既存グループ
-        ...groups.map((group) {
-          return DropdownMenuItem<String>(
-            value: group.id,
-            child: Text(group.name),
-          );
-        }),
-        // 新規グループ作成
-        const DropdownMenuItem<String>(value: 'new', child: Text('新しいグループを作成')),
-      ],
-      onChanged: (value) {
-        setState(() {
-          if (value == 'new') {
-            _isCreatingNewGroup = true;
-            _selectedGroupId = null;
-          } else {
-            _isCreatingNewGroup = false;
-            _selectedGroupId = value;
-          }
-        });
-      },
     );
   }
 

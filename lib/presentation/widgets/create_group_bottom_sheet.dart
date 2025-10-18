@@ -134,9 +134,12 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
   void _createGroup() {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('グループ名を入力してください')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('グループ名を入力してください'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 
@@ -271,6 +274,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
                       ),
                       autofocus: true,
                       textInputAction: TextInputAction.next,
+                      maxLength: 30,
                     ),
 
                     const SizedBox(height: 16),

@@ -4,6 +4,7 @@ import '../data/models/group_model.dart';
 import '../data/models/user_model.dart';
 import 'todo_service.dart';
 import 'group_service.dart';
+import 'user_service.dart';
 
 /// データキャッシュサービス（シングルトン + ChangeNotifier）
 ///
@@ -18,11 +19,13 @@ class DataCacheService extends ChangeNotifier {
 
   final TodoService _todoService = TodoService();
   final GroupService _groupService = GroupService();
+  final UserService _userService = UserService();
 
   // キャッシュデータ
   List<TodoModel> _todos = [];
   List<GroupModel> _groups = [];
   UserModel? _currentUser;
+  String? _signedAvatarUrl;
   // グループID -> メンバー一覧 + オーナーID
   Map<String, Map<String, dynamic>> _groupMembers = {};
 
@@ -30,13 +33,18 @@ class DataCacheService extends ChangeNotifier {
   List<TodoModel> get todos => _todos;
   List<GroupModel> get groups => _groups;
   UserModel? get currentUser => _currentUser;
+  String? get signedAvatarUrl => _signedAvatarUrl;
 
   /// 初期データ取得（スプラッシュ画面で実行）
-  Future<void> initializeCache(UserModel user) async {
+  Future<void> initializeCache(
+    UserModel user, {
+    String? signedAvatarUrl,
+  }) async {
     try {
       debugPrint('[DataCacheService] 📦 初期データ取得開始');
 
       _currentUser = user;
+      _signedAvatarUrl = signedAvatarUrl;
 
       // TODOデータ取得
       final myTodos = await _todoService.getMyTodos(userId: user.id);
@@ -194,8 +202,8 @@ class DataCacheService extends ChangeNotifier {
     }
   }
 
-  /// TODO楽観的更新（キャッシュ即座更新 + 非同期DB更新）
-  Future<void> updateTodoOptimistic({
+  /// TODO更新（DB + キャッシュ）※旧updateTodoOptimistic
+  Future<TodoModel> updateTodoOptimistic({
     required String userId,
     required String todoId,
     required String title,
@@ -205,27 +213,8 @@ class DataCacheService extends ChangeNotifier {
     required Function(String) onNetworkError,
     required Function(String) onOtherError,
   }) async {
-    // 1. 既存TODOをバックアップ
-    final index = _todos.indexWhere((t) => t.id == todoId);
-    if (index == -1) {
-      debugPrint('[DataCacheService] ❌ TODO not found: id=$todoId');
-      return;
-    }
-    final oldTodo = _todos[index];
-
-    // 2. キャッシュを即座に更新（楽観的更新）
-    final optimisticTodo = oldTodo.copyWith(
-      title: title,
-      description: description,
-      dueDate: dueDate,
-      assignedUserIds: assignedUserIds,
-    );
-    _todos[index] = optimisticTodo;
-    notifyListeners(); // 画面即座に反映
-    debugPrint('[DataCacheService] 🚀 楽観的更新: id=$todoId（画面即座反映）');
-
-    // 3. 非同期でDB更新
     try {
+      // 1. DB更新
       final updatedTodo = await _todoService.updateTodo(
         userId: userId,
         todoId: todoId,
@@ -235,32 +224,19 @@ class DataCacheService extends ChangeNotifier {
         assignedUserIds: assignedUserIds,
       );
 
-      // DB更新成功 → キャッシュを正式な値で再更新
-      _todos[index] = updatedTodo;
-      notifyListeners();
-      debugPrint('[DataCacheService] ✅ DB更新成功: id=$todoId');
-    } catch (e) {
-      final errorMessage = e.toString();
-      debugPrint('[DataCacheService] ❌ DB更新エラー: $errorMessage');
-
-      // ネットワークエラー判定
-      final isNetworkError =
-          errorMessage.contains('SocketException') ||
-          errorMessage.contains('network') ||
-          errorMessage.contains('connection') ||
-          errorMessage.contains('timeout');
-
-      if (isNetworkError) {
-        // ネットワークエラー → ロールバック
-        _todos[index] = oldTodo;
+      // 2. DB更新成功 → キャッシュ更新
+      final index = _todos.indexWhere((t) => t.id == todoId);
+      if (index != -1) {
+        _todos[index] = updatedTodo;
+        debugPrint('[DataCacheService] ✅ TODO更新: id=$todoId');
         notifyListeners();
-        debugPrint('[DataCacheService] 🔄 ロールバック実施（ネットワークエラー）');
-        onNetworkError('ネットワーク接続を確認してください');
-      } else {
-        // その他のエラー → エラー画面遷移
-        debugPrint('[DataCacheService] 🚨 サーバーエラー（エラー画面遷移）');
-        onOtherError('更新に失敗しました。管理者に問い合わせてください。');
       }
+
+      return updatedTodo;
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ TODO更新エラー: $e');
+      // DB更新失敗 → キャッシュ更新しない
+      rethrow;
     }
   }
 
@@ -361,6 +337,38 @@ class DataCacheService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('[DataCacheService] ❌ グループメンバーキャッシュ更新エラー: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== ユーザー関連 ====================
+
+  /// ユーザー情報更新（DB + キャッシュ）
+  Future<Map<String, dynamic>> updateUser({
+    required String userId,
+    String? displayName,
+    String? imageData,
+  }) async {
+    try {
+      // 1. DB更新
+      final response = await _userService.updateUserProfile(
+        userId: userId,
+        displayName: displayName,
+        imageData: imageData,
+      );
+
+      final updatedUser = response['user'] as UserModel;
+      final signedAvatarUrl = response['signed_avatar_url'] as String?;
+
+      // 2. DB更新成功 → キャッシュ更新
+      _currentUser = updatedUser;
+      _signedAvatarUrl = signedAvatarUrl;
+      debugPrint('[DataCacheService] ✅ ユーザー情報更新: id=$userId');
+      notifyListeners();
+
+      return {'user': updatedUser, 'signed_avatar_url': signedAvatarUrl};
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ ユーザー情報更新エラー: $e');
       rethrow;
     }
   }

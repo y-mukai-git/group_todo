@@ -70,6 +70,7 @@ class ErrorDialog extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('エラーIDをコピーしました'),
+                          backgroundColor: Colors.green,
                           duration: Duration(seconds: 2),
                         ),
                       );

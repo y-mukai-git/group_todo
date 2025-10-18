@@ -120,7 +120,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
   Future<void> _refreshData() async {
     try {
       await _cacheService.refreshCache();
-      _showSuccessSnackBar('データを更新しました');
     } catch (e, stackTrace) {
       debugPrint('[GroupsScreen] ❌ データ更新エラー: $e');
 

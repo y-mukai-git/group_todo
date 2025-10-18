@@ -31,9 +31,12 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
   Future<void> _submitInquiry() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('お問い合わせ内容を入力してください')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('お問い合わせ内容を入力してください'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 
@@ -51,9 +54,9 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
       if (!mounted) return;
 
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('お問い合わせを送信しました')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('お問い合わせを送信しました'), backgroundColor: Colors.green),
+      );
     } catch (e, stackTrace) {
       debugPrint('[ContactInquiryBottomSheet] ❌ お問い合わせ送信エラー: $e');
 

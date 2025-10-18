@@ -23,7 +23,7 @@ class AppNavigationBar extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.home_outlined),
           selectedIcon: Icon(Icons.home),
-          label: 'ホーム',
+          label: 'MY TODO',
         ),
         NavigationDestination(
           icon: Icon(Icons.group_outlined),

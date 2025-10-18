@@ -631,7 +631,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Future<void> _refreshData() async {
     try {
       await _cacheService.refreshCache();
-      _showSuccessSnackBar('データを更新しました');
     } catch (e) {
       debugPrint('[GroupDetailScreen] ❌ データ更新エラー: $e');
       _showErrorSnackBar('データの更新に失敗しました');

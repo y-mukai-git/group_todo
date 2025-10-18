@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../data/models/user_model.dart';
-import '../../services/user_service.dart';
+import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import 'error_dialog.dart';
 
@@ -26,7 +26,7 @@ class EditUserProfileBottomSheet extends StatefulWidget {
 
 class _EditUserProfileBottomSheetState
     extends State<EditUserProfileBottomSheet> {
-  final UserService _userService = UserService();
+  final DataCacheService _cacheService = DataCacheService();
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _nameController = TextEditingController();
 
@@ -131,7 +131,7 @@ class _EditUserProfileBottomSheetState
     });
 
     try {
-      await _userService.updateUserProfile(
+      await _cacheService.updateUser(
         userId: widget.user.id,
         displayName: displayName,
         imageData: _selectedImageBase64,
@@ -140,7 +140,7 @@ class _EditUserProfileBottomSheetState
       if (!mounted) return;
 
       _showSuccessSnackBar('プロフィールを更新しました');
-      widget.onProfileUpdated();
+      // notifyListenersで自動更新されるため、onProfileUpdated()は不要
       Navigator.pop(context);
     } catch (e, stackTrace) {
       debugPrint('[EditUserProfileBottomSheet] ❌ プロフィール更新エラー: $e');
@@ -285,6 +285,7 @@ class _EditUserProfileBottomSheetState
               border: OutlineInputBorder(),
             ),
             enabled: !_isLoading,
+            maxLength: 20,
           ),
           const SizedBox(height: 24),
 

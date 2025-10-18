@@ -78,9 +78,12 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   Future<void> _updateTodo() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('タイトルを入力してください'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 
@@ -185,6 +188,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       ),
                       autofocus: true,
                       textInputAction: TextInputAction.next,
+                      maxLength: 30,
                     )
                   else
                     Text(

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/models/user_model.dart';
-import '../../services/user_service.dart';
-import '../../services/error_log_service.dart';
+import '../../services/data_cache_service.dart';
 import '../../core/config/environment_config.dart';
 import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
 import '../widgets/transfer_password_bottom_sheet.dart';
-import '../widgets/error_dialog.dart';
 import 'announcements_screen.dart';
 
 /// 設定画面
@@ -21,66 +19,58 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final UserService _userService = UserService();
+  final DataCacheService _cacheService = DataCacheService();
   final EnvironmentConfig _config = EnvironmentConfig.instance;
   String? _signedAvatarUrl;
+  UserModel? _currentUser;
+
+  /// キャッシュからユーザーデータ更新
+  void _updateUserData() {
+    if (mounted) {
+      setState(() {
+        _currentUser = _cacheService.currentUser;
+        _signedAvatarUrl = _cacheService.signedAvatarUrl;
+      });
+    }
+  }
 
   /// プロフィール編集ボトムシート表示
   void _showEditProfileBottomSheet() {
+    if (_currentUser == null) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => EditUserProfileBottomSheet(
-        user: widget.user,
+        user: _currentUser!,
         currentSignedAvatarUrl: _signedAvatarUrl,
-        onProfileUpdated: _loadSignedAvatarUrl,
+        onProfileUpdated: () {}, // notifyListenersで自動更新されるため不要
       ),
     );
-  }
-
-  /// 署名付きアバターURL読み込み
-  Future<void> _loadSignedAvatarUrl() async {
-    try {
-      final response = await _userService.getUserByDevice();
-      if (response != null && mounted) {
-        setState(() {
-          _signedAvatarUrl = response['signed_avatar_url'] as String?;
-        });
-      }
-    } catch (e, stackTrace) {
-      debugPrint('[SettingsScreen] ❌ アバターURL取得エラー: $e');
-
-      // エラーログ記録
-      final errorLog = await ErrorLogService().logError(
-        userId: widget.user.id,
-        errorType: 'アバターURL取得エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
-        screenName: '設定画面',
-      );
-
-      // エラーダイアログ表示
-      if (!mounted) return;
-      await ErrorDialog.show(
-        context: context,
-        errorId: errorLog.id,
-        errorMessage: 'プロフィール画像の読み込みに失敗しました',
-      );
-    }
   }
 
   @override
   void initState() {
     super.initState();
-    _loadSignedAvatarUrl();
+    _cacheService.addListener(_updateUserData);
+    _updateUserData();
+  }
+
+  @override
+  void dispose() {
+    _cacheService.removeListener(_updateUserData);
+    super.dispose();
   }
 
   /// 引き継ぎ用パスワード設定
   Future<void> _setupTransferPassword() async {
+    if (_currentUser == null) return;
+
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => TransferPasswordBottomSheet(userId: widget.user.id),
+      builder: (context) =>
+          TransferPasswordBottomSheet(userId: _currentUser!.id),
     );
 
     if (result != null && result is Map<String, String>) {
@@ -205,10 +195,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: const Text('不具合報告・機能要望'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
+          if (_currentUser == null) return;
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (context) => ContactInquiryBottomSheet(user: widget.user),
+            builder: (context) =>
+                ContactInquiryBottomSheet(user: _currentUser!),
           );
         },
       ),
@@ -245,33 +237,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundImage: _signedAvatarUrl != null
-                              ? NetworkImage(_signedAvatarUrl!)
-                              : null,
-                          child: _signedAvatarUrl == null
-                              ? Text(
-                                  widget.user.displayName.isNotEmpty
-                                      ? widget.user.displayName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(fontSize: 32),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.user.displayName,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'ユーザーID: ${widget.user.displayId}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                    SizedBox(
+                      width: double.infinity,
+                      height: 180,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundImage: _signedAvatarUrl != null
+                                ? NetworkImage(_signedAvatarUrl!)
+                                : null,
+                            child: _signedAvatarUrl == null
+                                ? Text(
+                                    _currentUser?.displayName.isNotEmpty == true
+                                        ? _currentUser!.displayName[0]
+                                              .toUpperCase()
+                                        : 'U',
+                                    style: const TextStyle(fontSize: 32),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              _currentUser?.displayName ?? '',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'ユーザーID: ${_currentUser?.displayId ?? ''}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ),
                     Positioned(
                       top: 0,

@@ -64,9 +64,12 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
   void _inviteUser() {
     final userId = _userIdController.text.trim();
     if (userId.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('ユーザーIDを入力してください')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('ユーザーIDを入力してください'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
       return;
     }
 

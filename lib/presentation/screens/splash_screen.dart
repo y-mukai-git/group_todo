@@ -3,6 +3,7 @@ import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
+import '../../services/user_service.dart';
 import '../widgets/error_dialog.dart';
 import 'main_tab_screen.dart';
 import 'data_transfer_screen.dart';
@@ -56,26 +57,32 @@ class _SplashScreenState extends State<SplashScreen>
       final savedUserId = await StorageHelper.getUserId();
 
       if (savedUserId != null) {
-        // 既存ユーザー：ローカルに保存されたユーザーIDでメイン画面へ
+        // 既存ユーザー：APIから最新のユーザー情報を取得
         debugPrint('[SplashScreen] ✅ 既存ユーザー検出: $savedUserId');
-        final savedDisplayName = await StorageHelper.getDisplayName();
 
-        // ユーザーモデル作成（ローカル保存情報から復元）
-        final user = UserModel(
-          id: savedUserId,
-          displayName: savedDisplayName ?? 'ユーザー',
-          displayId: '', // 初期表示では空、起動後にAPI取得
-          deviceId: '', // メイン画面では使わないので空でOK
-          notificationDeadline: true, // デフォルト値
-          notificationNewTodo: true, // デフォルト値
-          notificationAssigned: true, // デフォルト値
-          createdAt: DateTime.now(), // 正確な値は不要
-          updatedAt: DateTime.now(), // 正確な値は不要
-        );
+        // APIから最新のユーザー情報と署名付きURLを取得
+        final userResponse = await UserService().getUserByDevice();
+
+        if (userResponse == null) {
+          // ユーザーが見つからない場合はデータ引き継ぎ画面へ
+          debugPrint('[SplashScreen] ⚠️ ユーザーが見つかりません');
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DataTransferScreen()),
+          );
+          return;
+        }
+
+        final user = userResponse['user'] as UserModel;
+        final signedAvatarUrl = userResponse['signed_avatar_url'] as String?;
 
         // キャッシュ初期化（全データ取得）
         debugPrint('[SplashScreen] 📦 キャッシュ初期化開始');
-        await DataCacheService().initializeCache(user);
+        await DataCacheService().initializeCache(
+          user,
+          signedAvatarUrl: signedAvatarUrl,
+        );
         debugPrint('[SplashScreen] ✅ キャッシュ初期化完了');
 
         // 未送信エラーログの再送信

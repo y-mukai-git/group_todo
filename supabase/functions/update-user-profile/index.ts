@@ -78,8 +78,10 @@ serve(async (req) => {
 
         // 画像形式判定（JPEG or PNG）
         let fileExtension = 'jpg'
+        let contentType = 'image/jpeg' // 正しいMIMEタイプ
         if (image_data.startsWith('data:image/png')) {
           fileExtension = 'png'
+          contentType = 'image/png'
         }
 
         // Storageにアップロード
@@ -88,7 +90,7 @@ serve(async (req) => {
           .storage
           .from('user-avatars')
           .upload(filePath, imageBuffer, {
-            contentType: `image/${fileExtension}`,
+            contentType: contentType,
             upsert: true // 既存ファイルがあれば上書き
           })
 

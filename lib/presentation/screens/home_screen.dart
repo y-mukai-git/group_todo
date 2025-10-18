@@ -19,11 +19,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final DataCacheService _cacheService = DataCacheService();
   List<TodoModel> _todos = [];
-  String _filterDays = '7'; // デフォルト: 1週間
+  String _filterDays = '0'; // デフォルト: 本日期限
+  late PageController _pageController;
+  int _currentGroupIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    // PageController初期化
+    _pageController = PageController();
     // キャッシュリスナー登録
     _cacheService.addListener(_updateTodos);
     // 初回データ取得
@@ -32,6 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    // PageController破棄
+    _pageController.dispose();
     // リスナー解除
     _cacheService.removeListener(_updateTodos);
     super.dispose();
@@ -41,31 +47,43 @@ class _HomeScreenState extends State<HomeScreen> {
   void _updateTodos() {
     final myTodos = _cacheService.getMyTodos(widget.user.id);
 
-    // フィルタリング：期限切れ + 選択期間内のTODO
+    // フィルタリング：選択期間に応じたTODO表示
     final now = DateTime.now();
     final filteredTodos = myTodos.where((todo) {
-      // 期限切れは常に表示
-      if (todo.dueDate != null &&
-          todo.dueDate!.isBefore(now) &&
-          !todo.isCompleted) {
+      // 全量表示
+      if (_filterDays == 'all') {
         return true;
       }
+
+      // 期限なしTODOは全量表示時のみ
+      if (todo.dueDate == null) {
+        return _filterDays == 'all';
+      }
+
+      // 期限切れは常に表示（未完了のみ）
+      if (todo.dueDate!.isBefore(now) && !todo.isCompleted) {
+        return true;
+      }
+
       // 選択期間内のTODO表示
       if (_filterDays == '0') {
-        // 当日
-        return todo.dueDate != null &&
-            todo.dueDate!.year == now.year &&
+        // 本日期限
+        return todo.dueDate!.year == now.year &&
             todo.dueDate!.month == now.month &&
             todo.dueDate!.day == now.day;
-      } else if (_filterDays == '3') {
-        // 3日以内
-        final threeDaysLater = now.add(const Duration(days: 3));
-        return todo.dueDate != null && todo.dueDate!.isBefore(threeDaysLater);
-      } else {
-        // 1週間以内（デフォルト）
+      } else if (_filterDays == '7') {
+        // 1週間以内
         final oneWeekLater = now.add(const Duration(days: 7));
-        return todo.dueDate != null && todo.dueDate!.isBefore(oneWeekLater);
+        return todo.dueDate!.isBefore(oneWeekLater) ||
+            todo.dueDate!.isAtSameMomentAs(oneWeekLater);
+      } else if (_filterDays == '30') {
+        // 1ヶ月以内
+        final oneMonthLater = now.add(const Duration(days: 30));
+        return todo.dueDate!.isBefore(oneMonthLater) ||
+            todo.dueDate!.isAtSameMomentAs(oneMonthLater);
       }
+
+      return false;
     }).toList();
 
     if (mounted) {
@@ -126,7 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshData() async {
     try {
       await _cacheService.refreshCache();
-      _showSuccessSnackBar('データを更新しました');
     } catch (e, stackTrace) {
       debugPrint('[HomeScreen] ❌ データ更新エラー: $e');
 
@@ -252,27 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My TODO'),
-        actions: [
-          // 期限フィルター
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: _changeFilter,
-            initialValue: _filterDays,
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: '0', child: Text('当日')),
-              const PopupMenuItem(value: '3', child: Text('3日以内')),
-              const PopupMenuItem(value: '7', child: Text('1週間以内')),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-            tooltip: '更新',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('My TODO'), actions: []),
       body: _todos.isEmpty
           ? Center(
               child: Column(
@@ -291,13 +288,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             )
-          : RefreshIndicator(
-              onRefresh: _refreshData,
-              child: ListView(children: _buildGroupedTodoList()),
-            ),
+          : _buildGroupPageView(),
       floatingActionButton: FloatingActionButton(
         heroTag: 'home_fab',
         onPressed: () async {
+          // 選択中グループの情報を取得
+          final myGroups = _cacheService.groups;
+          final selectedGroup =
+              myGroups.isNotEmpty && _currentGroupIndex < myGroups.length
+              ? myGroups[_currentGroupIndex]
+              : null;
+
           final result = await showModalBottomSheet<Map<String, dynamic>>(
             context: context,
             isScrollControlled: true,
@@ -306,8 +307,8 @@ class _HomeScreenState extends State<HomeScreen> {
             isDismissible: true,
             useRootNavigator: false,
             builder: (context) => CreateTodoBottomSheet(
-              fixedGroupId: null, // グループ選択モード
-              fixedGroupName: null,
+              fixedGroupId: null, // グループ選択UI表示
+              defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
               availableAssignees: null,
               currentUserId: widget.user.id,
               currentUserName: widget.user.displayName,
@@ -373,13 +374,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 screenName: 'ホーム画面',
               );
 
-              // エラーダイアログ表示
+              // エラーメッセージ表示（フレーム完了後に安全に表示）
               if (mounted) {
-                await ErrorDialog.show(
-                  context: context,
-                  errorId: errorLog.id,
-                  errorMessage: 'TODO/グループの作成に失敗しました',
-                );
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'TODO/グループの作成に失敗しました（ID: ${errorLog.id}）',
+                        ),
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  }
+                });
               }
             }
           }
@@ -390,53 +399,235 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// グループごとにTODOリストを構築
-  List<Widget> _buildGroupedTodoList() {
-    // groupIdでグループ化
-    final groupedTodos = <String, List<TodoModel>>{};
-    for (final todo in _todos) {
-      final groupId = todo.groupId;
-      if (!groupedTodos.containsKey(groupId)) {
-        groupedTodos[groupId] = [];
-      }
-      groupedTodos[groupId]!.add(todo);
+  /// グループスワイプ切り替えPageView構築
+  Widget _buildGroupPageView() {
+    final myGroups = _cacheService.groups;
+
+    // グループが存在しない場合の表示
+    if (myGroups.isEmpty) {
+      return const Center(child: Text('グループに参加していません'));
     }
 
-    // グループごとにウィジェット構築
-    final widgets = <Widget>[];
-
-    // 最初に上部余白を追加
-    widgets.add(const SizedBox(height: 12));
-
-    groupedTodos.forEach((groupId, todos) {
-      // グループヘッダー（キャッシュからグループ名を取得）
-      final group = _cacheService.getGroupById(groupId);
-      final groupName = group?.name ?? todos.first.groupName ?? 'グループ';
-      widgets.add(
+    return Column(
+      children: [
+        // フィルターチップ（均等配置・折り返し調整）
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            groupName,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: _FilterChip(
+                  label: '本日期限',
+                  isSelected: _filterDays == '0',
+                  onTap: () => _changeFilter('0'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _FilterChip(
+                  label: '1週間以内',
+                  isSelected: _filterDays == '7',
+                  onTap: () => _changeFilter('7'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _FilterChip(
+                  label: '1ヶ月以内',
+                  isSelected: _filterDays == '30',
+                  onTap: () => _changeFilter('30'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _FilterChip(
+                  label: '全て',
+                  isSelected: _filterDays == 'all',
+                  onTap: () => _changeFilter('all'),
+                ),
+              ),
+            ],
           ),
         ),
-      );
-
-      // グループ内のTODO一覧
-      for (final todo in todos) {
-        widgets.add(
-          _TodoListTile(
-            todo: todo,
-            onToggle: () => _toggleTodoCompletion(todo),
-            onTap: () => _showTodoDetail(todo),
+        // フィルターとタブ間の余白
+        const SizedBox(height: 8),
+        // 横スクロール可能なグループタブバー
+        Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                width: 1,
+              ),
+            ),
           ),
-        );
-      }
-    });
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: myGroups.asMap().entries.map((entry) {
+                final index = entry.key;
+                final group = entry.value;
+                final isSelected = index == _currentGroupIndex;
 
-    return widgets;
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  child: InkWell(
+                    onTap: () {
+                      _pageController.animateToPage(
+                        index,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
+                    ),
+                    child: Container(
+                      width: 130, // 1画面約2.5グループ表示・省略表示減らす（調整）
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Colors.transparent,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        ),
+                        border: isSelected
+                            ? Border(
+                                left: BorderSide(
+                                  color: Theme.of(context).colorScheme.outline,
+                                  width: 1,
+                                ),
+                                right: BorderSide(
+                                  color: Theme.of(context).colorScheme.outline,
+                                  width: 1,
+                                ),
+                                top: BorderSide(
+                                  color: Theme.of(context).colorScheme.outline,
+                                  width: 1,
+                                ),
+                              )
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                group.name,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurface,
+                                    ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ),
+                          // アクティブタブの下部インジケーター
+                          if (isSelected)
+                            Container(
+                              height: 3,
+                              margin: const EdgeInsets.only(top: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        // PageView for group content
+        Expanded(
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentGroupIndex = index;
+              });
+            },
+            itemCount: myGroups.length,
+            itemBuilder: (context, index) {
+              final group = myGroups[index];
+              // このグループのTODOを取得
+              final groupTodos = _todos
+                  .where((todo) => todo.groupId == group.id)
+                  .toList();
+
+              return RefreshIndicator(
+                onRefresh: _refreshData,
+                child: groupTodos.isEmpty
+                    ? ListView(
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.3,
+                          ),
+                          Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.inbox_outlined,
+                                  size: 48,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '${group.name}にTODOがありません',
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.outline,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: groupTodos.length,
+                        itemBuilder: (context, todoIndex) {
+                          final todo = groupTodos[todoIndex];
+                          return _TodoListTile(
+                            todo: todo,
+                            onToggle: () => _toggleTodoCompletion(todo),
+                            onTap: () => _showTodoDetail(todo),
+                          );
+                        },
+                      ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -535,7 +726,9 @@ class _TodoListTile extends StatelessWidget {
         Divider(
           height: 1,
           thickness: 1,
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
       ],
     );
@@ -543,5 +736,52 @@ class _TodoListTile extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.year}/${date.month}/${date.day}';
+  }
+}
+
+/// フィルターチップ
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

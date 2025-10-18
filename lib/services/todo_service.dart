@@ -122,7 +122,7 @@ class TodoService {
           'todo_id': todoId,
           'title': title,
           'description': description,
-          'due_date': dueDate?.toIso8601String(),
+          'deadline': dueDate?.toIso8601String(),
           'assigned_user_ids': assignedUserIds,
         },
       );

@@ -176,6 +176,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// TODO詳細画面表示
   Future<void> _showTodoDetail(TodoModel todo) async {
     final group = _cacheService.getGroupById(todo.groupId);
+
+    // グループメンバー情報取得
+    final membersData = _cacheService.getGroupMembers(todo.groupId);
+
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
@@ -188,9 +192,18 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => CreateTodoBottomSheet(
         fixedGroupId: todo.groupId,
         fixedGroupName: group?.name ?? 'グループ',
-        availableAssignees: null, // TODO: メンバー一覧取得して渡す
+        availableAssignees:
+            membersData != null && membersData['success'] == true
+            ? (membersData['members'] as List<dynamic>).map((m) {
+                final memberId = m['id'] as String;
+                final memberName = memberId == _cacheService.currentUser!.id
+                    ? _cacheService.currentUser!.displayName
+                    : m['display_name'] as String;
+                return {'id': memberId, 'name': memberName};
+              }).toList()
+            : null,
         currentUserId: widget.user.id,
-        currentUserName: widget.user.displayName,
+        currentUserName: _cacheService.currentUser!.displayName,
         existingTodo: todo, // 編集モード：既存TODOデータを渡す
       ),
     );
@@ -299,6 +312,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ? myGroups[_currentGroupIndex]
               : null;
 
+          // デフォルトグループのメンバー情報取得
+          final membersData = selectedGroup != null
+              ? _cacheService.getGroupMembers(selectedGroup.id)
+              : null;
+
           final result = await showModalBottomSheet<Map<String, dynamic>>(
             context: context,
             isScrollControlled: true,
@@ -309,9 +327,19 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context) => CreateTodoBottomSheet(
               fixedGroupId: null, // グループ選択UI表示
               defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
-              availableAssignees: null,
+              availableAssignees:
+                  membersData != null && membersData['success'] == true
+                  ? (membersData['members'] as List<dynamic>).map((m) {
+                      final memberId = m['id'] as String;
+                      final memberName =
+                          memberId == _cacheService.currentUser!.id
+                          ? _cacheService.currentUser!.displayName
+                          : m['display_name'] as String;
+                      return {'id': memberId, 'name': memberName};
+                    }).toList()
+                  : null,
               currentUserId: widget.user.id,
-              currentUserName: widget.user.displayName,
+              currentUserName: _cacheService.currentUser!.displayName,
               existingTodo: null,
             ),
           );

@@ -28,7 +28,7 @@ class AppNavigationBar extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.group_outlined),
           selectedIcon: Icon(Icons.group),
-          label: 'グループ',
+          label: 'グループTODO',
         ),
         NavigationDestination(
           icon: Icon(Icons.settings_outlined),

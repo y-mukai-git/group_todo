@@ -493,10 +493,7 @@ class _CreateRecurringTodoBottomSheetState
                     onTap: _showPatternPicker,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         border: Border.all(
                           color: Theme.of(context).colorScheme.outline,
@@ -611,10 +608,7 @@ class _CreateRecurringTodoBottomSheetState
                     onTap: _showTimePicker,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         border: Border.all(
                           color: Theme.of(context).colorScheme.outline,
@@ -652,31 +646,29 @@ class _CreateRecurringTodoBottomSheetState
                     // グループに1人のみ：表示のみ（変更不可）
                     if (widget.availableAssignees!.length == 1)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
                           color: Theme.of(
                             context,
                           ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.person,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                             const SizedBox(width: 12),
                             Text(
                               widget.availableAssignees!.first['name']!,
                               style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.lock,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.outline,
                             ),
                           ],
                         ),
@@ -687,10 +679,7 @@ class _CreateRecurringTodoBottomSheetState
                         onTap: _showAssigneePicker,
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: Theme.of(context).colorScheme.outline,

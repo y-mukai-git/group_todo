@@ -322,6 +322,32 @@ class DataCacheService extends ChangeNotifier {
     }
   }
 
+  /// グループ削除（DB + キャッシュ）
+  Future<void> deleteGroup({
+    required String groupId,
+    required String userId,
+  }) async {
+    try {
+      // 1. DB削除
+      await _groupService.deleteGroup(groupId: groupId, userId: userId);
+
+      // 2. DB削除成功 → キャッシュから削除
+      _groups.removeWhere((g) => g.id == groupId);
+
+      // 3. 関連TODOを削除
+      _todos.removeWhere((t) => t.groupId == groupId);
+
+      // 4. グループメンバー情報を削除
+      _groupMembers.remove(groupId);
+
+      debugPrint('[DataCacheService] ✅ グループ削除: id=$groupId');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ グループ削除エラー: $e');
+      rethrow;
+    }
+  }
+
   /// グループメンバーキャッシュを更新
   Future<void> refreshGroupMembers({
     required String groupId,

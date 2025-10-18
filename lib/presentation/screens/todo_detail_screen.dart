@@ -258,7 +258,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                       onTap: _selectDeadline,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: Theme.of(context).colorScheme.outline,
@@ -292,7 +292,6 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                             // クリアボタンのスペースを常に確保
                             SizedBox(
                               width: 48,
-                              height: 48,
                               child: _selectedDeadline != null
                                   ? IconButton(
                                       icon: const Icon(Icons.clear, size: 20),
@@ -308,7 +307,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                   else
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Theme.of(
                           context,

@@ -401,10 +401,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       onTap: _selectDeadline,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: Theme.of(context).colorScheme.outline,
@@ -438,7 +435,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                             // クリアボタンのスペースを常に確保（非表示時は透明）
                             SizedBox(
                               width: 40,
-                              height: 40,
+                              height: 24,
                               child: _selectedDeadline != null
                                   ? IconButton(
                                       icon: const Icon(Icons.clear, size: 20),
@@ -467,31 +464,29 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       // グループに1人のみ：表示のみ（変更不可）
                       if (widget.availableAssignees!.length == 1)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
                             color: Theme.of(
                               context,
                             ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             children: [
                               Icon(
                                 Icons.person,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                widget.availableAssignees!.first['name']!,
+                                widget.availableAssignees!.first['name'] ?? '',
                                 style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.lock,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.outline,
                               ),
                             ],
                           ),
@@ -502,10 +497,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                           onTap: _showAssigneePicker,
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               border: Border.all(
                                 color: Theme.of(context).colorScheme.outline,
@@ -523,10 +515,15 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                                   _selectedAssigneeIds.isEmpty
                                       ? '担当者を選択'
                                       : widget.availableAssignees!.firstWhere(
-                                          (a) =>
-                                              a['id'] ==
-                                              _selectedAssigneeIds.first,
-                                        )['name']!,
+                                              (a) =>
+                                                  a['id'] ==
+                                                  _selectedAssigneeIds.first,
+                                              orElse: () => {
+                                                'id': '',
+                                                'name': '担当者を選択',
+                                              },
+                                            )['name'] ??
+                                            '担当者を選択',
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
                                 const Spacer(),
@@ -560,16 +557,9 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              child: Icon(
-                                Icons.person,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                              ),
+                            Icon(
+                              Icons.person,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -800,7 +790,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
       onTap: _showGroupPicker,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           border: Border.all(color: Theme.of(context).colorScheme.outline),
           borderRadius: BorderRadius.circular(12),

@@ -240,7 +240,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         groupName: widget.group.name,
         userId: widget.user.id,
         availableAssignees: _groupMembers
-            .map((member) => {'id': member.id, 'name': member.displayName})
+            .map(
+              (member) => {
+                'id': member.id,
+                'name': member.id == widget.user.id
+                    ? _cacheService.currentUser!.displayName
+                    : member.displayName,
+              },
+            )
             .toList(),
       ),
     );
@@ -267,7 +274,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         groupName: widget.group.name,
         userId: widget.user.id,
         availableAssignees: _groupMembers
-            .map((member) => {'id': member.id, 'name': member.displayName})
+            .map(
+              (member) => {
+                'id': member.id,
+                'name': member.id == widget.user.id
+                    ? _cacheService.currentUser!.displayName
+                    : member.displayName,
+              },
+            )
             .toList(),
         existingRecurringTodo: recurringTodo,
       ),
@@ -432,8 +446,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         fixedGroupId: widget.group.id,
         fixedGroupName: widget.group.name,
         currentUserId: widget.user.id,
-        currentUserName: widget.user.displayName,
-        availableAssignees: null,
+        currentUserName: _cacheService.currentUser!.displayName,
+        availableAssignees: _groupMembers.map((member) {
+          final memberName = member.id == widget.user.id
+              ? _cacheService.currentUser!.displayName
+              : member.displayName;
+          return {'id': member.id, 'name': memberName};
+        }).toList(),
       ),
     );
 
@@ -617,9 +636,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       builder: (context) => CreateTodoBottomSheet(
         fixedGroupId: widget.group.id,
         fixedGroupName: widget.group.name,
-        availableAssignees: null,
+        availableAssignees: _groupMembers.map((member) {
+          final memberName = member.id == widget.user.id
+              ? _cacheService.currentUser!.displayName
+              : member.displayName;
+          return {'id': member.id, 'name': memberName};
+        }).toList(),
         currentUserId: widget.user.id,
-        currentUserName: widget.user.displayName,
+        currentUserName: _cacheService.currentUser!.displayName,
         existingTodo: todo, // 編集モード：既存TODOデータを渡す
       ),
     );

@@ -152,16 +152,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('グループ'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-            tooltip: '更新',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('グループ')),
       body: _groups.isEmpty
           ? Center(
               child: Column(
@@ -211,18 +202,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
     // 個人セクション
     if (personalGroups.isNotEmpty) {
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            '個人',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
-
       for (final group in personalGroups) {
         widgets.add(_buildGroupItem(group, true));
       }
@@ -230,18 +209,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
     // グループセクション
     if (teamGroups.isNotEmpty) {
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'グループ',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
-
       for (final group in teamGroups) {
         widgets.add(_buildGroupItem(group, false));
       }
@@ -270,139 +237,225 @@ class _GroupsScreenState extends State<GroupsScreen> {
     // カテゴリ情報取得
     final categoryInfo = _getCategoryInfo(group.category);
 
+    // メンバー数取得
+    int memberCount = 1; // デフォルト1人
+    final membersData = _cacheService.getGroupMembers(group.id);
+    if (membersData != null && membersData['success'] == true) {
+      final membersList = membersData['members'] as List<dynamic>;
+      memberCount = membersList.length;
+    }
+
+    // TODO件数取得（未完了のみ）
+    final todos = _cacheService.getTodosByGroupId(group.id);
+    final incompleteTodoCount = todos.where((t) => !t.isCompleted).length;
+
+    // オーナー判定
+    final isOwner = group.ownerId == widget.user.id;
+
     return Column(
       children: [
-        InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    GroupDetailScreen(user: widget.user, group: group),
+        Dismissible(
+          key: Key(group.id),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (direction) async {
+            if (!isOwner) {
+              // オーナー以外は削除不可
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('オーナーしか消せません'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return false;
+            }
+
+            // オーナーの場合は削除確認ダイアログ表示
+            return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('グループ削除'),
+                content: Text('「${group.name}」を削除しますか？'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('キャンセル'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('削除'),
+                  ),
+                ],
               ),
             );
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Row(
-              children: [
-                // アイコン
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isPersonalGroup
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    isPersonalGroup ? Icons.person : Icons.group,
-                    color: isPersonalGroup
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.secondary,
-                    size: 24,
-                  ),
+          onDismissed: (direction) async {
+            try {
+              // グループ削除API呼び出し
+              await _cacheService.deleteGroup(
+                groupId: group.id,
+                userId: widget.user.id,
+              );
+              _showSuccessSnackBar('グループを削除しました');
+            } catch (e, stackTrace) {
+              debugPrint('[GroupsScreen] ❌ グループ削除エラー: $e');
+
+              // エラーログ記録
+              final errorLog = await ErrorLogService().logError(
+                userId: widget.user.id,
+                errorType: 'グループ削除エラー',
+                errorMessage: e.toString(),
+                stackTrace: stackTrace.toString(),
+                screenName: 'グループ一覧画面',
+              );
+
+              // エラーダイアログ表示
+              if (!mounted) return;
+              await ErrorDialog.show(
+                context: context,
+                errorId: errorLog.id,
+                errorMessage: 'グループの削除に失敗しました',
+              );
+            }
+          },
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            color: Colors.red,
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      GroupDetailScreen(user: widget.user, group: group),
                 ),
-                const SizedBox(width: 16),
-                // グループ情報
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              group.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Row(
+                children: [
+                  // アイコン
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isPersonalGroup
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isPersonalGroup ? Icons.person : Icons.group,
+                      color: isPersonalGroup
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.secondary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // グループ情報
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                group.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
-                          ),
-                          // カテゴリ表示
-                          if (group.category != null &&
-                              categoryInfo != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.tertiaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    categoryInfo['icon'] as IconData,
-                                    size: 14,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onTertiaryContainer,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    categoryInfo['name'] as String,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                            // カテゴリ表示
+                            if (group.category != null &&
+                                categoryInfo != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.tertiaryContainer,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      categoryInfo['icon'] as IconData,
+                                      size: 14,
                                       color: Theme.of(
                                         context,
                                       ).colorScheme.onTertiaryContainer,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      categoryInfo['name'] as String,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onTertiaryContainer,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$memberCount人',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$incompleteTodoCount件のTODO',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context).colorScheme.outline,
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.people_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '1人',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Icon(
-                            Icons.check_circle_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '0件のTODO',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-              ],
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

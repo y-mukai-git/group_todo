@@ -494,6 +494,33 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
+  /// TODO更新実行（キャッシュサービス経由）
+  Future<void> _updateTodo({
+    required String todoId,
+    required String title,
+    String? description,
+    DateTime? deadline,
+    required List<String> assigneeIds,
+  }) async {
+    try {
+      // DataCacheService経由でDB更新+キャッシュ更新
+      await _cacheService.updateTodo(
+        userId: widget.user.id,
+        todoId: todoId,
+        title: title,
+        description: description?.isNotEmpty == true ? description : null,
+        dueDate: deadline,
+        assignedUserIds: assigneeIds,
+      );
+
+      if (!mounted) return;
+      _showSuccessSnackBar('TODOを更新しました');
+    } catch (e) {
+      debugPrint('[GroupDetailScreen] ❌ TODO更新エラー: $e');
+      _showErrorSnackBar('TODOの更新に失敗しました');
+    }
+  }
+
   /// エラーメッセージ表示
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -629,7 +656,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   /// TODO詳細画面表示
   Future<void> _showTodoDetail(TodoModel todo) async {
-    await showModalBottomSheet<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -648,7 +675,21 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       ),
     );
 
-    // キャッシュが自動更新されるため、手動リロード不要
+    // 編集モード時：結果を受け取ってDB更新
+    if (result != null && mounted) {
+      final todoId = result['todo_id'] as String?;
+      if (todoId != null) {
+        // 編集モード
+        final assigneeIds = result['assignee_ids'] as List<dynamic>?;
+        _updateTodo(
+          todoId: todoId,
+          title: result['title'] as String,
+          description: result['description'] as String?,
+          deadline: result['deadline'] as DateTime?,
+          assigneeIds: assigneeIds?.cast<String>() ?? [widget.user.id],
+        );
+      }
+    }
   }
 
   /// 手動リフレッシュ

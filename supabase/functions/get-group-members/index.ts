@@ -21,6 +21,7 @@ interface GetGroupMembersResponse {
     display_name: string
     display_id: string
     avatar_url: string | null
+    signed_avatar_url?: string | null // 署名付きURL（有効期限1時間）
     role: string
     joined_at: string
   }>
@@ -117,20 +118,41 @@ serve(async (req) => {
       )
     }
 
-    // レスポンス構築
-    const membersList = (members || []).map((member: any) => ({
-      id: member.users.id,
-      device_id: member.users.device_id,
-      display_name: member.users.display_name,
-      display_id: member.users.display_id,
-      avatar_url: member.users.avatar_url,
-      role: member.role,
-      joined_at: member.joined_at,
-      notification_deadline: member.users.notification_deadline,
-      notification_new_todo: member.users.notification_new_todo,
-      notification_assigned: member.users.notification_assigned,
-      created_at: member.users.created_at,
-      updated_at: member.users.updated_at
+    // レスポンス構築（各メンバーのSigned URL生成）
+    const membersList = await Promise.all((members || []).map(async (member: any) => {
+      // 署名付きURL生成（avatar_urlが存在する場合）
+      let signedAvatarUrl: string | null = null
+      if (member.users.avatar_url) {
+        try {
+          const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+            .storage
+            .from('user-avatars')
+            .createSignedUrl(member.users.avatar_url, 3600) // 有効期限1時間
+
+          if (!signedUrlError && signedUrlData?.signedUrl) {
+            signedAvatarUrl = signedUrlData.signedUrl
+          }
+        } catch (error) {
+          console.error('Failed to create signed URL for user:', member.users.id, error)
+          // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+        }
+      }
+
+      return {
+        id: member.users.id,
+        device_id: member.users.device_id,
+        display_name: member.users.display_name,
+        display_id: member.users.display_id,
+        avatar_url: member.users.avatar_url,
+        signed_avatar_url: signedAvatarUrl,
+        role: member.role,
+        joined_at: member.joined_at,
+        notification_deadline: member.users.notification_deadline,
+        notification_new_todo: member.users.notification_new_todo,
+        notification_assigned: member.users.notification_assigned,
+        created_at: member.users.created_at,
+        updated_at: member.users.updated_at
+      }
     }))
 
     const response: GetGroupMembersResponse = {

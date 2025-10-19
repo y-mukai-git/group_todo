@@ -252,7 +252,7 @@ class _EditUserProfileBottomSheetState
                           widget.currentSignedAvatarUrl == null)
                       ? Text(
                           widget.user.displayName.isNotEmpty
-                              ? widget.user.displayName[0].toUpperCase()
+                              ? widget.user.displayName[0]
                               : 'U',
                           style: const TextStyle(fontSize: 48),
                         )

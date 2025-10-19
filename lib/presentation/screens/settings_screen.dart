@@ -252,7 +252,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ? Text(
                                     _currentUser?.displayName.isNotEmpty == true
                                         ? _currentUser!.displayName[0]
-                                              .toUpperCase()
                                         : 'U',
                                     style: const TextStyle(fontSize: 32),
                                   )

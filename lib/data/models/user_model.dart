@@ -5,6 +5,7 @@ class UserModel {
   final String displayName;
   final String displayId; // 8桁英数字ランダムID（表示・引き継ぎ用）
   final String? avatarUrl; // プロフィール画像URL（Supabase Storage）
+  final String? signedAvatarUrl; // 署名付き一時URL（Edge Functionから取得）
   final bool notificationDeadline;
   final bool notificationNewTodo;
   final bool notificationAssigned;
@@ -17,6 +18,7 @@ class UserModel {
     required this.displayName,
     required this.displayId,
     this.avatarUrl,
+    this.signedAvatarUrl,
     required this.notificationDeadline,
     required this.notificationNewTodo,
     required this.notificationAssigned,
@@ -32,6 +34,7 @@ class UserModel {
       displayName: json['display_name'] as String,
       displayId: json['display_id'] as String,
       avatarUrl: json['avatar_url'] as String?,
+      signedAvatarUrl: json['signed_avatar_url'] as String?,
       notificationDeadline: json['notification_deadline'] as bool,
       notificationNewTodo: json['notification_new_todo'] as bool,
       notificationAssigned: json['notification_assigned'] as bool,
@@ -63,6 +66,7 @@ class UserModel {
     String? displayName,
     String? displayId,
     String? avatarUrl,
+    String? signedAvatarUrl,
     bool? notificationDeadline,
     bool? notificationNewTodo,
     bool? notificationAssigned,
@@ -75,6 +79,7 @@ class UserModel {
       displayName: displayName ?? this.displayName,
       displayId: displayId ?? this.displayId,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      signedAvatarUrl: signedAvatarUrl ?? this.signedAvatarUrl,
       notificationDeadline: notificationDeadline ?? this.notificationDeadline,
       notificationNewTodo: notificationNewTodo ?? this.notificationNewTodo,
       notificationAssigned: notificationAssigned ?? this.notificationAssigned,

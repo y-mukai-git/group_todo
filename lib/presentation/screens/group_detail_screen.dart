@@ -696,17 +696,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           backgroundColor: Theme.of(
                             context,
                           ).colorScheme.primaryContainer,
-                          child: Text(
-                            member.displayName.isNotEmpty
-                                ? member.displayName[0].toUpperCase()
-                                : 'U',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          backgroundImage: member.signedAvatarUrl != null
+                              ? NetworkImage(member.signedAvatarUrl!)
+                              : null,
+                          child: member.signedAvatarUrl == null
+                              ? Text(
+                                  member.displayName.isNotEmpty
+                                      ? member.displayName[0]
+                                      : 'U',
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                     );

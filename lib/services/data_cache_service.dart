@@ -62,23 +62,13 @@ class DataCacheService extends ChangeNotifier {
         );
         allTodos.addAll(groupTodos);
 
-        // メンバー取得
-        try {
-          final membersResponse = await _groupService.getGroupMembers(
-            groupId: group.id,
-            requesterId: user.id,
-          );
-          _groupMembers[group.id] = membersResponse;
-          debugPrint('[DataCacheService] ✅ グループ ${group.id} のメンバー取得完了');
-        } catch (e) {
-          debugPrint('[DataCacheService] ❌ グループ ${group.id} のメンバー取得エラー: $e');
-          // メンバー取得失敗時は空のデータを設定
-          _groupMembers[group.id] = {
-            'success': false,
-            'members': [],
-            'owner_id': group.ownerId,
-          };
-        }
+        // メンバー取得（エラー時はrethrowしてinitializeCache全体を失敗させる）
+        final membersResponse = await _groupService.getGroupMembers(
+          groupId: group.id,
+          requesterId: user.id,
+        );
+        _groupMembers[group.id] = membersResponse;
+        debugPrint('[DataCacheService] ✅ グループ ${group.id} のメンバー取得完了');
       }
 
       // 重複を除去（同じidのTODOは1つにする）
@@ -267,6 +257,7 @@ class DataCacheService extends ChangeNotifier {
     required String groupName,
     String? description,
     String? category,
+    String? imageData,
   }) async {
     try {
       // 1. DB作成
@@ -275,11 +266,21 @@ class DataCacheService extends ChangeNotifier {
         groupName: groupName,
         description: description,
         category: category,
+        imageData: imageData,
       );
 
       // 2. DB作成成功 → キャッシュに追加
       _groups.add(newGroup);
       debugPrint('[DataCacheService] ✅ グループ作成: id=${newGroup.id}');
+
+      // 3. メンバー情報を取得してキャッシュに追加
+      final membersResponse = await _groupService.getGroupMembers(
+        groupId: newGroup.id,
+        requesterId: userId,
+      );
+      _groupMembers[newGroup.id] = membersResponse;
+      debugPrint('[DataCacheService] ✅ グループ ${newGroup.id} のメンバー取得完了');
+
       notifyListeners();
 
       return newGroup;
@@ -296,6 +297,7 @@ class DataCacheService extends ChangeNotifier {
     required String groupName,
     String? description,
     String? category,
+    String? imageData,
   }) async {
     try {
       // 1. DB更新
@@ -305,6 +307,7 @@ class DataCacheService extends ChangeNotifier {
         groupName: groupName,
         description: description,
         category: category,
+        imageData: imageData,
       );
 
       // 2. DB更新成功 → キャッシュ更新

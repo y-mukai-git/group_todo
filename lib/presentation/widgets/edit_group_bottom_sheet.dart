@@ -104,10 +104,11 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
 
   /// 画像ソース選択ダイアログ
   void _showImageSourceDialog() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
+      builder: (context) => AlertDialog(
+        title: const Text('画像を選択'),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
@@ -236,8 +237,12 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
                                         _selectedImageBase64!.split(',')[1],
                                       ),
                                     )
+                                  : widget.group.signedIconUrl != null
+                                  ? NetworkImage(widget.group.signedIconUrl!)
                                   : null,
-                              child: _selectedImageBase64 == null
+                              child:
+                                  _selectedImageBase64 == null &&
+                                      widget.group.signedIconUrl == null
                                   ? Icon(
                                       Icons.group,
                                       size: 60,

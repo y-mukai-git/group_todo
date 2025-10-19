@@ -94,10 +94,11 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
 
   /// 画像ソース選択ダイアログ
   void _showImageSourceDialog() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
+      builder: (context) => AlertDialog(
+        title: const Text('画像を選択'),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(

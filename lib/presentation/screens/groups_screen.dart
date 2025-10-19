@@ -74,6 +74,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         name: result['name'] as String,
         description: result['description'] as String?,
         category: result['category'] as String?,
+        imageData: result['image_data'] as String?,
       );
     }
   }
@@ -83,6 +84,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
     required String name,
     String? description,
     String? category,
+    String? imageData,
   }) async {
     try {
       // DataCacheService経由でDB作成+キャッシュ追加
@@ -91,6 +93,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
         groupName: name,
         description: description,
         category: category,
+        imageData: imageData,
       );
 
       _showSuccessSnackBar('グループを作成しました');
@@ -347,14 +350,22 @@ class _GroupsScreenState extends State<GroupsScreen> {
                           ? Theme.of(context).colorScheme.primaryContainer
                           : Theme.of(context).colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(12),
+                      image: group.signedIconUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(group.signedIconUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: Icon(
-                      isPersonalGroup ? Icons.person : Icons.group,
-                      color: isPersonalGroup
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.secondary,
-                      size: 24,
-                    ),
+                    child: group.signedIconUrl == null
+                        ? Icon(
+                            isPersonalGroup ? Icons.person : Icons.group,
+                            color: isPersonalGroup
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.secondary,
+                            size: 24,
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 16),
                   // グループ情報

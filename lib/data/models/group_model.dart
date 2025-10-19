@@ -5,6 +5,7 @@ class GroupModel {
   final String? description;
   final String? category; // カテゴリ (shopping/housework/work/hobby/other)
   final String? iconUrl; // グループアイコン画像URL（Supabase Storage）
+  final String? signedIconUrl; // 署名付き一時URL（Edge Functionから取得）
   final String ownerId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -15,6 +16,7 @@ class GroupModel {
     this.description,
     this.category,
     this.iconUrl,
+    this.signedIconUrl,
     required this.ownerId,
     this.createdAt,
     this.updatedAt,
@@ -28,6 +30,7 @@ class GroupModel {
       description: json['description'] as String?,
       category: json['category'] as String?,
       iconUrl: json['icon_url'] as String?,
+      signedIconUrl: json['signed_icon_url'] as String?,
       ownerId: json['owner_id'] as String,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -59,6 +62,7 @@ class GroupModel {
     String? description,
     String? category,
     String? iconUrl,
+    String? signedIconUrl,
     String? ownerId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -69,6 +73,7 @@ class GroupModel {
       description: description ?? this.description,
       category: category ?? this.category,
       iconUrl: iconUrl ?? this.iconUrl,
+      signedIconUrl: signedIconUrl ?? this.signedIconUrl,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

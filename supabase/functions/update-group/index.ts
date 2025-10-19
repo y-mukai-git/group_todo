@@ -25,6 +25,7 @@ interface UpdateGroupResponse {
     name: string
     description: string | null
     icon_url: string | null
+    signed_icon_url: string | null
     owner_id: string
     category: string | null
   }
@@ -64,8 +65,10 @@ serve(async (req) => {
 
         // 画像形式判定（JPEG or PNG）
         let fileExtension = 'jpg'
+        let contentType = 'image/jpeg' // 正しいMIMEタイプ
         if (image_data.startsWith('data:image/png')) {
           fileExtension = 'png'
+          contentType = 'image/png'
         }
 
         // Storageにアップロード
@@ -74,7 +77,7 @@ serve(async (req) => {
           .storage
           .from('group-icons')
           .upload(filePath, imageBuffer, {
-            contentType: `image/${fileExtension}`,
+            contentType: contentType,
             upsert: true
           })
 
@@ -154,6 +157,24 @@ serve(async (req) => {
       )
     }
 
+    // 署名付きURL生成（icon_urlが存在する場合）
+    let signedIconUrl: string | null = null
+    if (updatedGroup.icon_url) {
+      try {
+        const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+          .storage
+          .from('group-icons')
+          .createSignedUrl(updatedGroup.icon_url, 3600) // 有効期限1時間
+
+        if (!signedUrlError && signedUrlData?.signedUrl) {
+          signedIconUrl = signedUrlData.signedUrl
+        }
+      } catch (error) {
+        console.error('Failed to create signed URL:', error)
+        // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+      }
+    }
+
     const response: UpdateGroupResponse = {
       success: true,
       group: {
@@ -161,6 +182,7 @@ serve(async (req) => {
         name: updatedGroup.name,
         description: updatedGroup.description,
         icon_url: updatedGroup.icon_url,
+        signed_icon_url: signedIconUrl,
         owner_id: updatedGroup.owner_id,
         category: updatedGroup.category
       }

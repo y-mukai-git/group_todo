@@ -13,6 +13,7 @@ interface CreateGroupRequest {
   user_id: string
   name: string
   description?: string
+  category?: string
   image_data?: string // base64エンコードされた画像データ（オプション）
 }
 
@@ -22,7 +23,9 @@ interface CreateGroupResponse {
     id: string
     name: string
     description: string | null
+    category: string | null
     icon_url: string | null
+    signed_icon_url: string | null
     owner_id: string
     created_at: string
   }
@@ -40,7 +43,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { user_id, name, description, image_data }: CreateGroupRequest = await req.json()
+    const { user_id, name, description, category, image_data }: CreateGroupRequest = await req.json()
 
     if (!user_id || !name) {
       return new Response(
@@ -62,8 +65,10 @@ serve(async (req) => {
 
         // 画像形式判定（JPEG or PNG）
         let fileExtension = 'jpg'
+        let contentType = 'image/jpeg' // 正しいMIMEタイプ
         if (image_data.startsWith('data:image/png')) {
           fileExtension = 'png'
+          contentType = 'image/png'
         }
 
         // グループID生成（アップロード前に必要）
@@ -75,7 +80,7 @@ serve(async (req) => {
           .storage
           .from('group-icons')
           .upload(filePath, imageBuffer, {
-            contentType: `image/${fileExtension}`,
+            contentType: contentType,
             upsert: true
           })
 
@@ -111,12 +116,13 @@ serve(async (req) => {
       .insert({
         name: name,
         description: description || null,
+        category: category || null,
         icon_url: uploadedIconUrl,
         owner_id: user_id,
         created_at: now,
         updated_at: now
       })
-      .select('id, name, description, icon_url, owner_id, created_at')
+      .select('id, name, description, category, icon_url, owner_id, created_at')
       .single()
 
     if (groupError || !newGroup) {
@@ -155,13 +161,33 @@ serve(async (req) => {
       )
     }
 
+    // 署名付きURL生成（icon_urlが存在する場合）
+    let signedIconUrl: string | null = null
+    if (newGroup.icon_url) {
+      try {
+        const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+          .storage
+          .from('group-icons')
+          .createSignedUrl(newGroup.icon_url, 3600) // 有効期限1時間
+
+        if (!signedUrlError && signedUrlData?.signedUrl) {
+          signedIconUrl = signedUrlData.signedUrl
+        }
+      } catch (error) {
+        console.error('Failed to create signed URL:', error)
+        // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+      }
+    }
+
     const response: CreateGroupResponse = {
       success: true,
       group: {
         id: newGroup.id,
         name: newGroup.name,
         description: newGroup.description,
+        category: newGroup.category,
         icon_url: newGroup.icon_url,
+        signed_icon_url: signedIconUrl,
         owner_id: newGroup.owner_id,
         created_at: newGroup.created_at
       }

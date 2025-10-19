@@ -369,7 +369,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   /// キャッシュからグループデータ取得
-  void _updateGroupData() {
+  Future<void> _updateGroupData() async {
     debugPrint(
       '[GroupDetailScreen] 🔍 _updateGroupData開始: groupId=${widget.group.id}',
     );
@@ -397,9 +397,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       }).toList();
       debugPrint('[GroupDetailScreen] 🔍 メンバー取得結果: ${members.length}人');
     } else {
-      debugPrint('[GroupDetailScreen] ⚠️ メンバー情報取得失敗');
-      // フォールバックとして現在のユーザーのみ表示
-      members = [widget.user];
+      debugPrint('[GroupDetailScreen] ❌ メンバー情報取得失敗');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'メンバー情報取得エラー',
+        errorMessage: 'キャッシュからのメンバー情報取得に失敗しました',
+        stackTrace: StackTrace.current.toString(),
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: 'メンバー情報の取得に失敗しました',
+        );
+      }
+      return; // 処理停止
     }
 
     if (mounted) {
@@ -558,6 +571,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         name: result['name'] as String,
         description: result['description'] as String?,
         category: result['category'] as String?,
+        imageData: result['image_data'] as String?,
       );
     }
   }
@@ -567,6 +581,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     required String name,
     String? description,
     String? category,
+    String? imageData,
   }) async {
     try {
       // DataCacheService経由でDB更新+キャッシュ更新
@@ -576,6 +591,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         groupName: name,
         description: description,
         category: category,
+        imageData: imageData,
       );
 
       if (!mounted) return;

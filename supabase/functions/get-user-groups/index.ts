@@ -17,7 +17,9 @@ interface GroupWithStats {
   id: string
   name: string
   description: string | null
+  category: string | null
   icon_url: string | null
+  signed_icon_url: string | null
   owner_id: string
   member_count: number
   incomplete_todo_count: number
@@ -64,6 +66,7 @@ serve(async (req) => {
           id,
           name,
           description,
+          category,
           icon_url,
           owner_id
         )
@@ -101,11 +104,31 @@ serve(async (req) => {
         .eq('group_id', group.id)
         .eq('is_completed', false)
 
+      // 署名付きURL生成（icon_urlが存在する場合）
+      let signedIconUrl: string | null = null
+      if (group.icon_url) {
+        try {
+          const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+            .storage
+            .from('group-icons')
+            .createSignedUrl(group.icon_url, 3600) // 有効期限1時間
+
+          if (!signedUrlError && signedUrlData?.signedUrl) {
+            signedIconUrl = signedUrlData.signedUrl
+          }
+        } catch (error) {
+          console.error('Failed to create signed URL:', error)
+          // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+        }
+      }
+
       groupsWithStats.push({
         id: group.id,
         name: group.name,
         description: group.description,
+        category: group.category,
         icon_url: group.icon_url,
+        signed_icon_url: signedIconUrl,
         owner_id: group.owner_id,
         member_count: memberCount || 0,
         incomplete_todo_count: todoCount || 0,

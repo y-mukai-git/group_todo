@@ -66,12 +66,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => GroupMembersBottomSheet(
-        members: _groupMembers,
-        currentUserId: widget.user.id,
-        groupOwnerId: widget.group.ownerId,
-        onRemoveMember: _removeMember,
-        onInviteMember: _inviteMember,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return GroupMembersBottomSheet(
+            members: _groupMembers,
+            currentUserId: widget.user.id,
+            groupOwnerId: widget.group.ownerId,
+            onRemoveMember: _removeMember,
+            onInviteMember: (displayId) async {
+              await _inviteMember(displayId);
+              // メンバー招待成功後、ボトムシートを再描画
+              setModalState(() {});
+            },
+          );
+        },
       ),
     );
   }

@@ -481,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 8),
         // 横スクロール可能なグループタブバー
         Container(
-          height: 48,
+          height: 54,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerLow,
             border: Border(
@@ -516,10 +516,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Container(
                       width: 130, // 1画面約2.5グループ表示・省略表示減らす（調整）
-                      height: 48,
+                      height: 54,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
-                        vertical: 8,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
@@ -548,34 +548,44 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                group.name,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimaryContainer
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface,
-                                    ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
+                          // グループ名
+                          Text(
+                            group.name,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          // TODO件数
+                          Text(
+                            '${_todos.where((t) => t.groupId == group.id).length}件',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: isSelected
+                                      ? Theme.of(context)
+                                            .colorScheme
+                                            .onPrimaryContainer
+                                            .withOpacity(0.7)
+                                      : Theme.of(context).colorScheme.onSurface
+                                            .withOpacity(0.6),
+                                ),
                           ),
                           // アクティブタブの下部インジケーター
                           if (isSelected)
                             Container(
-                              height: 3,
-                              margin: const EdgeInsets.only(top: 4),
+                              height: 1.5,
+                              margin: EdgeInsets.zero,
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.primary,
                                 borderRadius: BorderRadius.circular(2),

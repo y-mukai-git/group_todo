@@ -8,6 +8,7 @@ class GroupMembersBottomSheet extends StatefulWidget {
   final String groupOwnerId; // グループオーナーID
   final Function(String userId) onRemoveMember;
   final Function(String userId) onInviteMember;
+  final VoidCallback? onMembersUpdated; // メンバー更新通知
 
   const GroupMembersBottomSheet({
     super.key,
@@ -16,6 +17,7 @@ class GroupMembersBottomSheet extends StatefulWidget {
     required this.groupOwnerId,
     required this.onRemoveMember,
     required this.onInviteMember,
+    this.onMembersUpdated,
   });
 
   @override
@@ -25,6 +27,24 @@ class GroupMembersBottomSheet extends StatefulWidget {
 
 class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
   final TextEditingController _userIdController = TextEditingController();
+  late List<UserModel> _members;
+
+  @override
+  void initState() {
+    super.initState();
+    _members = widget.members;
+  }
+
+  @override
+  void didUpdateWidget(GroupMembersBottomSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 親から渡されるmembersが更新されたら反映
+    if (widget.members != oldWidget.members) {
+      setState(() {
+        _members = widget.members;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -134,9 +154,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: widget.members.length,
+                itemCount: _members.length,
                 itemBuilder: (context, index) {
-                  final member = widget.members[index];
+                  final member = _members[index];
                   final isCurrentUser = member.id == widget.currentUserId;
                   final isOwner = member.id == widget.groupOwnerId;
                   final canDelete =
@@ -266,7 +286,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
-                              vertical: 20,
+                              vertical: 12,
                             ),
                           ),
                           child: const Text('招待'),

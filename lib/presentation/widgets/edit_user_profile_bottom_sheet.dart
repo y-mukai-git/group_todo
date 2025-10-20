@@ -285,7 +285,7 @@ class _EditUserProfileBottomSheetState
               border: OutlineInputBorder(),
             ),
             enabled: !_isLoading,
-            maxLength: 20,
+            maxLength: 15,
           ),
           const SizedBox(height: 24),
 

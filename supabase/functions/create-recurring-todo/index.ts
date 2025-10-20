@@ -23,13 +23,7 @@ interface CreateRecurringTodoRequest {
 
 interface CreateRecurringTodoResponse {
   success: boolean
-  recurring_todo?: {
-    id: string
-    group_id: string
-    title: string
-    recurrence_pattern: string
-    next_generation_at: string
-  }
+  recurring_todo?: any  // 全フィールドを返すため、型を柔軟に
   error?: string
 }
 
@@ -197,13 +191,7 @@ serve(async (req) => {
 
     const response: CreateRecurringTodoResponse = {
       success: true,
-      recurring_todo: {
-        id: newRecurringTodo.id,
-        group_id: newRecurringTodo.group_id,
-        title: newRecurringTodo.title,
-        recurrence_pattern: newRecurringTodo.recurrence_pattern,
-        next_generation_at: newRecurringTodo.next_generation_at
-      }
+      recurring_todo: newRecurringTodo  // 全フィールドを返す
     }
 
     return new Response(

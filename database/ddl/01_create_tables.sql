@@ -589,37 +589,185 @@ BEGIN
 END $$;
 
 -- ===================================
+-- PostgreSQL関数定義（定期TODO自動生成）
+-- ===================================
+
+-- 定期TODO自動生成関数
+CREATE OR REPLACE FUNCTION execute_recurring_todos()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  recurring_todo_record RECORD;
+  new_todo_id UUID;
+  next_generation TIMESTAMPTZ;
+  now_time TIMESTAMPTZ;
+BEGIN
+  -- 現在時刻取得（UTC）
+  now_time := NOW();
+
+  -- 該当するrecurring_todosを取得してループ処理
+  FOR recurring_todo_record IN
+    SELECT *
+    FROM recurring_todos
+    WHERE is_active = true
+      AND next_generation_at <= now_time
+  LOOP
+    BEGIN
+      -- 1. TODOを作成
+      INSERT INTO todos (
+        group_id,
+        title,
+        description,
+        category,
+        created_by,
+        is_completed,
+        created_at,
+        updated_at
+      ) VALUES (
+        recurring_todo_record.group_id,
+        recurring_todo_record.title,
+        recurring_todo_record.description,
+        recurring_todo_record.category,
+        recurring_todo_record.created_by,
+        false,
+        now_time,
+        now_time
+      )
+      RETURNING id INTO new_todo_id;
+
+      -- 2. 担当者を割り当て
+      INSERT INTO todo_assignments (todo_id, user_id, assigned_at)
+      SELECT new_todo_id, user_id, now_time
+      FROM recurring_todo_assignments
+      WHERE recurring_todo_id = recurring_todo_record.id;
+
+      -- 3. 次回生成日時を計算
+      next_generation := calculate_next_generation(
+        recurring_todo_record.recurrence_pattern,
+        recurring_todo_record.recurrence_days,
+        recurring_todo_record.generation_time,
+        now_time
+      );
+
+      -- 4. recurring_todosのnext_generation_atを更新
+      UPDATE recurring_todos
+      SET next_generation_at = next_generation,
+          updated_at = now_time
+      WHERE id = recurring_todo_record.id;
+
+      RAISE NOTICE 'Successfully processed recurring_todo: %', recurring_todo_record.id;
+
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- エラーログ記録
+        INSERT INTO error_logs (
+          user_id,
+          error_type,
+          error_message,
+          stack_trace,
+          screen_name,
+          created_at
+        ) VALUES (
+          NULL,
+          'recurring_todo_generation_error',
+          'TODO creation failed: ' || SQLERRM,
+          'recurring_todo_id: ' || recurring_todo_record.id,
+          'Cron Job: execute_recurring_todos',
+          now_time
+        );
+
+        RAISE NOTICE 'Failed to process recurring_todo %: %', recurring_todo_record.id, SQLERRM;
+    END;
+  END LOOP;
+END;
+$$;
+
+-- 次回生成日時計算関数
+CREATE OR REPLACE FUNCTION calculate_next_generation(
+  pattern TEXT,
+  days INTEGER[],
+  generation_time TIME,
+  base_time TIMESTAMPTZ
+)
+RETURNS TIMESTAMPTZ
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  next_time TIMESTAMPTZ;
+  current_day INTEGER;
+  target_day INTEGER;
+  days_to_add INTEGER;
+  i INTEGER;
+BEGIN
+  -- 基準時刻を設定
+  next_time := base_time;
+
+  CASE pattern
+    -- 毎日：翌日の指定時刻
+    WHEN 'daily' THEN
+      next_time := (base_time + INTERVAL '1 day')::DATE + generation_time;
+
+    -- 毎週：次の該当曜日の指定時刻
+    WHEN 'weekly' THEN
+      IF days IS NULL OR array_length(days, 1) = 0 THEN
+        RAISE EXCEPTION 'Weekly pattern requires recurrence_days';
+      END IF;
+
+      current_day := EXTRACT(DOW FROM base_time)::INTEGER;
+      days_to_add := 7; -- デフォルトは1週間後
+
+      -- 次の該当曜日を探す
+      FOR i IN 1..7 LOOP
+        target_day := (current_day + i) % 7;
+        IF target_day = ANY(days) THEN
+          days_to_add := i;
+          EXIT;
+        END IF;
+      END LOOP;
+
+      next_time := (base_time + (days_to_add || ' days')::INTERVAL)::DATE + generation_time;
+
+    -- 毎月：次の該当日の指定時刻
+    WHEN 'monthly' THEN
+      IF days IS NULL OR array_length(days, 1) = 0 THEN
+        RAISE EXCEPTION 'Monthly pattern requires recurrence_days';
+      END IF;
+
+      target_day := days[1];
+
+      IF target_day = -1 THEN
+        -- 月末の場合
+        next_time := (DATE_TRUNC('month', base_time) + INTERVAL '1 month' - INTERVAL '1 day')::DATE + generation_time;
+      ELSE
+        -- 特定の日付の場合
+        BEGIN
+          next_time := (DATE_TRUNC('month', base_time) + INTERVAL '1 month')::DATE + (target_day - 1 || ' days')::INTERVAL + generation_time;
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- 日付が存在しない場合（例：2月30日）は月末に調整
+            next_time := (DATE_TRUNC('month', base_time) + INTERVAL '2 month' - INTERVAL '1 day')::DATE + generation_time;
+        END;
+      END IF;
+
+    ELSE
+      RAISE EXCEPTION 'Unknown recurrence pattern: %', pattern;
+  END CASE;
+
+  RETURN next_time;
+END;
+$$;
+
+-- ===================================
 -- Cron Jobs設定
 -- ===================================
 
 -- pg_cron エクステンション有効化
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 
--- 定期TODO自動生成Cron Job
--- 実行前に以下のプレースホルダーを環境固有の値に置換してください:
---   {{SUPABASE_PROJECT_URL}} → 環境のSupabase URL (例: https://xxxxx.supabase.co)
---   {{SERVICE_ROLE_KEY}} → 環境のService Role Key
-
+-- 定期TODO自動生成Cron Job（毎分実行）
 SELECT cron.schedule(
   'execute-recurring-todos',
   '*/1 * * * *',
-  $$
-  SELECT net.http_post(
-    url := '{{SUPABASE_PROJECT_URL}}/functions/v1/execute-recurring-todos',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer {{SERVICE_ROLE_KEY}}'
-    )
-  );
-  $$
+  'SELECT execute_recurring_todos();'
 );
-
--- Cron Job設定完了通知
-DO $$
-BEGIN
-  RAISE NOTICE '========================================';
-  RAISE NOTICE 'Cron Jobs Configured';
-  RAISE NOTICE '  - execute-recurring-todos (*/1 * * * *)';
-  RAISE NOTICE '注意: プレースホルダー ({{SUPABASE_PROJECT_URL}}, {{SERVICE_ROLE_KEY}}) を環境固有の値に置換してください';
-  RAISE NOTICE '========================================';
-END $$;

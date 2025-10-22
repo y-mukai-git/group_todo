@@ -25,6 +25,7 @@ interface GroupWithStats {
   incomplete_todo_count: number
   role: string
   joined_at: string
+  display_order: number
 }
 
 interface GetUserGroupsResponse {
@@ -62,6 +63,7 @@ serve(async (req) => {
       .select(`
         role,
         joined_at,
+        display_order,
         groups:group_id (
           id,
           name,
@@ -72,6 +74,7 @@ serve(async (req) => {
         )
       `)
       .eq('user_id', user_id)
+      .order('display_order', { ascending: true })
 
     if (memberError) {
       return new Response(
@@ -133,7 +136,8 @@ serve(async (req) => {
         member_count: memberCount || 0,
         incomplete_todo_count: todoCount || 0,
         role: member.role,
-        joined_at: member.joined_at
+        joined_at: member.joined_at,
+        display_order: member.display_order || 0
       })
     }
 

@@ -20,6 +20,9 @@ class GroupsScreen extends StatefulWidget {
 class _GroupsScreenState extends State<GroupsScreen> {
   final DataCacheService _cacheService = DataCacheService();
   List<GroupModel> _groups = [];
+  List<GroupModel> _reorderingGroups = []; // 並び替え中の一時リスト
+  bool _isReorderMode = false; // 並び替えモードフラグ
+  bool _isCompleting = false; // 完了処理中フラグ
 
   @override
   void initState() {
@@ -39,16 +42,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   /// キャッシュからグループ取得
   void _updateGroups() {
+    // DataCacheService.groupsで既にdisplayOrder順にソート済み
     final groups = List<GroupModel>.from(_cacheService.groups);
-
-    // 個人用グループを最上部に表示
-    groups.sort((a, b) {
-      if (a.name == '個人TODO') return -1;
-      if (b.name == '個人TODO') return 1;
-      return (a.createdAt ?? DateTime.now()).compareTo(
-        b.createdAt ?? DateTime.now(),
-      );
-    });
 
     if (mounted) {
       setState(() {
@@ -152,10 +147,122 @@ class _GroupsScreenState extends State<GroupsScreen> {
     );
   }
 
+  /// 並び替えモード開始
+  void _startReorderMode() {
+    setState(() {
+      _isReorderMode = true;
+      _reorderingGroups = List.from(_groups); // 現在の順序をコピー
+    });
+  }
+
+  /// 並び替えキャンセル
+  void _cancelReorder() {
+    setState(() {
+      _isReorderMode = false;
+      _reorderingGroups = [];
+    });
+  }
+
+  /// 並び替え完了（DB保存）
+  Future<void> _completeReorder() async {
+    // 多重実行防止
+    if (_isCompleting) return;
+
+    setState(() {
+      _isCompleting = true;
+    });
+
+    try {
+      // DB保存
+      await _cacheService.updateGroupOrder(
+        userId: widget.user.id,
+        orderedGroups: _reorderingGroups,
+      );
+
+      setState(() {
+        _isReorderMode = false;
+        _reorderingGroups = [];
+        _isCompleting = false;
+      });
+
+      _showSuccessSnackBar('グループ順を変更しました');
+    } catch (e, stackTrace) {
+      debugPrint('[GroupsScreen] ❌ 並び順保存エラー: $e');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '並び順保存エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループ一覧画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '並び順の保存に失敗しました',
+      );
+
+      // エラー時は変更をキャンセル
+      setState(() {
+        _isCompleting = false;
+      });
+      _cancelReorder();
+    }
+  }
+
+  /// 並び替え実行時のコールバック
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = _reorderingGroups.removeAt(oldIndex);
+      _reorderingGroups.insert(newIndex, item);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('グループ')),
+      appBar: AppBar(
+        title: Text(_isReorderMode ? '並び替え' : 'グループ'),
+        leadingWidth: _isReorderMode ? 100 : null,
+        leading: _isReorderMode
+            ? TextButton(
+                onPressed: _cancelReorder,
+                child: const Text(
+                  'キャンセル',
+                  style: TextStyle(color: Colors.white),
+                ),
+              )
+            : null,
+        actions: [
+          if (_isReorderMode)
+            TextButton(
+              onPressed: _isCompleting ? null : _completeReorder,
+              child: Text(
+                '完了',
+                style: TextStyle(
+                  color: _isCompleting
+                      ? Colors.white.withOpacity(0.5)
+                      : Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          else
+            TextButton.icon(
+              onPressed: _groups.isEmpty ? null : _startReorderMode,
+              icon: const Icon(Icons.swap_vert),
+              label: const Text('並び替え'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+            ),
+        ],
+      ),
       body: _groups.isEmpty
           ? Center(
               child: Column(
@@ -180,44 +287,49 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ],
               ),
             )
+          : _isReorderMode
+          ? _buildReorderableList()
           : RefreshIndicator(
               onRefresh: _refreshData,
               child: ListView(children: _buildGroupedList()),
             ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'groups_fab',
-        onPressed: _showCreateGroupDialog,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _isReorderMode
+          ? null
+          : FloatingActionButton(
+              heroTag: 'groups_fab',
+              onPressed: _showCreateGroupDialog,
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
   /// グループ分類リストを構築（個人・グループセクション）
   List<Widget> _buildGroupedList() {
-    // 個人グループ（name == '個人TODO'）とグループグループに分類
-    final personalGroups = _groups.where((g) => g.name == '個人TODO').toList();
-    final teamGroups = _groups.where((g) => g.name != '個人TODO').toList();
-
     final widgets = <Widget>[];
 
     // 上部余白
     widgets.add(const SizedBox(height: 12));
 
-    // 個人セクション
-    if (personalGroups.isNotEmpty) {
-      for (final group in personalGroups) {
-        widgets.add(_buildGroupItem(group, true));
-      }
-    }
-
-    // グループセクション
-    if (teamGroups.isNotEmpty) {
-      for (final group in teamGroups) {
-        widgets.add(_buildGroupItem(group, false));
-      }
+    // 全グループを表示（displayOrder順）
+    for (final group in _groups) {
+      widgets.add(_buildGroupItem(group));
     }
 
     return widgets;
+  }
+
+  /// 並び替えモード用リスト構築
+  Widget _buildReorderableList() {
+    return ReorderableListView(
+      onReorder: _onReorder,
+      buildDefaultDragHandles: false,
+      padding: const EdgeInsets.only(top: 12, bottom: 80),
+      children: _reorderingGroups.asMap().entries.map((entry) {
+        final index = entry.key;
+        final group = entry.value;
+        return _buildReorderableGroupItem(group, index);
+      }).toList(),
+    );
   }
 
   /// カテゴリ情報取得
@@ -236,7 +348,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
   }
 
   /// グループアイテムウィジェット
-  Widget _buildGroupItem(GroupModel group, bool isPersonalGroup) {
+  Widget _buildGroupItem(GroupModel group) {
+    final isPersonalGroup = group.name == '個人TODO';
     // カテゴリ情報取得
     final categoryInfo = _getCategoryInfo(group.category);
 
@@ -476,6 +589,177 @@ class _GroupsScreenState extends State<GroupsScreen> {
           color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
         ),
       ],
+    );
+  }
+
+  /// 並び替えモード用グループアイテムウィジェット
+  Widget _buildReorderableGroupItem(GroupModel group, int index) {
+    final isPersonalGroup = group.name == '個人TODO';
+
+    // カテゴリ情報取得
+    final categoryInfo = _getCategoryInfo(group.category);
+
+    // メンバー数取得
+    int memberCount = 1; // デフォルト1人
+    final membersData = _cacheService.getGroupMembers(group.id);
+    if (membersData != null && membersData['success'] == true) {
+      final membersList = membersData['members'] as List<dynamic>;
+      memberCount = membersList.length;
+    }
+
+    // TODO件数取得（未完了のみ）
+    final todos = _cacheService.getTodosByGroupId(group.id);
+    final incompleteTodoCount = todos.where((t) => !t.isCompleted).length;
+
+    return Container(
+      key: Key(group.id), // ReorderableListViewで必須
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                // ドラッグハンドル
+                ReorderableDragStartListener(
+                  index: index,
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // アイコン
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isPersonalGroup
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    image: group.signedIconUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(group.signedIconUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: group.signedIconUrl == null
+                      ? Icon(
+                          isPersonalGroup ? Icons.person : Icons.group,
+                          color: isPersonalGroup
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.secondary,
+                          size: 24,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                // グループ情報
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              group.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          // カテゴリ表示
+                          if (group.category != null &&
+                              categoryInfo != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.tertiaryContainer,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    categoryInfo['icon'] as IconData,
+                                    size: 14,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onTertiaryContainer,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    categoryInfo['name'] as String,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onTertiaryContainer,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$memberCount人',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$incompleteTodoCount件のTODO',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+        ],
+      ),
     );
   }
 }

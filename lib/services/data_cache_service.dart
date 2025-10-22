@@ -31,7 +31,13 @@ class DataCacheService extends ChangeNotifier {
 
   // ゲッター
   List<TodoModel> get todos => _todos;
-  List<GroupModel> get groups => _groups;
+  List<GroupModel> get groups {
+    // displayOrder順にソートして返す
+    final sortedGroups = List<GroupModel>.from(_groups);
+    sortedGroups.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+    return sortedGroups;
+  }
+
   UserModel? get currentUser => _currentUser;
   String? get signedAvatarUrl => _signedAvatarUrl;
 
@@ -366,6 +372,46 @@ class DataCacheService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('[DataCacheService] ❌ グループメンバーキャッシュ更新エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// グループ並び順更新（DB + キャッシュ）
+  Future<void> updateGroupOrder({
+    required String userId,
+    required List<GroupModel> orderedGroups,
+  }) async {
+    try {
+      // 1. DB更新用データ準備
+      final groupOrders = orderedGroups
+          .asMap()
+          .entries
+          .map(
+            (entry) => {
+              'group_id': entry.value.id,
+              'display_order': entry.key + 1, // 1から開始
+            },
+          )
+          .toList();
+
+      // 2. DB更新
+      await _groupService.updateGroupOrder(
+        userId: userId,
+        groupOrders: groupOrders,
+      );
+
+      // 3. DB更新成功 → キャッシュ更新
+      for (var i = 0; i < orderedGroups.length; i++) {
+        final index = _groups.indexWhere((g) => g.id == orderedGroups[i].id);
+        if (index != -1) {
+          _groups[index] = _groups[index].copyWith(displayOrder: i + 1);
+        }
+      }
+
+      debugPrint('[DataCacheService] ✅ グループ並び順更新完了');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ グループ並び順更新エラー: $e');
       rethrow;
     }
   }

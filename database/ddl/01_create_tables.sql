@@ -98,6 +98,7 @@ CREATE TABLE group_members (
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('owner', 'member')),
+  display_order INTEGER NOT NULL DEFAULT 0, -- ユーザーごとのグループ表示順序（昇順）
 
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -108,9 +109,11 @@ CREATE TABLE group_members (
 CREATE INDEX idx_group_members_group_id ON group_members(group_id);
 CREATE INDEX idx_group_members_user_id ON group_members(user_id);
 CREATE INDEX idx_group_members_role ON group_members(role);
+CREATE INDEX idx_group_members_display_order ON group_members(user_id, display_order);
 
 COMMENT ON TABLE group_members IS 'グループメンバー管理テーブル';
 COMMENT ON COLUMN group_members.role IS 'メンバーのロール（owner: オーナー, member: メンバー）';
+COMMENT ON COLUMN group_members.display_order IS 'ユーザーごとのグループ表示順序（昇順）';
 
 -- ===================================
 -- 4. Todos (TODO情報 - 個人TODO・グループTODO統合管理)

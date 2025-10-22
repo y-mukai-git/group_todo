@@ -189,4 +189,22 @@ class GroupService {
       rethrow;
     }
   }
+
+  /// グループ並び順更新
+  Future<void> updateGroupOrder({
+    required String userId,
+    required List<Map<String, dynamic>> groupOrders,
+  }) async {
+    try {
+      await _apiClient.callFunction(
+        functionName: 'update-group-order',
+        body: {'user_id': userId, 'group_orders': groupOrders},
+      );
+
+      debugPrint('[GroupService] ✅ グループ並び順更新成功');
+    } catch (e) {
+      debugPrint('[GroupService] ❌ グループ並び順更新エラー: $e');
+      rethrow;
+    }
+  }
 }

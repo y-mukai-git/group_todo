@@ -7,6 +7,7 @@ class GroupModel {
   final String? iconUrl; // グループアイコン画像URL（Supabase Storage）
   final String? signedIconUrl; // 署名付き一時URL（Edge Functionから取得）
   final String ownerId;
+  final int displayOrder; // ユーザーごとの表示順序
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -18,6 +19,7 @@ class GroupModel {
     this.iconUrl,
     this.signedIconUrl,
     required this.ownerId,
+    this.displayOrder = 0,
     this.createdAt,
     this.updatedAt,
   });
@@ -32,6 +34,7 @@ class GroupModel {
       iconUrl: json['icon_url'] as String?,
       signedIconUrl: json['signed_icon_url'] as String?,
       ownerId: json['owner_id'] as String,
+      displayOrder: (json['display_order'] as num?)?.toInt() ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -50,6 +53,7 @@ class GroupModel {
       'category': category,
       'icon_url': iconUrl,
       'owner_id': ownerId,
+      'display_order': displayOrder,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -64,6 +68,7 @@ class GroupModel {
     String? iconUrl,
     String? signedIconUrl,
     String? ownerId,
+    int? displayOrder,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -75,6 +80,7 @@ class GroupModel {
       iconUrl: iconUrl ?? this.iconUrl,
       signedIconUrl: signedIconUrl ?? this.signedIconUrl,
       ownerId: ownerId ?? this.ownerId,
+      displayOrder: displayOrder ?? this.displayOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

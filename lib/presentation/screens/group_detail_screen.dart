@@ -88,7 +88,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Future<void> _removeMember(String userId) async {
     try {
       // TODO: グループメンバー削除APIが実装されたら修正
-      debugPrint('[GroupDetailScreen] メンバー削除: userId=$userId');
 
       setState(() {
         _groupMembers.removeWhere((member) => member.id == userId);
@@ -119,8 +118,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   /// メンバー招待（display_id で招待）
   Future<void> _inviteMember(String displayId) async {
     try {
-      debugPrint('[GroupDetailScreen] メンバー招待: displayId=$displayId');
-
       // Supabase Edge Function (add-group-member) を呼び出し
       final config = EnvironmentConfig.instance;
       final url = Uri.parse(
@@ -378,22 +375,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   /// キャッシュからグループデータ取得
   Future<void> _updateGroupData() async {
-    debugPrint(
-      '[GroupDetailScreen] 🔍 _updateGroupData開始: groupId=${widget.group.id}',
-    );
-
     // キャッシュからグループ情報取得
     final group = _cacheService.getGroupById(widget.group.id);
     if (group != null) {
       _currentGroup = group;
-      debugPrint('[GroupDetailScreen] 🔍 グループ情報取得成功: ${group.name}');
     } else {
       debugPrint('[GroupDetailScreen] ⚠️ グループ情報取得失敗');
     }
 
     // キャッシュからTODO取得
     final todos = _cacheService.getTodosByGroupId(widget.group.id);
-    debugPrint('[GroupDetailScreen] 🔍 TODO取得結果: ${todos.length}件');
 
     // キャッシュからメンバー情報取得
     final membersData = _cacheService.getGroupMembers(widget.group.id);
@@ -403,7 +394,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       members = membersList.map((memberData) {
         return UserModel.fromJson(memberData as Map<String, dynamic>);
       }).toList();
-      debugPrint('[GroupDetailScreen] 🔍 メンバー取得結果: ${members.length}人');
     } else {
       debugPrint('[GroupDetailScreen] ❌ メンバー情報取得失敗');
       final errorLog = await ErrorLogService().logError(

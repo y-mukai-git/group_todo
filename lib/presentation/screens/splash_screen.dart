@@ -58,7 +58,6 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (savedUserId != null) {
         // 既存ユーザー：APIから最新のユーザー情報を取得
-        debugPrint('[SplashScreen] ✅ 既存ユーザー検出: $savedUserId');
 
         // APIから最新のユーザー情報と署名付きURLを取得
         final userResponse = await UserService().getUserByDevice();
@@ -83,12 +82,10 @@ class _SplashScreenState extends State<SplashScreen>
           user,
           signedAvatarUrl: signedAvatarUrl,
         );
-        debugPrint('[SplashScreen] ✅ キャッシュ初期化完了');
 
         // 未送信エラーログの再送信
         debugPrint('[SplashScreen] 📤 未送信エラーログ再送信開始');
         await ErrorLogService().sendPendingErrors();
-        debugPrint('[SplashScreen] ✅ 未送信エラーログ再送信完了');
 
         if (!mounted) return;
         Navigator.pushReplacement(

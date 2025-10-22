@@ -33,12 +33,10 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
 
     try {
       final newUser = await _userService.createUser();
-      debugPrint('[DataTransferScreen] 新規ユーザー作成: ${newUser.displayName}');
 
       // SharedPreferencesにユーザー情報を保存
       await StorageHelper.saveUserId(newUser.id);
       await StorageHelper.saveDisplayName(newUser.displayName);
-      debugPrint('[DataTransferScreen] ✅ ユーザー情報をローカル保存完了');
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -90,12 +88,10 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         userId: userId,
         password: password,
       );
-      debugPrint('[DataTransferScreen] データ引き継ぎ成功: ${user.displayName}');
 
       // SharedPreferencesにユーザー情報を保存
       await StorageHelper.saveUserId(user.id);
       await StorageHelper.saveDisplayName(user.displayName);
-      debugPrint('[DataTransferScreen] ✅ 引き継ぎユーザー情報をローカル保存完了');
 
       if (!mounted) return;
       Navigator.pushReplacement(

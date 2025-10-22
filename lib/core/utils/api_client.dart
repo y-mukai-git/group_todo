@@ -23,9 +23,6 @@ class ApiClient {
         '${_config.supabaseUrl}/functions/v1/$functionName',
       );
 
-      debugPrint('[ApiClient] 🌐 API呼び出し: $functionName');
-      debugPrint('[ApiClient] 📤 リクエストボディ: ${jsonEncode(body)}');
-
       final response = await http
           .post(
             url,
@@ -36,9 +33,6 @@ class ApiClient {
             body: jsonEncode(body),
           )
           .timeout(timeout);
-
-      debugPrint('[ApiClient] 📥 レスポンスステータス: ${response.statusCode}');
-      debugPrint('[ApiClient] 📥 レスポンスボディ: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -80,8 +74,6 @@ class ApiClient {
       final uri = Uri.parse(
         '${_config.supabaseUrl}/rest/v1/$endpoint',
       ).replace(queryParameters: queryParameters);
-
-      debugPrint('[ApiClient] 🌐 GET: $endpoint');
 
       final response = await http
           .get(

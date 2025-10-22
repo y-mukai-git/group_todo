@@ -16,7 +16,6 @@ class DeviceIdHelper {
       final cachedDeviceId = prefs.getString(_deviceIdKey);
 
       if (cachedDeviceId != null && cachedDeviceId.isNotEmpty) {
-        debugPrint('[DeviceIdHelper] ✅ キャッシュからデバイスID取得: $cachedDeviceId');
         return cachedDeviceId;
       }
 
@@ -27,26 +26,21 @@ class DeviceIdHelper {
       if (kIsWeb) {
         // Web: UUIDを生成してキャッシュ
         deviceId = const Uuid().v4();
-        debugPrint('[DeviceIdHelper] 🌐 Web用UUID生成: $deviceId');
       } else if (Platform.isIOS) {
         // iOS: identifierForVendor
         final iosInfo = await deviceInfo.iosInfo;
         deviceId = iosInfo.identifierForVendor ?? const Uuid().v4();
-        debugPrint('[DeviceIdHelper] 🍎 iOS identifierForVendor: $deviceId');
       } else if (Platform.isAndroid) {
         // Android: androidId
         final androidInfo = await deviceInfo.androidInfo;
         deviceId = androidInfo.id;
-        debugPrint('[DeviceIdHelper] 🤖 Android ID: $deviceId');
       } else {
         // その他: UUID生成
         deviceId = const Uuid().v4();
-        debugPrint('[DeviceIdHelper] 📱 その他プラットフォーム UUID: $deviceId');
       }
 
       // キャッシュに保存
       await prefs.setString(_deviceIdKey, deviceId);
-      debugPrint('[DeviceIdHelper] 💾 デバイスIDをキャッシュに保存');
 
       return deviceId;
     } catch (e) {
@@ -69,7 +63,6 @@ class DeviceIdHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_deviceIdKey);
-      debugPrint('[DeviceIdHelper] 🗑️ デバイスIDキャッシュをクリア');
     } catch (e) {
       debugPrint('[DeviceIdHelper] ❌ デバイスIDクリアエラー: $e');
     }

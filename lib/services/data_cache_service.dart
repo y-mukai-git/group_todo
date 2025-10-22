@@ -74,7 +74,6 @@ class DataCacheService extends ChangeNotifier {
           requesterId: user.id,
         );
         _groupMembers[group.id] = membersResponse;
-        debugPrint('[DataCacheService] ✅ グループ ${group.id} のメンバー取得完了');
       }
 
       // 重複を除去（同じidのTODOは1つにする）
@@ -119,7 +118,6 @@ class DataCacheService extends ChangeNotifier {
         _todos[index] = _todos[index].copyWith(
           isCompleted: !_todos[index].isCompleted,
         );
-        debugPrint('[DataCacheService] ✅ TODO完了切り替え: id=$todoId');
         notifyListeners();
       }
     } catch (e) {
@@ -153,7 +151,6 @@ class DataCacheService extends ChangeNotifier {
 
       // 2. DB作成成功 → キャッシュに追加
       _todos.add(newTodo);
-      debugPrint('[DataCacheService] ✅ TODO作成: id=${newTodo.id}');
       notifyListeners();
 
       return newTodo;
@@ -187,7 +184,6 @@ class DataCacheService extends ChangeNotifier {
       final index = _todos.indexWhere((t) => t.id == todoId);
       if (index != -1) {
         _todos[index] = updatedTodo;
-        debugPrint('[DataCacheService] ✅ TODO更新: id=$todoId');
         notifyListeners();
       }
 
@@ -224,7 +220,6 @@ class DataCacheService extends ChangeNotifier {
       final index = _todos.indexWhere((t) => t.id == todoId);
       if (index != -1) {
         _todos[index] = updatedTodo;
-        debugPrint('[DataCacheService] ✅ TODO更新: id=$todoId');
         notifyListeners();
       }
 
@@ -247,7 +242,6 @@ class DataCacheService extends ChangeNotifier {
 
       // 2. DB削除成功 → キャッシュから削除
       _todos.removeWhere((t) => t.id == todoId);
-      debugPrint('[DataCacheService] ✅ TODO削除: id=$todoId');
       notifyListeners();
     } catch (e) {
       debugPrint('[DataCacheService] ❌ TODO削除エラー: $e');
@@ -277,7 +271,6 @@ class DataCacheService extends ChangeNotifier {
 
       // 2. DB作成成功 → キャッシュに追加
       _groups.add(newGroup);
-      debugPrint('[DataCacheService] ✅ グループ作成: id=${newGroup.id}');
 
       // 3. メンバー情報を取得してキャッシュに追加
       final membersResponse = await _groupService.getGroupMembers(
@@ -285,7 +278,6 @@ class DataCacheService extends ChangeNotifier {
         requesterId: userId,
       );
       _groupMembers[newGroup.id] = membersResponse;
-      debugPrint('[DataCacheService] ✅ グループ ${newGroup.id} のメンバー取得完了');
 
       notifyListeners();
 
@@ -320,7 +312,6 @@ class DataCacheService extends ChangeNotifier {
       final index = _groups.indexWhere((g) => g.id == groupId);
       if (index != -1) {
         _groups[index] = updatedGroup;
-        debugPrint('[DataCacheService] ✅ グループ更新: id=$groupId');
         notifyListeners();
       }
 
@@ -349,7 +340,6 @@ class DataCacheService extends ChangeNotifier {
       // 4. グループメンバー情報を削除
       _groupMembers.remove(groupId);
 
-      debugPrint('[DataCacheService] ✅ グループ削除: id=$groupId');
       notifyListeners();
     } catch (e) {
       debugPrint('[DataCacheService] ❌ グループ削除エラー: $e');
@@ -368,7 +358,6 @@ class DataCacheService extends ChangeNotifier {
         requesterId: requesterId,
       );
       _groupMembers[groupId] = membersResponse;
-      debugPrint('[DataCacheService] ✅ グループメンバーキャッシュ更新: id=$groupId');
       notifyListeners();
     } catch (e) {
       debugPrint('[DataCacheService] ❌ グループメンバーキャッシュ更新エラー: $e');
@@ -408,7 +397,6 @@ class DataCacheService extends ChangeNotifier {
         }
       }
 
-      debugPrint('[DataCacheService] ✅ グループ並び順更新完了');
       notifyListeners();
     } catch (e) {
       debugPrint('[DataCacheService] ❌ グループ並び順更新エラー: $e');
@@ -438,7 +426,6 @@ class DataCacheService extends ChangeNotifier {
       // 2. DB更新成功 → キャッシュ更新
       _currentUser = updatedUser;
       _signedAvatarUrl = signedAvatarUrl;
-      debugPrint('[DataCacheService] ✅ ユーザー情報更新: id=$userId');
       notifyListeners();
 
       return {'user': updatedUser, 'signed_avatar_url': signedAvatarUrl};
@@ -466,18 +453,7 @@ class DataCacheService extends ChangeNotifier {
 
   /// グループに紐づくTODO一覧を取得
   List<TodoModel> getTodosByGroupId(String groupId) {
-    debugPrint(
-      '[DataCacheService] 🔍 getTodosByGroupId: groupId=$groupId, 全TODO数=${_todos.length}',
-    );
-    final result = _todos.where((t) => t.groupId == groupId).toList();
-    debugPrint('[DataCacheService] 🔍 getTodosByGroupId結果: ${result.length}件');
-    // デバッグ：各TODOのgroupIdを出力
-    for (final todo in _todos) {
-      debugPrint(
-        '[DataCacheService] 🔍 TODO: id=${todo.id}, groupId="${todo.groupId}", title="${todo.title}"',
-      );
-    }
-    return result;
+    return _todos.where((t) => t.groupId == groupId).toList();
   }
 
   /// 自分のTODO一覧を取得（My TODO）

@@ -18,12 +18,10 @@ void main() async {
 
   // 環境設定初期化
   await EnvironmentConfig.instance.initialize(environment: environment);
-  debugPrint('[main] ✅ 環境設定初期化完了');
 
   // AdMob初期化（広告有効時のみ）
   if (EnvironmentConfig.instance.enableAds) {
     await MobileAds.instance.initialize();
-    debugPrint('[main] ✅ AdMob初期化完了');
   } else {
     debugPrint('[main] ⚠️ 広告機能無効（$environment環境）');
   }

@@ -34,7 +34,6 @@ class RecurringTodoService {
         },
       );
 
-      debugPrint('[RecurringTodoService] ✅ 定期TODO作成成功');
       return RecurringTodoModel.fromJson(
         response['recurring_todo'] as Map<String, dynamic>,
       );
@@ -104,7 +103,6 @@ class RecurringTodoService {
         body: body,
       );
 
-      debugPrint('[RecurringTodoService] ✅ 定期TODO更新成功');
       return RecurringTodoModel.fromJson(
         response['recurring_todo'] as Map<String, dynamic>,
       );
@@ -124,8 +122,6 @@ class RecurringTodoService {
         functionName: 'delete-recurring-todo',
         body: {'recurring_todo_id': recurringTodoId, 'user_id': userId},
       );
-
-      debugPrint('[RecurringTodoService] ✅ 定期TODO削除成功');
     } catch (e) {
       debugPrint('[RecurringTodoService] ❌ 定期TODO削除エラー: $e');
       rethrow;
@@ -143,7 +139,6 @@ class RecurringTodoService {
         body: {'recurring_todo_id': recurringTodoId, 'user_id': userId},
       );
 
-      debugPrint('[RecurringTodoService] ✅ 定期TODO切り替え成功');
       return RecurringTodoModel.fromJson(
         response['recurring_todo'] as Map<String, dynamic>,
       );

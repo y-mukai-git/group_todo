@@ -29,7 +29,6 @@ class GroupService {
         body: body,
       );
 
-      debugPrint('[GroupService] ✅ グループ作成成功');
       return GroupModel.fromJson(response['group'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ作成エラー: $e');
@@ -50,7 +49,6 @@ class GroupService {
           .map((json) => GroupModel.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      debugPrint('[GroupService] ✅ グループ一覧取得成功: ${groups.length}件');
       return groups;
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ一覧取得エラー: $e');
@@ -66,7 +64,6 @@ class GroupService {
         body: {'group_id': groupId},
       );
 
-      debugPrint('[GroupService] ✅ グループ詳細取得成功');
       return GroupModel.fromJson(response['group'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ詳細取得エラー: $e');
@@ -85,7 +82,6 @@ class GroupService {
         body: {'group_id': groupId, 'requester_id': requesterId},
       );
 
-      debugPrint('[GroupService] ✅ メンバー一覧取得成功');
       return response;
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバー一覧取得エラー: $e');
@@ -108,8 +104,6 @@ class GroupService {
           'new_member_user_id': newMemberUserId,
         },
       );
-
-      debugPrint('[GroupService] ✅ メンバー追加成功');
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバー追加エラー: $e');
       rethrow;
@@ -131,8 +125,6 @@ class GroupService {
           'target_user_id': targetUserId,
         },
       );
-
-      debugPrint('[GroupService] ✅ メンバー削除成功');
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバー削除エラー: $e');
       rethrow;
@@ -164,7 +156,6 @@ class GroupService {
         body: body,
       );
 
-      debugPrint('[GroupService] ✅ グループ更新成功');
       return GroupModel.fromJson(response['group'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ更新エラー: $e');
@@ -182,8 +173,6 @@ class GroupService {
         functionName: 'delete-group',
         body: {'group_id': groupId, 'user_id': userId},
       );
-
-      debugPrint('[GroupService] ✅ グループ削除成功');
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ削除エラー: $e');
       rethrow;
@@ -200,8 +189,6 @@ class GroupService {
         functionName: 'update-group-order',
         body: {'user_id': userId, 'group_orders': groupOrders},
       );
-
-      debugPrint('[GroupService] ✅ グループ並び順更新成功');
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ並び順更新エラー: $e');
       rethrow;

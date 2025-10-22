@@ -17,7 +17,6 @@ class UserService {
         body: {'device_id': deviceId},
       );
 
-      debugPrint('[UserService] ✅ ユーザー作成成功');
       return UserModel.fromJson(response['user'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[UserService] ❌ ユーザー作成エラー: $e');
@@ -44,7 +43,6 @@ class UserService {
       final user = UserModel.fromJson(response['user'] as Map<String, dynamic>);
       final signedAvatarUrl = response['user']['signed_avatar_url'] as String?;
 
-      debugPrint('[UserService] ✅ ユーザー取得成功');
       return {'user': user, 'signed_avatar_url': signedAvatarUrl};
     } catch (e) {
       // 404エラーは新規ユーザーとして扱う（エラーではなくnullを返す）
@@ -78,7 +76,6 @@ class UserService {
       final user = UserModel.fromJson(response['user'] as Map<String, dynamic>);
       final signedAvatarUrl = response['user']['signed_avatar_url'] as String?;
 
-      debugPrint('[UserService] ✅ プロフィール更新成功');
       return {'user': user, 'signed_avatar_url': signedAvatarUrl};
     } catch (e) {
       debugPrint('[UserService] ❌ プロフィール更新エラー: $e');
@@ -101,7 +98,6 @@ class UserService {
         'display_id': response['display_id'] as String, // 8桁displayIdを返す
         'password': password,
       };
-      debugPrint('[UserService] ✅ 引き継ぎ用パスワード設定成功');
       return result;
     } catch (e) {
       debugPrint('[UserService] ❌ 引き継ぎ用パスワード設定エラー: $e');
@@ -126,7 +122,6 @@ class UserService {
         },
       );
 
-      debugPrint('[UserService] ✅ データ引き継ぎ成功');
       return UserModel.fromJson(response['user'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[UserService] ❌ データ引き継ぎエラー: $e');

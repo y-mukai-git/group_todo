@@ -13,7 +13,6 @@ class StorageHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserId, userId);
-      debugPrint('[StorageHelper] ✅ ユーザーID保存: $userId');
     } catch (e) {
       debugPrint('[StorageHelper] ❌ ユーザーID保存エラー: $e');
       rethrow;
@@ -26,7 +25,6 @@ class StorageHelper {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString(_keyUserId);
       if (userId != null) {
-        debugPrint('[StorageHelper] ✅ ユーザーID取得: $userId');
       } else {
         debugPrint('[StorageHelper] ℹ️ ユーザーID未登録');
       }
@@ -42,7 +40,6 @@ class StorageHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyDisplayName, displayName);
-      debugPrint('[StorageHelper] ✅ 表示名保存: $displayName');
     } catch (e) {
       debugPrint('[StorageHelper] ❌ 表示名保存エラー: $e');
       rethrow;
@@ -65,7 +62,6 @@ class StorageHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyLastSyncTime, syncTime.toIso8601String());
-      debugPrint('[StorageHelper] ✅ 最終同期日時保存: $syncTime');
     } catch (e) {
       debugPrint('[StorageHelper] ❌ 最終同期日時保存エラー: $e');
       rethrow;
@@ -92,7 +88,6 @@ class StorageHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
-      debugPrint('[StorageHelper] ✅ 全データクリア完了');
     } catch (e) {
       debugPrint('[StorageHelper] ❌ 全データクリアエラー: $e');
       rethrow;

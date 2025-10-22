@@ -63,6 +63,12 @@ dependencies:
   # Google AdMob広告
   google_mobile_ads: ^5.1.0
 
+  # アプリバージョン情報取得
+  package_info_plus: ^8.0.0
+
+  # URL起動（ストアへの遷移）
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

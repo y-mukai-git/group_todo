@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
+import '../../services/app_status_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/user_service.dart';
 import '../widgets/error_dialog.dart';
 import 'main_tab_screen.dart';
 import 'data_transfer_screen.dart';
+import 'force_update_screen.dart';
 
 /// スプラッシュ画面（初回起動・認証チェック）
 class SplashScreen extends StatefulWidget {
@@ -53,6 +56,33 @@ class _SplashScreenState extends State<SplashScreen>
   /// アプリ初期化処理
   Future<void> _initializeApp() async {
     try {
+      // アプリ状態チェック（メンテナンス・強制アップデート）
+      final appStatus = await AppStatusService().checkAppStatus();
+
+      // メンテナンス中チェック
+      if (appStatus.maintenance.isMaintenance) {
+        if (!mounted) return;
+        await _showMaintenanceDialog(
+          appStatus.maintenance.message ?? 'システムメンテナンス中です',
+        );
+        return;
+      }
+
+      // 強制アップデートチェック
+      if (appStatus.forceUpdate.required) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ForceUpdateScreen(
+              message: appStatus.forceUpdate.message ?? '新しいバージョンへのアップデートが必要です',
+              storeUrl: appStatus.forceUpdate.storeUrl,
+            ),
+          ),
+        );
+        return;
+      }
+
       // SharedPreferencesからユーザーID取得（ローカルチェック）
       final savedUserId = await StorageHelper.getUserId();
 
@@ -140,11 +170,11 @@ class _SplashScreenState extends State<SplashScreen>
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -166,7 +196,7 @@ class _SplashScreenState extends State<SplashScreen>
                       letterSpacing: 1.2,
                       shadows: [
                         Shadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           offset: const Offset(0, 2),
                           blurRadius: 4,
                         ),
@@ -177,7 +207,7 @@ class _SplashScreenState extends State<SplashScreen>
                   Text(
                     'みんなで協力、タスク管理',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -193,6 +223,37 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
       ),
+    );
+  }
+
+  /// メンテナンスダイアログ表示
+  Future<void> _showMaintenanceDialog(String message) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.build, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('メンテナンス中'),
+              ],
+            ),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  SystemNavigator.pop(); // アプリ終了
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

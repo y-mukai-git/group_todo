@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/app_status_service.dart';
 import '../../core/config/environment_config.dart';
 import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
@@ -21,8 +23,11 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final DataCacheService _cacheService = DataCacheService();
   final EnvironmentConfig _config = EnvironmentConfig.instance;
+  final AppStatusService _statusService = AppStatusService();
   String? _signedAvatarUrl;
   UserModel? _currentUser;
+  String _appVersion = '';
+  VersionInfo? _versionInfo;
 
   /// キャッシュからユーザーデータ更新
   void _updateUserData() {
@@ -54,6 +59,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _cacheService.addListener(_updateUserData);
     _updateUserData();
+    _loadAppVersion();
+  }
+
+  /// アプリバージョン取得
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final statusResponse = await _statusService.checkAppStatus();
+
+      if (mounted) {
+        setState(() {
+          _appVersion = packageInfo.version;
+          _versionInfo = statusResponse.versionInfo;
+        });
+      }
+    } catch (e) {
+      debugPrint('[SettingsScreen] ❌ バージョン情報取得エラー: $e');
+    }
   }
 
   @override
@@ -160,6 +183,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// バージョンテキスト構築
+  String _buildVersionText() {
+    if (_appVersion.isEmpty) {
+      return '取得中...';
+    }
+
+    if (_versionInfo == null) {
+      return 'バージョン $_appVersion';
+    }
+
+    if (_versionInfo!.hasNewVersion) {
+      return 'バージョン $_appVersion(新しいバージョン: ${_versionInfo!.latestVersion})';
+    }
+
+    return 'バージョン $_appVersion(最新)';
+  }
+
   /// 設定項目リスト構築
   List<Widget> _buildSettingsItems() {
     final items = <Widget>[
@@ -204,6 +244,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         },
       ),
+
+      // アプリバージョン
+      ListTile(
+        leading: const Icon(Icons.info_outline),
+        title: const Text('アプリバージョン'),
+        subtitle: Text(_buildVersionText()),
+      ),
     ];
 
     // 環境表示（dev/stgのみ、prodでは非表示）
@@ -224,81 +271,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final settingsItems = _buildSettingsItems();
 
+    // 設定項目をDividerで区切ったリストを作成
+    final settingsItemsWithDividers = <Widget>[];
+    for (int i = 0; i < settingsItems.length; i++) {
+      settingsItemsWithDividers.add(settingsItems[i]);
+      if (i < settingsItems.length - 1) {
+        settingsItemsWithDividers.add(const Divider(indent: 30));
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
-      body: Column(
-        children: [
-          // ユーザー情報セクション
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      height: 180,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 40,
-                            backgroundImage: _signedAvatarUrl != null
-                                ? NetworkImage(_signedAvatarUrl!)
-                                : null,
-                            child: _signedAvatarUrl == null
-                                ? Text(
-                                    _currentUser?.displayName.isNotEmpty == true
-                                        ? _currentUser!.displayName[0]
-                                        : 'U',
-                                    style: const TextStyle(fontSize: 32),
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              _currentUser?.displayName ?? '',
-                              style: Theme.of(context).textTheme.headlineSmall,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // ユーザー情報セクション
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 140,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 32,
+                              backgroundImage: _signedAvatarUrl != null
+                                  ? NetworkImage(_signedAvatarUrl!)
+                                  : null,
+                              child: _signedAvatarUrl == null
+                                  ? Text(
+                                      _currentUser?.displayName.isNotEmpty ==
+                                              true
+                                          ? _currentUser!.displayName[0]
+                                          : 'U',
+                                      style: const TextStyle(fontSize: 28),
+                                    )
+                                  : null,
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'ユーザーID: ${_currentUser?.displayId ?? ''}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              child: Text(
+                                _currentUser?.displayName ?? '',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'ユーザーID: ${_currentUser?.displayId ?? ''}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: _showEditProfileBottomSheet,
-                        tooltip: 'プロフィールを編集',
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: _showEditProfileBottomSheet,
+                          tooltip: 'プロフィールを編集',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // 設定項目リスト（ListView.separated使用）
-          Expanded(
-            child: ListView.separated(
-              itemCount: settingsItems.length,
-              separatorBuilder: (context, index) => const Divider(indent: 30),
-              itemBuilder: (context, index) => settingsItems[index],
-            ),
-          ),
-        ],
+            // 設定項目リスト
+            ...settingsItemsWithDividers,
+          ],
+        ),
       ),
     );
   }

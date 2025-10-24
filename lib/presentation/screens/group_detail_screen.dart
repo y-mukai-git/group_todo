@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/todo_model.dart';
@@ -9,7 +7,7 @@ import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
-import '../../core/config/environment_config.dart';
+import '../../core/utils/api_client.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
@@ -125,27 +123,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Future<void> _inviteMember(String displayId) async {
     try {
       // Supabase Edge Function (add-group-member) を呼び出し
-      final config = EnvironmentConfig.instance;
-      final url = Uri.parse(
-        '${config.supabaseUrl}/functions/v1/add-group-member',
-      );
-
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${config.supabaseAnonKey}',
-        },
-        body: jsonEncode({
+      final responseData = await ApiClient().callFunction(
+        functionName: 'add-group-member',
+        body: {
           'group_id': widget.group.id,
           'display_id': displayId,
           'inviter_id': widget.user.id,
-        }),
+        },
       );
 
-      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200 && responseData['success'] == true) {
+      // ApiClientは200以外で例外をスローするので、ここに到達すれば成功
+      if (responseData['success'] == true) {
         // 成功時
         if (!mounted) return;
         // キャッシュを更新
@@ -155,7 +143,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         );
         _showSuccessSnackBar('メンバーを招待しました');
       } else {
-        // エラーレスポンス
+        // レスポンスにsuccessフィールドがfalseの場合
         final errorMessage = responseData['error'] ?? '不明なエラー';
         throw Exception(errorMessage);
       }

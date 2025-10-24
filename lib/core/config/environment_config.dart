@@ -40,21 +40,16 @@ class EnvironmentConfig {
 
       // 指定された環境の設定を取得
       if (!allConfigs.containsKey(environment)) {
-        debugPrint('[EnvironmentConfig] ⚠️ 指定された環境設定が見つかりません: $environment');
+        debugPrint('[EnvironmentConfig] ❌ 指定された環境設定が見つかりません: $environment');
         debugPrint(
           '[EnvironmentConfig] 🔍 利用可能な環境: ${allConfigs.keys.join(', ')}',
         );
-
-        // developmentにフォールバック
-        if (allConfigs.containsKey('development')) {
-          _config = allConfigs['development'] as Map<String, dynamic>;
-          _currentEnvironment = 'development';
-        } else {
-          throw Exception('デフォルト環境設定(development)も見つかりません: $environment');
-        }
-      } else {
-        _config = allConfigs[environment] as Map<String, dynamic>;
+        throw Exception(
+          '環境設定が見つかりません: $environment (利用可能: ${allConfigs.keys.join(', ')})',
+        );
       }
+
+      _config = allConfigs[environment] as Map<String, dynamic>;
 
       debugPrint('[EnvironmentConfig] ✅ 環境設定初期化完了: $_currentEnvironment');
     } catch (e) {

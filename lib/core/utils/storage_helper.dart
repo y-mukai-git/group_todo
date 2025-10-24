@@ -24,8 +24,7 @@ class StorageHelper {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString(_keyUserId);
-      if (userId != null) {
-      } else {
+      if (userId == null) {
         debugPrint('[StorageHelper] ℹ️ ユーザーID未登録');
       }
       return userId;

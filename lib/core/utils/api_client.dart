@@ -67,45 +67,6 @@ class ApiClient {
       throw ApiException(message: 'ネットワークエラーが発生しました', statusCode: 0);
     }
   }
-
-  /// GET リクエスト（直接データベースアクセス用）
-  Future<Map<String, dynamic>> get({
-    required String endpoint,
-    Map<String, String>? queryParameters,
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
-    try {
-      final uri = Uri.parse(
-        '${_config.supabaseUrl}/rest/v1/$endpoint',
-      ).replace(queryParameters: queryParameters);
-
-      final response = await http
-          .get(
-            uri,
-            headers: {
-              'apikey': _config.supabaseAnonKey,
-              'Authorization': 'Bearer ${_config.supabaseAnonKey}',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(timeout);
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        throw ApiException(
-          message: 'データ取得に失敗しました',
-          statusCode: response.statusCode,
-        );
-      }
-    } catch (e) {
-      debugPrint('[ApiClient] ❌ GETエラー: $e');
-      if (e is ApiException) {
-        rethrow;
-      }
-      throw ApiException(message: 'ネットワークエラーが発生しました', statusCode: 0);
-    }
-  }
 }
 
 /// API例外クラス

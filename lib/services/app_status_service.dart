@@ -126,11 +126,13 @@ class NewVersionInfo {
   final String version;
   final String releaseNotes;
   final String releaseDate;
+  final String? storeUrl;
 
   NewVersionInfo({
     required this.version,
     required this.releaseNotes,
     required this.releaseDate,
+    this.storeUrl,
   });
 
   factory NewVersionInfo.fromJson(Map<String, dynamic> json) {
@@ -138,6 +140,7 @@ class NewVersionInfo {
       version: json['version'] as String,
       releaseNotes: json['release_notes'] as String,
       releaseDate: json['release_date'] as String,
+      storeUrl: json['store_url'] as String?,
     );
   }
 }

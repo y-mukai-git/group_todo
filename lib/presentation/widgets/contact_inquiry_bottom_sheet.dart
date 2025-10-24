@@ -145,7 +145,7 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<InquiryType>(
-                    value: _selectedType,
+                    initialValue: _selectedType,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),

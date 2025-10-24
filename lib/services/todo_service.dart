@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import '../core/utils/api_client.dart';
 import '../data/models/todo_model.dart';
 
-/// TODO管理サービス
+/// タスク管理サービス
 class TodoService {
   final ApiClient _apiClient = ApiClient();
 
-  /// TODO作成
+  /// タスク作成
   Future<TodoModel> createTodo({
     required String userId,
     required String groupId,
@@ -32,12 +32,12 @@ class TodoService {
 
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
-      debugPrint('[TodoService] ❌ TODO作成エラー: $e');
+      debugPrint('[TodoService] ❌ タスク作成エラー: $e');
       rethrow;
     }
   }
 
-  /// 自分のTODO一覧取得
+  /// 自分のタスク一覧取得
   Future<List<TodoModel>> getMyTodos({
     required String userId,
     String? filterDays,
@@ -60,7 +60,7 @@ class TodoService {
     }
   }
 
-  /// グループのTODO一覧取得
+  /// グループのタスク一覧取得
   Future<List<TodoModel>> getGroupTodos({
     required String userId,
     required String groupId,
@@ -83,7 +83,7 @@ class TodoService {
     }
   }
 
-  /// TODO詳細取得
+  /// タスク詳細取得
   Future<TodoModel> getTodoDetail({
     required String userId,
     required String todoId,
@@ -96,12 +96,12 @@ class TodoService {
 
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
-      debugPrint('[TodoService] ❌ TODO詳細取得エラー: $e');
+      debugPrint('[TodoService] ❌ タスク詳細取得エラー: $e');
       rethrow;
     }
   }
 
-  /// TODO更新
+  /// タスク更新
   Future<TodoModel> updateTodo({
     required String userId,
     required String todoId,
@@ -125,12 +125,12 @@ class TodoService {
 
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
-      debugPrint('[TodoService] ❌ TODO更新エラー: $e');
+      debugPrint('[TodoService] ❌ タスク更新エラー: $e');
       rethrow;
     }
   }
 
-  /// TODO完了状態切り替え
+  /// タスク完了状態切り替え
   Future<TodoModel> toggleTodoCompletion({
     required String userId,
     required String todoId,
@@ -143,12 +143,12 @@ class TodoService {
 
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
-      debugPrint('[TodoService] ❌ TODO完了状態切り替えエラー: $e');
+      debugPrint('[TodoService] ❌ タスク完了状態切り替えエラー: $e');
       rethrow;
     }
   }
 
-  /// TODO削除
+  /// タスク削除
   Future<void> deleteTodo({
     required String userId,
     required String todoId,
@@ -159,12 +159,12 @@ class TodoService {
         body: {'user_id': userId, 'todo_id': todoId},
       );
     } catch (e) {
-      debugPrint('[TodoService] ❌ TODO削除エラー: $e');
+      debugPrint('[TodoService] ❌ タスク削除エラー: $e');
       rethrow;
     }
   }
 
-  /// TODOコメント作成
+  /// タスクコメント作成
   Future<void> createTodoComment({
     required String userId,
     required String todoId,
@@ -185,7 +185,7 @@ class TodoService {
     }
   }
 
-  /// TODOコメント一覧取得
+  /// タスクコメント一覧取得
   Future<List<dynamic>> getTodoComments({
     required String userId,
     required String todoId,

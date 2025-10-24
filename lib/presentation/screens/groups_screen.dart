@@ -248,7 +248,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 '完了',
                 style: TextStyle(
                   color: _isCompleting
-                      ? Colors.white.withOpacity(0.5)
+                      ? Colors.white.withValues(alpha: 0.5)
                       : Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -361,7 +361,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       memberCount = membersList.length;
     }
 
-    // TODO件数取得（未完了のみ）
+    // タスク件数取得（未完了のみ）
     final todos = _cacheService.getTodosByGroupId(group.id);
     final incompleteTodoCount = todos.where((t) => !t.isCompleted).length;
 
@@ -586,7 +586,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
         Divider(
           height: 1,
           thickness: 1,
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
       ],
     );
@@ -607,7 +609,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       memberCount = membersList.length;
     }
 
-    // TODO件数取得（未完了のみ）
+    // タスク件数取得（未完了のみ）
     final todos = _cacheService.getTodosByGroupId(group.id);
     final incompleteTodoCount = todos.where((t) => !t.isCompleted).length;
 
@@ -756,7 +758,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
             thickness: 1,
             color: Theme.of(
               context,
-            ).colorScheme.outlineVariant.withOpacity(0.5),
+            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ],
       ),

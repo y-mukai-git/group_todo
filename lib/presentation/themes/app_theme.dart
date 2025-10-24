@@ -42,13 +42,19 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(size: 28, color: Colors.white);
           }
-          return IconThemeData(size: 24, color: Colors.white.withOpacity(0.7));
+          return IconThemeData(
+            size: 24,
+            color: Colors.white.withValues(alpha: 0.7),
+          );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(fontSize: 12, color: Colors.white);
           }
-          return TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7));
+          return TextStyle(
+            fontSize: 12,
+            color: Colors.white.withValues(alpha: 0.7),
+          );
         }),
       ),
 

@@ -6,6 +6,7 @@ import '../../data/models/group_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../data/models/recurring_todo_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/config/environment_config.dart';
@@ -49,7 +50,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       setState(() {
         _currentTabIndex = _tabController.index;
       });
-      // グループ設定タブに切り替えた時に定期TODOを読み込む
+      // グループ設定タブに切り替えた時に定期タスクを読み込む
       if (_currentTabIndex == 1) {
         _loadRecurringTodos();
       }
@@ -87,7 +88,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   /// メンバー削除
   Future<void> _removeMember(String userId) async {
     try {
-      // TODO: グループメンバー削除APIが実装されたら修正
+      // API呼び出し：グループメンバー削除
+      await GroupService().removeGroupMember(
+        groupId: widget.group.id,
+        userId: widget.user.id,
+        targetUserId: userId,
+      );
 
       setState(() {
         _groupMembers.removeWhere((member) => member.id == userId);
@@ -189,7 +195,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// 定期TODO一覧読み込み
+  /// 定期タスク一覧読み込み
   Future<void> _loadRecurringTodos() async {
     if (_isLoadingRecurringTodos) return;
 
@@ -210,10 +216,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         });
       }
     } catch (e, stackTrace) {
-      debugPrint('[GroupDetailScreen] ❌ 定期TODO一覧取得エラー: $e');
+      debugPrint('[GroupDetailScreen] ❌ 定期タスク一覧取得エラー: $e');
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
-        errorType: '定期TODO一覧取得エラー',
+        errorType: '定期タスク一覧取得エラー',
         errorMessage: e.toString(),
         stackTrace: stackTrace.toString(),
         screenName: 'グループ詳細画面',
@@ -225,13 +231,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '定期TODO一覧の取得に失敗しました',
+          errorMessage: '定期タスク一覧の取得に失敗しました',
         );
       }
     }
   }
 
-  /// 定期TODO作成ボトムシート表示
+  /// 定期タスク作成ボトムシート表示
   Future<void> _showCreateRecurringTodoDialog() async {
     final result = await showModalBottomSheet<bool>(
       context: context,
@@ -259,7 +265,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
     if (result == true && mounted) {
       _loadRecurringTodos(); // 一覧を再取得
-      _showSuccessSnackBar('定期TODOを作成しました');
+      _showSuccessSnackBar('定期タスクを作成しました');
     }
   }
 
@@ -294,11 +300,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
     if (result == true && mounted) {
       _loadRecurringTodos(); // 一覧を再取得
-      _showSuccessSnackBar('定期TODOを更新しました');
+      _showSuccessSnackBar('定期タスクを更新しました');
     }
   }
 
-  /// 定期TODO削除
+  /// 定期タスク削除
   Future<void> _deleteRecurringTodo(RecurringTodoModel recurringTodo) async {
     try {
       await _recurringTodoService.deleteRecurringTodo(
@@ -308,13 +314,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
       if (mounted) {
         _loadRecurringTodos(); // 一覧を再取得
-        _showSuccessSnackBar('定期TODOを削除しました');
+        _showSuccessSnackBar('定期タスクを削除しました');
       }
     } catch (e, stackTrace) {
-      debugPrint('[GroupDetailScreen] ❌ 定期TODO削除エラー: $e');
+      debugPrint('[GroupDetailScreen] ❌ 定期タスク削除エラー: $e');
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
-        errorType: '定期TODO削除エラー',
+        errorType: '定期タスク削除エラー',
         errorMessage: e.toString(),
         stackTrace: stackTrace.toString(),
         screenName: 'グループ詳細画面',
@@ -323,7 +329,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '定期TODOの削除に失敗しました',
+          errorMessage: '定期タスクの削除に失敗しました',
         );
       }
     }
@@ -342,8 +348,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       if (mounted) {
         _loadRecurringTodos(); // 一覧を再取得
         final message = recurringTodo.isActive
-            ? '定期TODOを無効にしました'
-            : '定期TODOを有効にしました';
+            ? '定期タスクを無効にしました'
+            : '定期タスクを有効にしました';
         _showSuccessSnackBar(message);
       }
     } catch (e, stackTrace) {
@@ -359,7 +365,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '定期TODOの切り替えに失敗しました',
+          errorMessage: '定期タスクの切り替えに失敗しました',
         );
       }
     }
@@ -421,7 +427,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// TODO完了状態切り替え（キャッシュサービス経由）
+  /// タスク完了状態切り替え（キャッシュサービス経由）
   Future<void> _toggleTodoCompletion(TodoModel todo) async {
     try {
       final wasCompleted = todo.isCompleted;
@@ -434,17 +440,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
       // 成功メッセージを表示
       if (wasCompleted) {
-        _showSuccessSnackBar('TODOを未完了に戻しました');
+        _showSuccessSnackBar('タスクを未完了に戻しました');
       } else {
-        _showSuccessSnackBar('TODOを完了しました');
+        _showSuccessSnackBar('タスクを完了しました');
       }
     } catch (e) {
-      debugPrint('[GroupDetailScreen] ❌ TODO完了切り替えエラー: $e');
+      debugPrint('[GroupDetailScreen] ❌ タスク完了切り替えエラー: $e');
       _showErrorSnackBar('完了状態の更新に失敗しました');
     }
   }
 
-  /// TODO作成ボトムシート表示
+  /// タスク作成ボトムシート表示
   Future<void> _showCreateTodoDialog() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -478,7 +484,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// TODO作成実行（キャッシュサービス経由）
+  /// タスク作成実行（キャッシュサービス経由）
   Future<void> _createTodo({
     required String title,
     String? description,
@@ -498,14 +504,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       );
 
       if (!mounted) return;
-      _showSuccessSnackBar('TODOを作成しました');
+      _showSuccessSnackBar('タスクを作成しました');
     } catch (e) {
-      debugPrint('[GroupDetailScreen] ❌ TODO作成エラー: $e');
-      _showErrorSnackBar('TODOの作成に失敗しました');
+      debugPrint('[GroupDetailScreen] ❌ タスク作成エラー: $e');
+      _showErrorSnackBar('タスクの作成に失敗しました');
     }
   }
 
-  /// TODO更新実行（キャッシュサービス経由）
+  /// タスク更新実行（キャッシュサービス経由）
   Future<void> _updateTodo({
     required String todoId,
     required String title,
@@ -525,10 +531,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       );
 
       if (!mounted) return;
-      _showSuccessSnackBar('TODOを更新しました');
+      _showSuccessSnackBar('タスクを更新しました');
     } catch (e) {
-      debugPrint('[GroupDetailScreen] ❌ TODO更新エラー: $e');
-      _showErrorSnackBar('TODOの更新に失敗しました');
+      debugPrint('[GroupDetailScreen] ❌ タスク更新エラー: $e');
+      _showErrorSnackBar('タスクの更新に失敗しました');
     }
   }
 
@@ -622,7 +628,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// 定期TODOの繰り返しパターンをテキスト化
+  /// 定期タスクの繰り返しパターンをテキスト化
   String _formatRecurrencePattern(RecurringTodoModel recurringTodo) {
     final timeParts = recurringTodo.generationTime.split(':');
     final timeStr = '${timeParts[0]}:${timeParts[1]}';
@@ -655,20 +661,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// TODO削除（キャッシュサービス経由）
+  /// タスク削除（キャッシュサービス経由）
   Future<void> _deleteTodo(TodoModel todo) async {
     try {
       // DataCacheService経由でDB削除+キャッシュ削除
       await _cacheService.deleteTodo(userId: widget.user.id, todoId: todo.id);
 
-      _showSuccessSnackBar('TODOを削除しました');
+      _showSuccessSnackBar('タスクを削除しました');
     } catch (e) {
-      debugPrint('[GroupDetailScreen] ❌ TODO削除エラー: $e');
-      _showErrorSnackBar('TODOの削除に失敗しました');
+      debugPrint('[GroupDetailScreen] ❌ タスク削除エラー: $e');
+      _showErrorSnackBar('タスクの削除に失敗しました');
     }
   }
 
-  /// TODO詳細画面表示
+  /// タスク詳細画面表示
   Future<void> _showTodoDetail(TodoModel todo) async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -905,13 +911,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             child: TabBarView(
               controller: _tabController,
               children: [
-                // タブ1: TODOエリア
+                // タブ1: タスクエリア
                 RefreshIndicator(
                   onRefresh: _refreshData,
                   child: ListView(
                     padding: const EdgeInsets.only(top: 12),
                     children: [
-                      // TODO見出し
+                      // タスク見出し
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                         child: Text(
@@ -923,7 +929,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               ),
                         ),
                       ),
-                      // TODOフィルター（均等配置）
+                      // タスクフィルター（均等配置）
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -966,7 +972,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           ],
                         ),
                       ),
-                      // TODOリスト
+                      // タスクリスト
                       ..._filteredTodos.map(
                         (todo) => _TodoListTile(
                           todo: todo,
@@ -998,7 +1004,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                               ),
                         ),
                       ),
-                      // 定期TODO一覧
+                      // 定期タスク一覧
                       if (_isLoadingRecurringTodos)
                         const Center(
                           child: Padding(
@@ -1027,7 +1033,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                             ],
                           ),
                           child: Text(
-                            '定期TODOがありません',
+                            '定期タスクがありません',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
                                   color: Theme.of(
@@ -1233,7 +1239,7 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-/// TODOリストタイル
+/// タスクリストタイル
 class _TodoListTile extends StatelessWidget {
   final TodoModel todo;
   final UserModel user;
@@ -1325,7 +1331,7 @@ class _TodoListTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // TODO内容
+                    // タスク内容
                     Expanded(
                       child: Text(
                         todo.title,

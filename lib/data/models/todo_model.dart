@@ -1,4 +1,4 @@
-/// TODOモデル
+/// タスクモデル
 class TodoModel {
   final String id;
   final String groupId;

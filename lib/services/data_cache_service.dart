@@ -27,7 +27,7 @@ class DataCacheService extends ChangeNotifier {
   UserModel? _currentUser;
   String? _signedAvatarUrl;
   // グループID -> メンバー一覧 + オーナーID
-  Map<String, Map<String, dynamic>> _groupMembers = {};
+  final Map<String, Map<String, dynamic>> _groupMembers = {};
 
   // ゲッター
   List<TodoModel> get todos => _todos;
@@ -52,16 +52,16 @@ class DataCacheService extends ChangeNotifier {
       _currentUser = user;
       _signedAvatarUrl = signedAvatarUrl;
 
-      // TODOデータ取得
+      // タスクデータ取得
       final myTodos = await _todoService.getMyTodos(userId: user.id);
 
       // グループデータ取得
       final userGroups = await _groupService.getUserGroups(userId: user.id);
 
-      // グループごとのTODOとメンバーを取得
+      // グループごとのタスクとメンバーを取得
       final List<TodoModel> allTodos = List.from(myTodos);
       for (final group in userGroups) {
-        // TODO取得
+        // タスク取得
         final groupTodos = await _todoService.getGroupTodos(
           userId: user.id,
           groupId: group.id,
@@ -76,7 +76,7 @@ class DataCacheService extends ChangeNotifier {
         _groupMembers[group.id] = membersResponse;
       }
 
-      // 重複を除去（同じidのTODOは1つにする）
+      // 重複を除去（同じidのタスクは1つにする）
       final Map<String, TodoModel> uniqueTodos = {};
       for (final todo in allTodos) {
         uniqueTodos[todo.id] = todo;
@@ -101,9 +101,9 @@ class DataCacheService extends ChangeNotifier {
     await initializeCache(_currentUser!);
   }
 
-  // ==================== TODO関連 ====================
+  // ==================== タスク関連 ====================
 
-  /// TODO完了切り替え（DB + キャッシュ）
+  /// タスク完了切り替え（DB + キャッシュ）
   Future<void> toggleTodoCompletion({
     required String userId,
     required String todoId,
@@ -121,13 +121,13 @@ class DataCacheService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('[DataCacheService] ❌ TODO完了切り替えエラー: $e');
+      debugPrint('[DataCacheService] ❌ タスク完了切り替えエラー: $e');
       // DB更新失敗 → キャッシュ更新しない
       rethrow;
     }
   }
 
-  /// TODO作成（DB + キャッシュ）
+  /// タスク作成（DB + キャッシュ）
   Future<TodoModel> createTodo({
     required String userId,
     required String groupId,
@@ -155,12 +155,12 @@ class DataCacheService extends ChangeNotifier {
 
       return newTodo;
     } catch (e) {
-      debugPrint('[DataCacheService] ❌ TODO作成エラー: $e');
+      debugPrint('[DataCacheService] ❌ タスク作成エラー: $e');
       rethrow;
     }
   }
 
-  /// TODO更新（DB + キャッシュ）
+  /// タスク更新（DB + キャッシュ）
   Future<TodoModel> updateTodo({
     required String userId,
     required String todoId,
@@ -189,12 +189,12 @@ class DataCacheService extends ChangeNotifier {
 
       return updatedTodo;
     } catch (e) {
-      debugPrint('[DataCacheService] ❌ TODO更新エラー: $e');
+      debugPrint('[DataCacheService] ❌ タスク更新エラー: $e');
       rethrow;
     }
   }
 
-  /// TODO更新（DB + キャッシュ）※旧updateTodoOptimistic
+  /// タスク更新（DB + キャッシュ）※旧updateTodoOptimistic
   Future<TodoModel> updateTodoOptimistic({
     required String userId,
     required String todoId,
@@ -225,13 +225,13 @@ class DataCacheService extends ChangeNotifier {
 
       return updatedTodo;
     } catch (e) {
-      debugPrint('[DataCacheService] ❌ TODO更新エラー: $e');
+      debugPrint('[DataCacheService] ❌ タスク更新エラー: $e');
       // DB更新失敗 → キャッシュ更新しない
       rethrow;
     }
   }
 
-  /// TODO削除（DB + キャッシュ）
+  /// タスク削除（DB + キャッシュ）
   Future<void> deleteTodo({
     required String userId,
     required String todoId,
@@ -244,7 +244,7 @@ class DataCacheService extends ChangeNotifier {
       _todos.removeWhere((t) => t.id == todoId);
       notifyListeners();
     } catch (e) {
-      debugPrint('[DataCacheService] ❌ TODO削除エラー: $e');
+      debugPrint('[DataCacheService] ❌ タスク削除エラー: $e');
       rethrow;
     }
   }
@@ -334,7 +334,7 @@ class DataCacheService extends ChangeNotifier {
       // 2. DB削除成功 → キャッシュから削除
       _groups.removeWhere((g) => g.id == groupId);
 
-      // 3. 関連TODOを削除
+      // 3. 関連タスクを削除
       _todos.removeWhere((t) => t.groupId == groupId);
 
       // 4. グループメンバー情報を削除
@@ -451,13 +451,13 @@ class DataCacheService extends ChangeNotifier {
     return _groupMembers[groupId];
   }
 
-  /// グループに紐づくTODO一覧を取得
+  /// グループに紐づくタスク一覧を取得
   List<TodoModel> getTodosByGroupId(String groupId) {
     return _todos.where((t) => t.groupId == groupId).toList();
   }
 
-  /// 自分のTODO一覧を取得（My TODO）
-  /// 自分が担当している未完了TODOを返す
+  /// 自分のタスク一覧を取得
+  /// 自分が担当している未完了タスクを返す
   List<TodoModel> getMyTodos(String userId, {String? filterDays}) {
     return _todos
         .where(

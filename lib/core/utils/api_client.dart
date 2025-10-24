@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../config/environment_config.dart';
+import '../../services/error_log_service.dart';
 
 /// API呼び出し共通クラス
 /// Supabase Edge Functionsへのリクエストを統一管理
@@ -19,6 +20,9 @@ class ApiClient {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     try {
+      // 未送信エラーログを送信試行（空チェックで即return）
+      await ErrorLogService().sendPendingErrors();
+
       final url = Uri.parse(
         '${_config.supabaseUrl}/functions/v1/$functionName',
       );

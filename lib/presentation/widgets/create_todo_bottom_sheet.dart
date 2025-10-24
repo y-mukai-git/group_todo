@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
 
-/// TODO作成・編集ボトムシート
+/// タスク作成・編集ボトムシート
 class CreateTodoBottomSheet extends StatefulWidget {
   final String? fixedGroupId; // グループID（常に固定）
   final String? fixedGroupName; // グループ名（表示用）
@@ -228,7 +228,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     );
   }
 
-  /// TODO作成・更新実行
+  /// タスク作成・更新実行
   void _createTodo() {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -298,7 +298,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 10,
                 offset: const Offset(0, -2),
               ),
@@ -359,7 +359,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       controller: _titleController,
                       decoration: InputDecoration(
                         labelText: 'タイトル',
-                        hintText: 'TODOのタイトルを入力',
+                        hintText: 'タスクのタイトルを入力',
                         prefixIcon: const Icon(Icons.title),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -377,7 +377,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       controller: _descriptionController,
                       decoration: InputDecoration(
                         labelText: '説明（任意）',
-                        hintText: 'TODOの詳細を入力',
+                        hintText: 'タスクの詳細を入力',
                         prefixIcon: const Icon(Icons.description),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -539,7 +539,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                         ),
                       const SizedBox(height: 8),
                     ] else ...[
-                      // MY TODO: 自分のみ固定（表示のみ）
+                      // MY タスク: 自分のみ固定（表示のみ）
                       Text(
                         '担当者',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(

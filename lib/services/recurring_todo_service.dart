@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import '../core/utils/api_client.dart';
 import '../data/models/recurring_todo_model.dart';
 
-/// 定期TODO管理サービス
+/// 定期タスク管理サービス
 class RecurringTodoService {
   final ApiClient _apiClient = ApiClient();
 
-  /// 定期TODO作成
+  /// 定期タスク作成
   Future<RecurringTodoModel> createRecurringTodo({
     required String userId,
     required String groupId,
@@ -38,12 +38,12 @@ class RecurringTodoService {
         response['recurring_todo'] as Map<String, dynamic>,
       );
     } catch (e) {
-      debugPrint('[RecurringTodoService] ❌ 定期TODO作成エラー: $e');
+      debugPrint('[RecurringTodoService] ❌ 定期タスク作成エラー: $e');
       rethrow;
     }
   }
 
-  /// 定期TODO一覧取得
+  /// 定期タスク一覧取得
   Future<List<RecurringTodoModel>> getRecurringTodos({
     required String userId,
     required String groupId,
@@ -61,16 +61,16 @@ class RecurringTodoService {
           .toList();
 
       debugPrint(
-        '[RecurringTodoService] ✅ 定期TODO一覧取得成功: ${recurringTodos.length}件',
+        '[RecurringTodoService] ✅ 定期タスク一覧取得成功: ${recurringTodos.length}件',
       );
       return recurringTodos;
     } catch (e) {
-      debugPrint('[RecurringTodoService] ❌ 定期TODO一覧取得エラー: $e');
+      debugPrint('[RecurringTodoService] ❌ 定期タスク一覧取得エラー: $e');
       rethrow;
     }
   }
 
-  /// 定期TODO更新
+  /// 定期タスク更新
   Future<RecurringTodoModel> updateRecurringTodo({
     required String userId,
     required String recurringTodoId,
@@ -107,12 +107,12 @@ class RecurringTodoService {
         response['recurring_todo'] as Map<String, dynamic>,
       );
     } catch (e) {
-      debugPrint('[RecurringTodoService] ❌ 定期TODO更新エラー: $e');
+      debugPrint('[RecurringTodoService] ❌ 定期タスク更新エラー: $e');
       rethrow;
     }
   }
 
-  /// 定期TODO削除
+  /// 定期タスク削除
   Future<void> deleteRecurringTodo({
     required String userId,
     required String recurringTodoId,
@@ -123,7 +123,7 @@ class RecurringTodoService {
         body: {'recurring_todo_id': recurringTodoId, 'user_id': userId},
       );
     } catch (e) {
-      debugPrint('[RecurringTodoService] ❌ 定期TODO削除エラー: $e');
+      debugPrint('[RecurringTodoService] ❌ 定期タスク削除エラー: $e');
       rethrow;
     }
   }

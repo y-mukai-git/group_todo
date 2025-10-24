@@ -6,7 +6,7 @@ import '../../services/error_log_service.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 
-/// ホーム画面（My TODO - 自分のTODO表示）
+/// ホーム画面（MyTODO - 自分のタスク表示）
 class HomeScreen extends StatefulWidget {
   final UserModel user;
 
@@ -93,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// TODO完了状態切り替え（キャッシュサービス経由）
+  /// タスク完了状態切り替え（キャッシュサービス経由）
   Future<void> _toggleTodoCompletion(TodoModel todo) async {
     try {
       final wasCompleted = todo.isCompleted;
@@ -106,17 +106,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // 成功メッセージを表示
       if (wasCompleted) {
-        _showSuccessSnackBar('TODOを未完了に戻しました');
+        _showSuccessSnackBar('タスクを未完了に戻しました');
       } else {
-        _showSuccessSnackBar('TODOを完了しました');
+        _showSuccessSnackBar('タスクを完了しました');
       }
     } catch (e, stackTrace) {
-      debugPrint('[HomeScreen] ❌ TODO完了切り替えエラー: $e');
+      debugPrint('[HomeScreen] ❌ タスク完了切り替えエラー: $e');
 
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
-        errorType: 'TODO完了切り替えエラー',
+        errorType: 'タスク完了切り替えエラー',
         errorMessage: e.toString(),
         stackTrace: stackTrace.toString(),
         screenName: 'ホーム画面',
@@ -173,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// TODO詳細画面表示
+  /// タスク詳細画面表示
   Future<void> _showTodoDetail(TodoModel todo) async {
     final group = _cacheService.getGroupById(todo.groupId);
 
@@ -212,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result != null && mounted) {
       final todoId = result['todo_id'] as String?;
       if (todoId != null) {
-        // 編集モード：TODO更新
+        // 編集モード：タスク更新
         await _updateTodo(
           todoId: todoId,
           title: result['title'] as String,
@@ -225,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// TODO更新実行（楽観的更新）
+  /// タスク更新実行（楽観的更新）
   Future<void> _updateTodo({
     required String todoId,
     required String title,
@@ -241,7 +241,16 @@ class _HomeScreenState extends State<HomeScreen> {
       description: description?.isNotEmpty == true ? description : null,
       dueDate: deadline,
       assignedUserIds: assigneeIds,
-      onNetworkError: (message) {
+      onNetworkError: (message) async {
+        // エラーログをDB登録
+        await ErrorLogService().logError(
+          userId: widget.user.id,
+          errorType: 'todo_update_network_error',
+          errorMessage: message,
+          stackTrace: null,
+          screenName: 'home_screen',
+        );
+
         // ネットワークエラー → アラート表示（キャッシュは自動ロールバック済み）
         if (mounted) {
           showDialog(
@@ -259,14 +268,29 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       },
-      onOtherError: (message) {
-        // その他のエラー → エラーメッセージ表示
-        // TODO: 将来的にエラー画面遷移に変更
+      onOtherError: (message) async {
+        // エラーログをDB登録
+        await ErrorLogService().logError(
+          userId: widget.user.id,
+          errorType: 'todo_update_other_error',
+          errorMessage: message,
+          stackTrace: null,
+          screenName: 'home_screen',
+        );
+
+        // その他のエラー → エラーダイアログ表示
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('エラー'),
               content: Text(message),
-              backgroundColor: Theme.of(context).colorScheme.error,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
             ),
           );
         }
@@ -275,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 成功時のメッセージ（楽観的更新なので即座に表示）
     if (mounted) {
-      _showSuccessSnackBar('TODOを更新しました');
+      _showSuccessSnackBar('タスクを更新しました');
     }
   }
 
@@ -376,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 groupId = result['group_id'] as String;
               }
 
-              // TODO作成
+              // タスク作成
               await _cacheService.createTodo(
                 userId: widget.user.id,
                 groupId: groupId,
@@ -389,14 +413,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 assignedUserIds: assigneeIds,
               );
 
-              _showSuccessSnackBar('TODOを作成しました');
+              _showSuccessSnackBar('タスクを作成しました');
             } catch (e, stackTrace) {
-              debugPrint('[HomeScreen] ❌ TODO/グループ作成エラー: $e');
+              debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
 
               // エラーログ記録
               final errorLog = await ErrorLogService().logError(
                 userId: widget.user.id,
-                errorType: 'TODO作成エラー',
+                errorType: 'タスク作成エラー',
                 errorMessage: e.toString(),
                 stackTrace: stackTrace.toString(),
                 screenName: 'ホーム画面',
@@ -408,9 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                          'TODO/グループの作成に失敗しました（ID: ${errorLog.id}）',
-                        ),
+                        content: Text('タスク/グループの作成に失敗しました（ID: ${errorLog.id}）'),
                         backgroundColor: Theme.of(context).colorScheme.error,
                         duration: const Duration(seconds: 5),
                       ),
@@ -421,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
         },
-        tooltip: 'TODO作成',
+        tooltip: 'タスク作成',
         child: const Icon(Icons.add),
       ),
     );
@@ -567,7 +589,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
-                          // TODO件数
+                          // タスク件数
                           Text(
                             '${_todos.where((t) => t.groupId == group.id).length}件',
                             style: Theme.of(context).textTheme.bodySmall
@@ -576,9 +598,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? Theme.of(context)
                                             .colorScheme
                                             .onPrimaryContainer
-                                            .withOpacity(0.7)
+                                            .withValues(alpha: 0.7)
                                       : Theme.of(context).colorScheme.onSurface
-                                            .withOpacity(0.6),
+                                            .withValues(alpha: 0.6),
                                 ),
                           ),
                           // アクティブタブの下部インジケーター
@@ -612,7 +634,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemCount: myGroups.length,
             itemBuilder: (context, index) {
               final group = myGroups[index];
-              // このグループのTODOを取得
+              // このグループのタスクを取得
               final groupTodos = _todos
                   .where((todo) => todo.groupId == group.id)
                   .toList();
@@ -635,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  '${group.name}にTODOがありません',
+                                  '${group.name}にタスクがありません',
                                   style: Theme.of(context).textTheme.bodyLarge
                                       ?.copyWith(
                                         color: Theme.of(
@@ -669,7 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// TODOリストタイル（スタイリッシュなフラットデザイン）
+/// タスクリストタイル（スタイリッシュなフラットデザイン）
 class _TodoListTile extends StatelessWidget {
   final TodoModel todo;
   final VoidCallback onToggle;
@@ -709,7 +731,7 @@ class _TodoListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // TODO内容
+                // タスク内容
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

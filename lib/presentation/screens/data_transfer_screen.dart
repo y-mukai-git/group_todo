@@ -144,7 +144,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  '家族やチーム、友人と一緒に\nTODOを共有・管理できるアプリです',
+                  '家族やチーム、友人と一緒に\nタスクを共有・管理できるアプリです',
                   style: Theme.of(context).textTheme.bodyLarge,
                   textAlign: TextAlign.center,
                 ),

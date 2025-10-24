@@ -5,7 +5,7 @@ import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
 import 'error_dialog.dart';
 
-/// 定期TODO作成・編集ボトムシート
+/// 定期タスク作成・編集ボトムシート
 class CreateRecurringTodoBottomSheet extends StatefulWidget {
   final String groupId;
   final String groupName;
@@ -278,7 +278,7 @@ class _CreateRecurringTodoBottomSheetState
     );
   }
 
-  /// 定期TODO作成・更新実行
+  /// 定期タスク作成・更新実行
   Future<void> _saveTodo() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -354,11 +354,11 @@ class _CreateRecurringTodoBottomSheetState
       final errorLog = await ErrorLogService().logError(
         userId: widget.userId,
         errorType: widget.existingRecurringTodo != null
-            ? '定期TODO更新エラー'
-            : '定期TODO作成エラー',
+            ? '定期タスク更新エラー'
+            : '定期タスク作成エラー',
         errorMessage: e.toString(),
         stackTrace: stackTrace.toString(),
-        screenName: '定期TODO作成・編集',
+        screenName: '定期タスク作成・編集',
       );
 
       // エラーダイアログ表示
@@ -366,7 +366,7 @@ class _CreateRecurringTodoBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '定期TODOの保存に失敗しました',
+        errorMessage: '定期タスクの保存に失敗しました',
       );
 
       setState(() => _isLoading = false);
@@ -386,7 +386,7 @@ class _CreateRecurringTodoBottomSheetState
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -412,7 +412,7 @@ class _CreateRecurringTodoBottomSheetState
                         Text(
                           widget.existingRecurringTodo != null
                               ? '定期TODO編集'
-                              : '定期TODO作成',
+                              : '定期タスク作成',
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -451,7 +451,7 @@ class _CreateRecurringTodoBottomSheetState
                     controller: _titleController,
                     decoration: InputDecoration(
                       labelText: 'タイトル',
-                      hintText: '定期TODOのタイトルを入力',
+                      hintText: '定期タスクのタイトルを入力',
                       prefixIcon: const Icon(Icons.title),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -469,7 +469,7 @@ class _CreateRecurringTodoBottomSheetState
                     controller: _descriptionController,
                     decoration: InputDecoration(
                       labelText: '説明（任意）',
-                      hintText: 'TODOの詳細を入力',
+                      hintText: 'タスクの詳細を入力',
                       prefixIcon: const Icon(Icons.description),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -569,7 +569,7 @@ class _CreateRecurringTodoBottomSheetState
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
-                      value: _selectedMonthDay,
+                      initialValue: _selectedMonthDay,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),

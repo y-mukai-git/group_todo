@@ -18,22 +18,18 @@ class AnnouncementService {
 
       debugPrint('[AnnouncementService] レスポンス取得完了');
 
-      if (response['success'] == true && response['announcements'] != null) {
-        final List<dynamic> announcementsJson = response['announcements'];
-        final announcements = announcementsJson
-            .map((json) => AnnouncementModel.fromJson(json))
-            .toList();
+      final List<dynamic> announcementsJson =
+          response['announcements'] as List<dynamic>;
+      final announcements = announcementsJson
+          .map(
+            (json) => AnnouncementModel.fromJson(json as Map<String, dynamic>),
+          )
+          .toList();
 
-        debugPrint(
-          '[AnnouncementService] ✅ お知らせ取得成功: ${announcements.length}件',
-        );
-        return announcements;
-      } else {
-        debugPrint('[AnnouncementService] ❌ お知らせ取得失敗: ${response['error']}');
-        throw Exception('お知らせの取得に失敗しました');
-      }
+      debugPrint('[AnnouncementService] ✅ お知らせ取得成功: ${announcements.length}件');
+      return announcements;
     } catch (e) {
-      debugPrint('[AnnouncementService] ❌ 例外発生: $e');
+      debugPrint('[AnnouncementService] ❌ お知らせ取得エラー: $e');
       rethrow;
     }
   }

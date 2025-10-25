@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../data/models/inquiry_type.dart';
 import '../core/utils/api_client.dart';
 
@@ -11,9 +12,18 @@ class ContactService {
     required InquiryType type,
     required String message,
   }) async {
-    await _apiClient.callFunction(
-      functionName: 'submit-contact-inquiry',
-      body: {'user_id': userId, 'inquiry_type': type.value, 'message': message},
-    );
+    try {
+      await _apiClient.callFunction(
+        functionName: 'submit-contact-inquiry',
+        body: {
+          'user_id': userId,
+          'inquiry_type': type.value,
+          'message': message,
+        },
+      );
+    } catch (e) {
+      debugPrint('[ContactService] ❌ お問い合わせ送信エラー: $e');
+      rethrow;
+    }
   }
 }

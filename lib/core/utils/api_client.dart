@@ -21,7 +21,10 @@ class ApiClient {
   }) async {
     try {
       // 未送信エラーログを送信試行（空チェックで即return）
-      await ErrorLogService().sendPendingErrors();
+      // log-error API呼び出し時はスキップ（無限ループ防止）
+      if (functionName != 'log-error') {
+        await ErrorLogService().sendPendingErrors();
+      }
 
       final url = Uri.parse(
         '${_config.supabaseUrl}/functions/v1/$functionName',

@@ -1,17 +1,12 @@
 {
   "development": {
     "app": {
-      "name": "グループTODO",
       "title": "グループTODO (DEV)",
-      "version": "1.0.0-dev",
-      "debug": true,
-      "environment": "development"
+      "debug": true
     },
     "supabase": {
       "url": "https://jhrcpvihexxkjntleoxi.supabase.co",
-      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocmNwdmloZXh4a2pudGxlb3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTc5NjEsImV4cCI6MjA3NDg3Mzk2MX0.z07GR5xWHZ5sZZ-waTAfiulUZxsraxxGX7kC_ycVrgw",
-      "serviceRoleKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocmNwdmloZXh4a2pudGxlb3hpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTI5Nzk2MSwiZXhwIjoyMDc0ODczOTYxfQ.grVno11fOxS7Ku3A8YOtBz7JEqZiXVwRhwI_z6BezHE",
-      "projectRef": "jhrcpvihexxkjntleoxi"
+      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocmNwdmloZXh4a2pudGxlb3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTc5NjEsImV4cCI6MjA3NDg3Mzk2MX0.z07GR5xWHZ5sZZ-waTAfiulUZxsraxxGX7kC_ycVrgw"
     },
     "admob": {
       "appId": {
@@ -35,17 +30,12 @@
   },
   "staging": {
     "app": {
-      "name": "グループTODO",
       "title": "グループTODO (STG)",
-      "version": "1.0.0-staging",
-      "debug": false,
-      "environment": "staging"
+      "debug": false
     },
     "supabase": {
       "url": "https://vnhclkfeijmoidkksmxi.supabase.co",
-      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaGNsa2ZlaWptb2lka2tzbXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNjY3NzQsImV4cCI6MjA3Njk0Mjc3NH0.kkj5tMc50kKVLBCfK98fZVJLBNwhcympqsYkhPhFpTY",
-      "serviceRoleKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaGNsa2ZlaWptb2lka2tzbXhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTM2Njc3NCwiZXhwIjoyMDc2OTQyNzc0fQ.L4mpQAHRCiZCXTXp3OgcCwj9nK3U7r81ChjcrmulFJU",
-      "projectRef": "vnhclkfeijmoidkksmxi"
+      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaGNsa2ZlaWptb2lka2tzbXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNjY3NzQsImV4cCI6MjA3Njk0Mjc3NH0.kkj5tMc50kKVLBCfK98fZVJLBNwhcympqsYkhPhFpTY"
     },
     "admob": {
       "appId": {
@@ -69,17 +59,12 @@
   },
   "production": {
     "app": {
-      "name": "グループTODO",
       "title": "グループTODO",
-      "version": "1.0.0",
-      "debug": false,
-      "environment": "production"
+      "debug": false
     },
     "supabase": {
       "url": "https://your-prod-project.supabase.co",
-      "anonKey": "your-prod-anon-key",
-      "serviceRoleKey": "your-prod-service-role-key",
-      "projectRef": "your-prod-project"
+      "anonKey": "your-prod-anon-key"
     },
     "admob": {
       "appId": {

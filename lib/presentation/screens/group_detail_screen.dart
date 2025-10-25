@@ -7,7 +7,6 @@ import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
-import '../../core/utils/api_client.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
@@ -28,6 +27,7 @@ class GroupDetailScreen extends StatefulWidget {
 class _GroupDetailScreenState extends State<GroupDetailScreen>
     with SingleTickerProviderStateMixin {
   final DataCacheService _cacheService = DataCacheService();
+  final GroupService _groupService = GroupService();
   final RecurringTodoService _recurringTodoService = RecurringTodoService();
   List<TodoModel> _todos = [];
   late GroupModel _currentGroup;
@@ -122,31 +122,21 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   /// メンバー招待（display_id で招待）
   Future<void> _inviteMember(String displayId) async {
     try {
-      // Supabase Edge Function (add-group-member) を呼び出し
-      final responseData = await ApiClient().callFunction(
-        functionName: 'add-group-member',
-        body: {
-          'group_id': widget.group.id,
-          'display_id': displayId,
-          'inviter_id': widget.user.id,
-        },
+      // GroupService経由でメンバー追加
+      await _groupService.addGroupMember(
+        groupId: widget.group.id,
+        displayId: displayId,
+        inviterId: widget.user.id,
       );
 
-      // ApiClientは200以外で例外をスローするので、ここに到達すれば成功
-      if (responseData['success'] == true) {
-        // 成功時
-        if (!mounted) return;
-        // キャッシュを更新
-        await _cacheService.refreshGroupMembers(
-          groupId: widget.group.id,
-          requesterId: widget.user.id,
-        );
-        _showSuccessSnackBar('メンバーを招待しました');
-      } else {
-        // レスポンスにsuccessフィールドがfalseの場合
-        final errorMessage = responseData['error'] ?? '不明なエラー';
-        throw Exception(errorMessage);
-      }
+      // 成功時（ApiClientが例外をスローするので、ここに到達=成功）
+      if (!mounted) return;
+      // キャッシュを更新
+      await _cacheService.refreshGroupMembers(
+        groupId: widget.group.id,
+        requesterId: widget.user.id,
+      );
+      _showSuccessSnackBar('メンバーを招待しました');
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ メンバー招待エラー: $e');
 

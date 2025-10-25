@@ -81,7 +81,19 @@ serve(async (req) => {
       .eq('device_id', device_id)
       .single()
 
-    if (userError || !user) {
+    if (userError) {
+      // DBエラー - システムエラーとして返す
+      return new Response(
+        JSON.stringify({ success: false, error: userError.message }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    if (!user) {
+      // ユーザー未検出 - 正常なレスポンス（データが存在しないことを示す）
       return new Response(
         JSON.stringify({ success: true, user: null }),
         {
@@ -98,7 +110,6 @@ serve(async (req) => {
       .eq('id', user.id)
 
     // 署名付きURL生成（avatar_urlが存在する場合）
-    console.log('[DEBUG] avatar_url:', user.avatar_url)
     let signedAvatarUrl: string | null = null
     if (user.avatar_url) {
       try {
@@ -115,8 +126,6 @@ serve(async (req) => {
         // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
       }
     }
-
-    console.log('[DEBUG] signedAvatarUrl:', signedAvatarUrl)
 
     const response: GetUserResponse = {
       success: true,
@@ -135,9 +144,6 @@ serve(async (req) => {
         updated_at: user.updated_at
       }
     }
-
-    console.log('[DEBUG] response object:', response)
-    console.log('[DEBUG] response JSON:', JSON.stringify(response))
 
     return new Response(
       JSON.stringify(response),

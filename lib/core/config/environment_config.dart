@@ -62,9 +62,7 @@ class EnvironmentConfig {
   // アプリ基本設定
   // ========================================
 
-  String get appName => _config?['app']?['name'] ?? 'GroupTODO';
   String get appTitle => _config?['app']?['title'] ?? 'GroupTODO';
-  String get appVersion => _config?['app']?['version'] ?? '1.0.0';
   bool get isDebug => _config?['app']?['debug'] ?? kDebugMode;
 
   // ========================================
@@ -73,15 +71,10 @@ class EnvironmentConfig {
 
   String get supabaseUrl => _config?['supabase']?['url'] ?? '';
   String get supabaseAnonKey => _config?['supabase']?['anonKey'] ?? '';
-  String get supabaseServiceRoleKey =>
-      _config?['supabase']?['serviceRoleKey'] ?? '';
-  String get supabaseProjectRef => _config?['supabase']?['projectRef'] ?? '';
 
   /// Supabase設定が完全に設定されているかチェック
   bool get isSupabaseConfigured {
-    return supabaseUrl.isNotEmpty &&
-        supabaseAnonKey.isNotEmpty &&
-        supabaseServiceRoleKey.isNotEmpty;
+    return supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
   }
 
   // ========================================

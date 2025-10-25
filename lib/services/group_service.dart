@@ -92,16 +92,16 @@ class GroupService {
   /// グループメンバー追加
   Future<void> addGroupMember({
     required String groupId,
-    required String userId,
-    required String newMemberUserId,
+    required String displayId,
+    required String inviterId,
   }) async {
     try {
       await _apiClient.callFunction(
         functionName: 'add-group-member',
         body: {
           'group_id': groupId,
-          'user_id': userId,
-          'new_member_user_id': newMemberUserId,
+          'display_id': displayId,
+          'inviter_id': inviterId,
         },
       );
     } catch (e) {

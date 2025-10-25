@@ -112,19 +112,16 @@ serve(async (req) => {
     // 署名付きURL生成（avatar_urlが存在する場合）
     let signedAvatarUrl: string | null = null
     if (user.avatar_url) {
-      try {
-        const { data: signedUrlData, error: signedUrlError } = await supabaseClient
-          .storage
-          .from('user-avatars')
-          .createSignedUrl(user.avatar_url, 3600) // 有効期限1時間
+      const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+        .storage
+        .from('user-avatars')
+        .createSignedUrl(user.avatar_url, 3600) // 有効期限1時間
 
-        if (!signedUrlError && signedUrlData?.signedUrl) {
-          signedAvatarUrl = signedUrlData.signedUrl
-        }
-      } catch (error) {
-        console.error('Failed to create signed URL:', error)
-        // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+      if (signedUrlError) {
+        throw new Error(`Failed to create signed URL: ${signedUrlError.message}`)
       }
+
+      signedAvatarUrl = signedUrlData.signedUrl
     }
 
     const response: GetUserResponse = {

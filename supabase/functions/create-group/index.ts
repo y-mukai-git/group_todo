@@ -195,19 +195,16 @@ serve(async (req) => {
     // 署名付きURL生成（icon_urlが存在する場合）
     let signedIconUrl: string | null = null
     if (newGroup.icon_url) {
-      try {
-        const { data: signedUrlData, error: signedUrlError } = await supabaseClient
-          .storage
-          .from('group-icons')
-          .createSignedUrl(newGroup.icon_url, 3600) // 有効期限1時間
+      const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+        .storage
+        .from('group-icons')
+        .createSignedUrl(newGroup.icon_url, 3600) // 有効期限1時間
 
-        if (!signedUrlError && signedUrlData?.signedUrl) {
-          signedIconUrl = signedUrlData.signedUrl
-        }
-      } catch (error) {
-        console.error('Failed to create signed URL:', error)
-        // 署名付きURL生成失敗時もエラーにせず、nullのまま返す
+      if (signedUrlError) {
+        throw new Error(`Failed to create signed URL: ${signedUrlError.message}`)
       }
+
+      signedIconUrl = signedUrlData.signedUrl
     }
 
     const response: CreateGroupResponse = {

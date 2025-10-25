@@ -1,5 +1,6 @@
 // ユーザーの所属グループ一覧取得 Edge Function
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 declare var Deno: any;
@@ -44,6 +45,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // メンテナンスモードチェック
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const checkResponse = await fetch(`${supabaseUrl}/functions/v1/check-maintenance-mode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+    })
+    const checkResult = await checkResponse.json()
+    if (checkResult.status === 'error' || checkResult.status === 'maintenance') {
+      return new Response(
+        JSON.stringify(checkResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const { user_id }: GetUserGroupsRequest = await req.json()
 

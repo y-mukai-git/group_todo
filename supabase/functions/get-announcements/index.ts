@@ -34,6 +34,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // メンテナンスモードチェック
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const checkResponse = await fetch(`${supabaseUrl}/functions/v1/check-maintenance-mode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+    })
+    const checkResult = await checkResponse.json()
+    if (checkResult.status === 'error' || checkResult.status === 'maintenance') {
+      return new Response(
+        JSON.stringify(checkResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // お知らせ一覧取得（公開日時が現在より前のもののみ、公開日時の降順）
     const { data: announcements, error: announcementsError } = await supabaseClient
       .from('announcements')

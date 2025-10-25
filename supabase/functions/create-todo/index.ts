@@ -47,6 +47,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // メンテナンスモードチェック
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const checkResponse = await fetch(`${supabaseUrl}/functions/v1/check-maintenance-mode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+    })
+    const checkResult = await checkResponse.json()
+    if (checkResult.status === 'error' || checkResult.status === 'maintenance') {
+      return new Response(
+        JSON.stringify(checkResult),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { group_id, title, description, deadline, category, assigned_user_ids, created_by }: CreateTodoRequest = await req.json()
 
     if (!group_id || !title || !category || !assigned_user_ids || assigned_user_ids.length === 0 || !created_by) {

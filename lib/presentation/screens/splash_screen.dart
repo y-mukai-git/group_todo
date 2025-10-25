@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
@@ -8,6 +7,7 @@ import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/user_service.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 import 'main_tab_screen.dart';
 import 'data_transfer_screen.dart';
 
@@ -62,8 +62,9 @@ class _SplashScreenState extends State<SplashScreen>
       // メンテナンス中チェック
       if (appStatus.maintenance.isMaintenance) {
         if (!mounted) return;
-        await _showMaintenanceDialog(
-          appStatus.maintenance.message ?? 'システムメンテナンス中です',
+        await MaintenanceDialog.show(
+          context: context,
+          message: appStatus.maintenance.message ?? 'システムメンテナンス中です',
         );
         return;
       }
@@ -218,37 +219,6 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ),
       ),
-    );
-  }
-
-  /// メンテナンスダイアログ表示
-  Future<void> _showMaintenanceDialog(String message) async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return PopScope(
-          canPop: false,
-          child: AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.build, color: Colors.orange),
-                SizedBox(width: 8),
-                Text('メンテナンス中'),
-              ],
-            ),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  SystemNavigator.pop(); // アプリ終了
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

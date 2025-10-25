@@ -6,6 +6,7 @@ import '../../services/app_status_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/user_service.dart';
+import '../themes/app_theme.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/maintenance_dialog.dart';
 import 'main_tab_screen.dart';
@@ -153,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: const Color(0xFF2C3E50), // primaryColorと直接統一
+        color: AppTheme.primaryColor,
         child: Center(
           child: FadeTransition(
             opacity: _fadeAnimation,

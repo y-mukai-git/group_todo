@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
 
@@ -31,6 +33,7 @@ class CreateTodoBottomSheet extends StatefulWidget {
 
 class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     with SingleTickerProviderStateMixin {
+  final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _groupNameController = TextEditingController();
@@ -44,6 +47,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
   String? _selectedGroupId;
   bool _isCreatingNewGroup = false;
   String? _selectedCategory = 'none'; // デフォルト：未設定
+  String? _selectedGroupImageBase64; // グループ画像（base64）
 
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
@@ -67,6 +71,12 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
       // デフォルトグループが設定されている場合は初期値として設定
       if (widget.defaultGroupId != null) {
         _selectedGroupId = widget.defaultGroupId;
+      } else {
+        // グループが0件の場合は新規グループ作成モードをデフォルトに
+        final groups = DataCacheService().groups;
+        if (groups.isEmpty) {
+          _isCreatingNewGroup = true;
+        }
       }
     }
 
@@ -98,6 +108,76 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     _groupDescriptionController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  /// グループ画像選択
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        final mimeType = pickedFile.mimeType ?? 'image/jpeg';
+
+        setState(() {
+          _selectedGroupImageBase64 = 'data:$mimeType;base64,$base64Image';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('画像の読み込みに失敗しました: $e')));
+      }
+    }
+  }
+
+  /// グループ画像ソース選択ダイアログ
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('画像を選択'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('ギャラリーから選択'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('カメラで撮影'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            if (_selectedGroupImageBase64 != null)
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text('画像を削除'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectedGroupImageBase64 = null;
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// 期限選択ピッカー表示
@@ -278,6 +358,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
           'group_name': _groupNameController.text.trim(),
           'group_description': _groupDescriptionController.text.trim(),
           'group_category': _selectedCategory,
+          'group_image_data': _selectedGroupImageBase64,
         },
       },
     });
@@ -594,6 +675,59 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                       const SizedBox(height: 16),
                       // 新規グループ作成時の入力項目
                       if (_isCreatingNewGroup) ...[
+                        // グループアイコン画像選択
+                        Center(
+                          child: GestureDetector(
+                            onTap: _showImageSourceDialog,
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 50,
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
+                                  backgroundImage:
+                                      _selectedGroupImageBase64 != null
+                                      ? MemoryImage(
+                                          base64Decode(
+                                            _selectedGroupImageBase64!.split(
+                                              ',',
+                                            )[1],
+                                          ),
+                                        )
+                                      : null,
+                                  child: _selectedGroupImageBase64 == null
+                                      ? Icon(
+                                          Icons.group,
+                                          size: 50,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimaryContainer,
+                                        )
+                                      : null,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      size: 18,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         TextField(
                           controller: _groupNameController,
                           decoration: InputDecoration(

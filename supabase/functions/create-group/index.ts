@@ -135,6 +135,17 @@ serve(async (req) => {
       )
     }
 
+    // ユーザーの最大display_orderを取得
+    const { data: maxOrderData } = await supabaseClient
+      .from('group_members')
+      .select('display_order')
+      .eq('user_id', user_id)
+      .order('display_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const displayOrder = (maxOrderData?.display_order || 0) + 1
+
     // グループメンバーにオーナーを追加
     const { error: memberError } = await supabaseClient
       .from('group_members')
@@ -142,7 +153,8 @@ serve(async (req) => {
         group_id: newGroup.id,
         user_id: user_id,
         role: 'owner',
-        joined_at: now
+        joined_at: now,
+        display_order: displayOrder
       })
 
     if (memberError) {

@@ -55,9 +55,9 @@ class _HomeScreenState extends State<HomeScreen> {
         return true;
       }
 
-      // 期限なしTODOは全量表示時のみ
+      // 期限なしTODOは「本日期限」以外で表示
       if (todo.dueDate == null) {
-        return _filterDays == 'all';
+        return _filterDays != '0';
       }
 
       // 期限切れは常に表示（未完了のみ）
@@ -233,69 +233,43 @@ class _HomeScreenState extends State<HomeScreen> {
     DateTime? deadline,
     List<String>? assigneeIds,
   }) async {
-    // 楽観的更新：キャッシュ即座更新 + 非同期DB更新
-    await _cacheService.updateTodoOptimistic(
-      userId: widget.user.id,
-      todoId: todoId,
-      title: title,
-      description: description?.isNotEmpty == true ? description : null,
-      dueDate: deadline,
-      assignedUserIds: assigneeIds,
-      onNetworkError: (message) async {
-        // エラーログをDB登録
-        await ErrorLogService().logError(
-          userId: widget.user.id,
-          errorType: 'todo_update_network_error',
-          errorMessage: message,
-          stackTrace: null,
-          screenName: 'home_screen',
-        );
+    try {
+      // 楽観的更新：キャッシュ即座更新 + 非同期DB更新
+      await _cacheService.updateTodoOptimistic(
+        userId: widget.user.id,
+        todoId: todoId,
+        title: title,
+        description: description?.isNotEmpty == true ? description : null,
+        dueDate: deadline,
+        assignedUserIds: assigneeIds,
+      );
+    } catch (e, stackTrace) {
+      // エラーログをDB登録
+      await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'todo_update_error',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'home_screen',
+      );
 
-        // ネットワークエラー → アラート表示（キャッシュは自動ロールバック済み）
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('ネットワークエラー'),
-              content: Text(message),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-      },
-      onOtherError: (message) async {
-        // エラーログをDB登録
-        await ErrorLogService().logError(
-          userId: widget.user.id,
-          errorType: 'todo_update_other_error',
-          errorMessage: message,
-          stackTrace: null,
-          screenName: 'home_screen',
+      // エラーダイアログ表示
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('エラー'),
+            content: Text('タスクの更新に失敗しました\n$e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
         );
-
-        // その他のエラー → エラーダイアログ表示
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('エラー'),
-              content: Text(message),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-      },
-    );
+      }
+    }
 
     // 成功時のメッセージ（楽観的更新なので即座に表示）
     if (mounted) {
@@ -307,25 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('My TODO'), actions: []),
-      body: _todos.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '予定されているTODOはありません',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-            )
-          : _buildGroupPageView(),
+      body: _buildGroupPageView(),
       floatingActionButton: FloatingActionButton(
         heroTag: 'home_fab',
         onPressed: () async {
@@ -385,6 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final groupName = result['group_name'] as String;
                 final groupDescription = result['group_description'] as String?;
                 final groupCategory = result['group_category'] as String?;
+                final groupImageData = result['group_image_data'] as String?;
 
                 // グループ作成
                 final newGroup = await _cacheService.createGroup(
@@ -392,6 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   groupName: groupName,
                   description: groupDescription,
                   category: groupCategory,
+                  imageData: groupImageData,
                 );
                 groupId = newGroup.id;
                 _showSuccessSnackBar('グループを作成しました');
@@ -453,15 +411,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGroupPageView() {
     final myGroups = _cacheService.groups;
 
-    // グループが存在しない場合の表示
-    if (myGroups.isEmpty) {
-      return const Center(child: Text('グループに参加していません'));
-    }
-
     return Column(
       children: [
         // フィルターチップ（均等配置・折り返し調整）
-        Padding(
+        Container(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           child: Row(
             children: [
@@ -499,8 +453,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        // フィルターとタブ間の余白
-        const SizedBox(height: 8),
         // 横スクロール可能なグループタブバー
         Container(
           height: 54,
@@ -513,178 +465,208 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: myGroups.asMap().entries.map((entry) {
-                final index = entry.key;
-                final group = entry.value;
-                final isSelected = index == _currentGroupIndex;
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  child: InkWell(
-                    onTap: () {
-                      _pageController.animateToPage(
-                        index,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    },
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
+          child: myGroups.isEmpty
+              ? const SizedBox.expand()
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: MediaQuery.of(context).size.width - 32,
                     ),
-                    child: Container(
-                      width: 130, // 1画面約2.5グループ表示・省略表示減らす（調整）
-                      height: 54,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Colors.transparent,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          topRight: Radius.circular(8),
-                        ),
-                        border: isSelected
-                            ? Border(
-                                left: BorderSide(
-                                  color: Theme.of(context).colorScheme.outline,
-                                  width: 1,
-                                ),
-                                right: BorderSide(
-                                  color: Theme.of(context).colorScheme.outline,
-                                  width: 1,
-                                ),
-                                top: BorderSide(
-                                  color: Theme.of(context).colorScheme.outline,
-                                  width: 1,
-                                ),
-                              )
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // グループ名
-                          Text(
-                            group.name,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  color: isSelected
-                                      ? Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimaryContainer
-                                      : Theme.of(context).colorScheme.onSurface,
-                                ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          // タスク件数
-                          Text(
-                            '${_todos.where((t) => t.groupId == group.id).length}件',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: isSelected
-                                      ? Theme.of(context)
-                                            .colorScheme
-                                            .onPrimaryContainer
-                                            .withValues(alpha: 0.7)
-                                      : Theme.of(context).colorScheme.onSurface
-                                            .withValues(alpha: 0.6),
-                                ),
-                          ),
-                          // アクティブタブの下部インジケーター
-                          if (isSelected)
-                            Container(
-                              height: 1.5,
-                              margin: EdgeInsets.zero,
+                    child: Row(
+                      children: myGroups.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final group = entry.value;
+                        final isSelected = index == _currentGroupIndex;
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          child: InkWell(
+                            onTap: () {
+                              _pageController.animateToPage(
+                                index,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            },
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
+                              topRight: Radius.circular(8),
+                            ),
+                            child: Container(
+                              width: 130, // 1画面約2.5グループ表示・省略表示減らす（調整）
+                              height: 54,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
-                                borderRadius: BorderRadius.circular(2),
+                                color: isSelected
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                    : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  topRight: Radius.circular(8),
+                                ),
+                                border: isSelected
+                                    ? Border(
+                                        left: BorderSide(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.outline,
+                                          width: 1,
+                                        ),
+                                        right: BorderSide(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.outline,
+                                          width: 1,
+                                        ),
+                                        top: BorderSide(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.outline,
+                                          width: 1,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // グループ名
+                                  Text(
+                                    group.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimaryContainer
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                        ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  // タスク件数
+                                  Text(
+                                    '${_todos.where((t) => t.groupId == group.id).length}件',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: isSelected
+                                              ? Theme.of(context)
+                                                    .colorScheme
+                                                    .onPrimaryContainer
+                                                    .withValues(alpha: 0.7)
+                                              : Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.6),
+                                        ),
+                                  ),
+                                  // アクティブタブの下部インジケーター
+                                  if (isSelected)
+                                    Container(
+                                      height: 1.5,
+                                      margin: EdgeInsets.zero,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ),
+                ),
         ),
         // PageView for group content
         Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentGroupIndex = index;
-              });
-            },
-            itemCount: myGroups.length,
-            itemBuilder: (context, index) {
-              final group = myGroups[index];
-              // このグループのタスクを取得
-              final groupTodos = _todos
-                  .where((todo) => todo.groupId == group.id)
-                  .toList();
+          child: myGroups.isEmpty
+              ? const Center(child: Text('TODOがありません'))
+              : PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentGroupIndex = index;
+                    });
+                  },
+                  itemCount: myGroups.length,
+                  itemBuilder: (context, index) {
+                    final group = myGroups[index];
+                    // このグループのタスクを取得
+                    final groupTodos = _todos
+                        .where((todo) => todo.groupId == group.id)
+                        .toList();
 
-              return RefreshIndicator(
-                onRefresh: _refreshData,
-                child: groupTodos.isEmpty
-                    ? ListView(
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.3,
-                          ),
-                          Center(
-                            child: Column(
+                    return RefreshIndicator(
+                      onRefresh: _refreshData,
+                      child: groupTodos.isEmpty
+                          ? ListView(
                               children: [
-                                Icon(
-                                  Icons.inbox_outlined,
-                                  size: 48,
-                                  color: Theme.of(context).colorScheme.outline,
+                                SizedBox(
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.3,
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  '${group.name}にタスクがありません',
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
+                                Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 48,
                                         color: Theme.of(
                                           context,
                                         ).colorScheme.outline,
                                       ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'TODOがありません',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.outline,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              itemCount: groupTodos.length,
+                              itemBuilder: (context, todoIndex) {
+                                final todo = groupTodos[todoIndex];
+                                return _TodoListTile(
+                                  todo: todo,
+                                  onToggle: () => _toggleTodoCompletion(todo),
+                                  onTap: () => _showTodoDetail(todo),
+                                );
+                              },
                             ),
-                          ),
-                        ],
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: groupTodos.length,
-                        itemBuilder: (context, todoIndex) {
-                          final todo = groupTodos[todoIndex];
-                          return _TodoListTile(
-                            todo: todo,
-                            onToggle: () => _toggleTodoCompletion(todo),
-                            onTap: () => _showTodoDetail(todo),
-                          );
-                        },
-                      ),
-              );
-            },
-          ),
+                    );
+                  },
+                ),
         ),
       ],
     );

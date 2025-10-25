@@ -116,6 +116,17 @@ serve(async (req) => {
       )
     }
 
+    // ユーザーの最大display_orderを取得
+    const { data: maxOrderData } = await supabaseClient
+      .from('group_members')
+      .select('display_order')
+      .eq('user_id', user_id)
+      .order('display_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const displayOrder = (maxOrderData?.display_order || 0) + 1
+
     // グループメンバーに追加
     const now = new Date().toISOString()
 
@@ -125,7 +136,8 @@ serve(async (req) => {
         group_id: group_id,
         user_id: user_id,
         role: 'member',
-        joined_at: now
+        joined_at: now,
+        display_order: displayOrder
       })
       .select('id, group_id, user_id, role, joined_at')
       .single()

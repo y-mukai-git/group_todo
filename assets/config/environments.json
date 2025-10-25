@@ -42,10 +42,10 @@
       "environment": "staging"
     },
     "supabase": {
-      "url": "https://your-staging-project.supabase.co",
-      "anonKey": "your-staging-anon-key",
-      "serviceRoleKey": "your-staging-service-role-key",
-      "projectRef": "your-staging-project"
+      "url": "https://vnhclkfeijmoidkksmxi.supabase.co",
+      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaGNsa2ZlaWptb2lka2tzbXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNjY3NzQsImV4cCI6MjA3Njk0Mjc3NH0.kkj5tMc50kKVLBCfK98fZVJLBNwhcympqsYkhPhFpTY",
+      "serviceRoleKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaGNsa2ZlaWptb2lka2tzbXhpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTM2Njc3NCwiZXhwIjoyMDc2OTQyNzc0fQ.L4mpQAHRCiZCXTXp3OgcCwj9nK3U7r81ChjcrmulFJU",
+      "projectRef": "vnhclkfeijmoidkksmxi"
     },
     "admob": {
       "appId": {

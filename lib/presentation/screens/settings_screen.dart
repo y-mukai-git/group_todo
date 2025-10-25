@@ -222,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const AnnouncementsScreen(),
+              builder: (context) => AnnouncementsScreen(user: widget.user),
             ),
           );
         },

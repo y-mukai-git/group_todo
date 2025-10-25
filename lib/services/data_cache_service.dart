@@ -2,10 +2,12 @@ import 'package:flutter/foundation.dart';
 import '../data/models/todo_model.dart';
 import '../data/models/group_model.dart';
 import '../data/models/user_model.dart';
+import '../data/models/announcement_model.dart';
 import '../core/utils/api_client.dart';
 import 'todo_service.dart';
 import 'group_service.dart';
 import 'user_service.dart';
+import 'announcement_service.dart';
 
 /// データキャッシュサービス（シングルトン + ChangeNotifier）
 ///
@@ -21,10 +23,12 @@ class DataCacheService extends ChangeNotifier {
   final TodoService _todoService = TodoService();
   final GroupService _groupService = GroupService();
   final UserService _userService = UserService();
+  final AnnouncementService _announcementService = AnnouncementService();
 
   // キャッシュデータ
   List<TodoModel> _todos = [];
   List<GroupModel> _groups = [];
+  List<AnnouncementModel> _announcements = [];
   UserModel? _currentUser;
   String? _signedAvatarUrl;
   // グループID -> メンバー一覧 + オーナーID
@@ -39,6 +43,7 @@ class DataCacheService extends ChangeNotifier {
     return sortedGroups;
   }
 
+  List<AnnouncementModel> get announcements => _announcements;
   UserModel? get currentUser => _currentUser;
   String? get signedAvatarUrl => _signedAvatarUrl;
 
@@ -458,5 +463,26 @@ class DataCacheService extends ChangeNotifier {
               !t.isCompleted,
         )
         .toList();
+  }
+
+  // ==================== お知らせ関連 ====================
+
+  /// お知らせ取得（API + キャッシュ）
+  Future<void> loadAnnouncements() async {
+    try {
+      debugPrint('[DataCacheService] お知らせ取得開始');
+
+      // API呼び出しでお知らせ取得
+      final announcements = await _announcementService.getAnnouncements();
+
+      // 取得成功 → キャッシュ更新
+      _announcements = announcements;
+      notifyListeners();
+
+      debugPrint('[DataCacheService] ✅ お知らせ取得完了: ${_announcements.length}件');
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ お知らせ取得エラー: $e');
+      rethrow;
+    }
   }
 }

@@ -45,16 +45,7 @@ class DeviceIdHelper {
       return deviceId;
     } catch (e) {
       debugPrint('[DeviceIdHelper] ❌ デバイスID取得エラー: $e');
-      // エラー時はUUID生成
-      final fallbackId = const Uuid().v4();
-      debugPrint('[DeviceIdHelper] 🆘 フォールバックUUID: $fallbackId');
-
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_deviceIdKey, fallbackId);
-      } catch (_) {}
-
-      return fallbackId;
+      rethrow;
     }
   }
 

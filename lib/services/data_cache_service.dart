@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../data/models/todo_model.dart';
 import '../data/models/group_model.dart';
 import '../data/models/user_model.dart';
+import '../core/utils/api_client.dart';
 import 'todo_service.dart';
 import 'group_service.dart';
 import 'user_service.dart';
@@ -52,38 +53,30 @@ class DataCacheService extends ChangeNotifier {
       _currentUser = user;
       _signedAvatarUrl = signedAvatarUrl;
 
-      // タスクデータ取得
-      final myTodos = await _todoService.getMyTodos(userId: user.id);
+      // 全データを一括取得（新API使用）
+      final response = await ApiClient().callFunction(
+        functionName: 'initialize-user-cache',
+        body: {'user_id': user.id},
+      );
 
-      // グループデータ取得
-      final userGroups = await _groupService.getUserGroups(userId: user.id);
+      // タスクデータ整形
+      final todosList = response['todos'] as List<dynamic>;
+      _todos = todosList
+          .map((json) => TodoModel.fromJson(json as Map<String, dynamic>))
+          .toList();
 
-      // グループごとのタスクとメンバーを取得
-      final List<TodoModel> allTodos = List.from(myTodos);
-      for (final group in userGroups) {
-        // タスク取得
-        final groupTodos = await _todoService.getGroupTodos(
-          userId: user.id,
-          groupId: group.id,
-        );
-        allTodos.addAll(groupTodos);
+      // グループデータ整形
+      final groupsList = response['groups'] as List<dynamic>;
+      _groups = groupsList
+          .map((json) => GroupModel.fromJson(json as Map<String, dynamic>))
+          .toList();
 
-        // メンバー取得（エラー時はrethrowしてinitializeCache全体を失敗させる）
-        final membersResponse = await _groupService.getGroupMembers(
-          groupId: group.id,
-          requesterId: user.id,
-        );
-        _groupMembers[group.id] = membersResponse;
-      }
-
-      // 重複を除去（同じidのタスクは1つにする）
-      final Map<String, TodoModel> uniqueTodos = {};
-      for (final todo in allTodos) {
-        uniqueTodos[todo.id] = todo;
-      }
-
-      _todos = uniqueTodos.values.toList();
-      _groups = userGroups;
+      // グループメンバーデータ整形
+      final groupMembersMap = response['group_members'] as Map<String, dynamic>;
+      _groupMembers.clear();
+      _groupMembers.addAll(
+        groupMembersMap.cast<String, Map<String, dynamic>>(),
+      );
 
       debugPrint(
         '[DataCacheService] ✅ 初期データ取得完了: TODOs=${_todos.length}, Groups=${_groups.length}',
@@ -202,8 +195,6 @@ class DataCacheService extends ChangeNotifier {
     String? description,
     DateTime? dueDate,
     List<String>? assignedUserIds,
-    required Function(String) onNetworkError,
-    required Function(String) onOtherError,
   }) async {
     try {
       // 1. DB更新

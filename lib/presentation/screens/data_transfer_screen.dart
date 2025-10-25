@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../services/error_log_service.dart';
+import '../../services/data_cache_service.dart';
 import '../../core/utils/storage_helper.dart';
 import '../widgets/error_dialog.dart';
 import 'main_tab_screen.dart';
@@ -37,6 +38,9 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       // SharedPreferencesにユーザー情報を保存
       await StorageHelper.saveUserId(newUser.id);
       await StorageHelper.saveDisplayName(newUser.displayName);
+
+      // キャッシュ初期化
+      await DataCacheService().initializeCache(newUser);
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -89,9 +93,25 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         password: password,
       );
 
-      // SharedPreferencesにユーザー情報を保存
+      // ユーザーエラー（ID/パスワード間違い）の場合
+      if (user == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('入力のユーザID、パスワードのユーザ情報は見つかりませんでした'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // 成功時
       await StorageHelper.saveUserId(user.id);
       await StorageHelper.saveDisplayName(user.displayName);
+
+      // キャッシュ初期化
+      await DataCacheService().initializeCache(user);
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -101,7 +121,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
     } catch (e, stackTrace) {
       debugPrint('[DataTransferScreen] ❌ データ引き継ぎエラー: $e');
 
-      // エラーログ記録
+      // システムエラーの場合のみエラーログ記録 + ErrorDialog表示
       final errorLog = await ErrorLogService().logError(
         userId: null, // データ引き継ぎ失敗時はユーザーIDなし
         errorType: 'データ引き継ぎエラー',
@@ -110,7 +130,6 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         screenName: 'データ引き継ぎ画面',
       );
 
-      // エラーダイアログ表示
       if (!mounted) return;
       await ErrorDialog.show(
         context: context,

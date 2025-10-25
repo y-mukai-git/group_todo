@@ -45,12 +45,6 @@ class UserService {
 
       return {'user': user, 'signed_avatar_url': signedAvatarUrl};
     } catch (e) {
-      // 404エラーは新規ユーザーとして扱う（エラーではなくnullを返す）
-      if (e is ApiException && e.statusCode == 404) {
-        debugPrint('[UserService] ⚠️ ユーザー未登録（新規ユーザー）');
-        return null;
-      }
-      // その他のエラーは再スロー
       debugPrint('[UserService] ❌ ユーザー取得エラー: $e');
       rethrow;
     }
@@ -106,7 +100,8 @@ class UserService {
   }
 
   /// データ引き継ぎ実行（8桁ユーザーID + パスワード）
-  Future<UserModel> transferUserData({
+  /// 戻り値: 成功時 UserModel、失敗時（ユーザーエラー）null
+  Future<UserModel?> transferUserData({
     required String userId, // 8桁displayId
     required String password,
   }) async {
@@ -122,10 +117,15 @@ class UserService {
         },
       );
 
+      // 失敗時（ユーザーエラー）はnullを返す
+      if (response['success'] != true) {
+        return null;
+      }
+
       return UserModel.fromJson(response['user'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[UserService] ❌ データ引き継ぎエラー: $e');
-      rethrow;
+      rethrow; // システムエラーのみ例外を投げる
     }
   }
 }

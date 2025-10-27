@@ -251,8 +251,6 @@ ALTER TABLE todo_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE todo_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recurring_todo_assignments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE contact_inquiries ENABLE ROW LEVEL SECURITY;
 
 -- Users: 本人のみアクセス可能
 CREATE POLICY users_select_own ON users FOR SELECT USING (id = auth.uid());
@@ -443,20 +441,6 @@ CREATE POLICY recurring_todo_assignments_delete_member ON recurring_todo_assignm
     AND group_members.user_id = auth.uid()
   ));
 
--- Announcements: すべてのユーザーが閲覧可能
-CREATE POLICY announcements_select_all ON announcements FOR SELECT
-  USING (published_at <= NOW());
-
--- Contact Inquiries: 本人のみアクセス可能
-CREATE POLICY contact_inquiries_select_own ON contact_inquiries FOR SELECT
-  USING (user_id = auth.uid());
-
-CREATE POLICY contact_inquiries_insert_own ON contact_inquiries FOR INSERT
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY contact_inquiries_update_own ON contact_inquiries FOR UPDATE
-  USING (user_id = auth.uid());
-
 -- ===================================
 -- 自動更新トリガー
 -- ===================================
@@ -486,9 +470,6 @@ CREATE TRIGGER update_todo_comments_updated_at BEFORE UPDATE ON todo_comments
 CREATE TRIGGER update_recurring_todos_updated_at BEFORE UPDATE ON recurring_todos
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_contact_inquiries_updated_at BEFORE UPDATE ON contact_inquiries
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 -- ===================================
 -- 9. Announcements (お知らせ)
 -- ===================================
@@ -511,6 +492,13 @@ COMMENT ON COLUMN announcements.version IS 'バージョン番号（例: "1.0.0"
 COMMENT ON COLUMN announcements.title IS 'お知らせタイトル（100文字以内）';
 COMMENT ON COLUMN announcements.content IS 'お知らせ内容（1000文字以内、改行可能）';
 COMMENT ON COLUMN announcements.published_at IS '公開日時（この日時以降にアプリに表示される）';
+
+-- RLS有効化
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+
+-- Announcements: すべてのユーザーが閲覧可能
+CREATE POLICY announcements_select_all ON announcements FOR SELECT
+  USING (published_at <= NOW());
 
 -- ===================================
 -- 10. Contact Inquiries (お問い合わせ)
@@ -536,6 +524,23 @@ COMMENT ON TABLE contact_inquiries IS 'お問い合わせ情報テーブル（�
 COMMENT ON COLUMN contact_inquiries.inquiry_type IS 'お問い合わせ種別（bug_report: 不具合報告, feature_request: 機能要望, other: その他）';
 COMMENT ON COLUMN contact_inquiries.message IS 'お問い合わせ内容（1000文字以内）';
 COMMENT ON COLUMN contact_inquiries.status IS '対応状況（open: 未対応, in_progress: 対応中, resolved: 解決済み）';
+
+-- RLS有効化
+ALTER TABLE contact_inquiries ENABLE ROW LEVEL SECURITY;
+
+-- Contact Inquiries: 本人のみアクセス可能
+CREATE POLICY contact_inquiries_select_own ON contact_inquiries FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY contact_inquiries_insert_own ON contact_inquiries FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY contact_inquiries_update_own ON contact_inquiries FOR UPDATE
+  USING (user_id = auth.uid());
+
+-- updated_at自動更新トリガー
+CREATE TRIGGER update_contact_inquiries_updated_at BEFORE UPDATE ON contact_inquiries
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ===================================
 -- 11. Error Logs (エラーログ)
@@ -566,6 +571,18 @@ COMMENT ON COLUMN error_logs.stack_trace IS 'スタックトレース';
 COMMENT ON COLUMN error_logs.screen_name IS 'エラー発生画面名';
 COMMENT ON COLUMN error_logs.device_info IS 'デバイス情報（JSON）';
 COMMENT ON COLUMN error_logs.created_at IS 'エラー発生日時';
+
+-- error_logsテーブルのRow Level Security
+ALTER TABLE error_logs ENABLE ROW LEVEL SECURITY;
+
+-- error_logsテーブルのポリシー
+-- SELECT: 自分のエラーログのみ閲覧可能
+CREATE POLICY error_logs_select_own ON error_logs FOR SELECT
+  USING (user_id = auth.uid());
+
+-- INSERT: 全員挿入可能（エラーログ記録のため）
+CREATE POLICY error_logs_insert_all ON error_logs FOR INSERT
+  WITH CHECK (true);
 
 -- ===================================
 -- 初期データ投入完了通知

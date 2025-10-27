@@ -54,3 +54,6 @@ package-lock.json
 
 # Supabase related
 supabase/.temp/
+
+# Schema dumps (for checking/debugging)
+schema_dumps/

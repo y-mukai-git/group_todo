@@ -183,29 +183,38 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: true,
-      enableDrag: true,
-      showDragHandle: true,
-      isDismissible: true,
-      barrierColor: Colors.black54,
       backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useRootNavigator: false,
       builder: (context) {
-        return CreateTodoBottomSheet(
-          fixedGroupId: todo.groupId,
-          fixedGroupName: group?.name ?? 'グループ',
-          availableAssignees:
-              membersData != null && membersData['success'] == true
-              ? (membersData['members'] as List<dynamic>).map((m) {
-                  final memberId = m['id'] as String;
-                  final memberName = memberId == _cacheService.currentUser!.id
-                      ? _cacheService.currentUser!.displayName
-                      : m['display_name'] as String;
-                  return {'id': memberId, 'name': memberName};
-                }).toList()
-              : null,
-          currentUserId: widget.user.id,
-          currentUserName: _cacheService.currentUser!.displayName,
-          existingTodo: todo, // 編集モード：既存TODOデータを渡す
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: CreateTodoBottomSheet(
+            fixedGroupId: todo.groupId,
+            fixedGroupName: group?.name ?? 'グループ',
+            availableAssignees:
+                membersData != null && membersData['success'] == true
+                ? (membersData['members'] as List<dynamic>).map((m) {
+                    final memberId = m['id'] as String;
+                    final memberName = memberId == _cacheService.currentUser!.id
+                        ? _cacheService.currentUser!.displayName
+                        : m['display_name'] as String;
+                    return {'id': memberId, 'name': memberName};
+                  }).toList()
+                : null,
+            currentUserId: widget.user.id,
+            currentUserName: _cacheService.currentUser!.displayName,
+            existingTodo: todo, // 編集モード：既存TODOデータを渡す
+          ),
         );
       },
     );
@@ -307,6 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('My TODO'), actions: []),
       body: _buildGroupPageView(),
       floatingActionButton: FloatingActionButton(
@@ -324,6 +334,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ? _cacheService.getGroupMembers(selectedGroup.id)
               : null;
 
+          // asyncギャップの前にmountedチェックとcontextを保存
+          if (!mounted) return;
+          final localContext = context;
+
           final result = await showModalBottomSheet<Map<String, dynamic>>(
             context: context,
             isScrollControlled: true,
@@ -332,124 +346,145 @@ class _HomeScreenState extends State<HomeScreen> {
             isDismissible: true,
             useRootNavigator: false,
             builder: (context) {
-              return CreateTodoBottomSheet(
-                fixedGroupId: null, // グループ選択UI表示
-                defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
-                availableAssignees:
-                    membersData != null && membersData['success'] == true
-                    ? (membersData['members'] as List<dynamic>).map((m) {
-                        final memberId = m['id'] as String;
-                        final memberName =
-                            memberId == _cacheService.currentUser!.id
-                            ? _cacheService.currentUser!.displayName
-                            : m['display_name'] as String;
-                        return {'id': memberId, 'name': memberName};
-                      }).toList()
-                    : null,
-                currentUserId: widget.user.id,
-                currentUserName: _cacheService.currentUser!.displayName,
-                existingTodo: null,
+              // コンテンツエリアの70%を固定値として計算
+              final mediaQuery = MediaQuery.of(context);
+              final contentHeight =
+                  mediaQuery.size.height -
+                  mediaQuery.padding.top -
+                  mediaQuery.padding.bottom;
+
+              return Container(
+                height: contentHeight * 0.7,
+                margin: EdgeInsets.only(top: contentHeight * 0.3),
+                child: CreateTodoBottomSheet(
+                  fixedGroupId: null, // グループ選択UI表示
+                  defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
+                  availableAssignees:
+                      membersData != null && membersData['success'] == true
+                      ? (membersData['members'] as List<dynamic>).map((m) {
+                          final memberId = m['id'] as String;
+                          final memberName =
+                              memberId == _cacheService.currentUser!.id
+                              ? _cacheService.currentUser!.displayName
+                              : m['display_name'] as String;
+                          return {'id': memberId, 'name': memberName};
+                        }).toList()
+                      : null,
+                  currentUserId: widget.user.id,
+                  currentUserName: _cacheService.currentUser!.displayName,
+                  existingTodo: null,
+                ),
               );
             },
           );
 
-          if (result != null && mounted) {
-            final isCreatingNewGroup = result['is_creating_new_group'] as bool?;
-            final title = result['title'] as String;
-            final description = result['description'] as String?;
-            final deadline = result['deadline'] as DateTime?;
-            final assigneeIds =
-                (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
-                [widget.user.id];
+          // asyncギャップの後にmountedチェック
+          if (!mounted) return;
+          if (result == null) return;
 
-            // ローディング表示
-            if (!mounted) return;
+          final isCreatingNewGroup = result['is_creating_new_group'] as bool?;
+          final title = result['title'] as String;
+          final description = result['description'] as String?;
+          final deadline = result['deadline'] as DateTime?;
+          final assigneeIds =
+              (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
+              [widget.user.id];
+
+          // ローディング表示
+          if (mounted) {
             showDialog(
-              context: context,
+              // ignore: use_build_context_synchronously
+              context: localContext,
               barrierDismissible: false,
               builder: (context) =>
                   const Center(child: CircularProgressIndicator()),
             );
+          }
 
-            try {
-              String groupId;
+          try {
+            String groupId;
 
-              // 新規グループ作成の場合
-              if (isCreatingNewGroup == true) {
-                final groupName = result['group_name'] as String;
-                final groupDescription = result['group_description'] as String?;
-                final groupCategory = result['group_category'] as String?;
-                final groupImageData = result['group_image_data'] as String?;
+            // 新規グループ作成の場合
+            if (isCreatingNewGroup == true) {
+              final groupName = result['group_name'] as String;
+              final groupDescription = result['group_description'] as String?;
+              final groupCategory = result['group_category'] as String?;
+              final groupImageData = result['group_image_data'] as String?;
 
-                // グループ作成
-                final newGroup = await _cacheService.createGroup(
-                  userId: widget.user.id,
-                  groupName: groupName,
-                  description: groupDescription,
-                  category: groupCategory,
-                  imageData: groupImageData,
-                );
-                groupId = newGroup.id;
-                _showSuccessSnackBar('グループを作成しました');
-              } else {
-                // 既存グループ選択の場合
-                groupId = result['group_id'] as String;
-              }
-
-              // タスク作成
-              await _cacheService.createTodo(
+              // グループ作成
+              final newGroup = await _cacheService.createGroup(
                 userId: widget.user.id,
-                groupId: groupId,
-                title: title,
-                description: description?.isNotEmpty == true
-                    ? description
-                    : null,
-                dueDate: deadline,
-                category: 'other',
-                assignedUserIds: assigneeIds,
+                groupName: groupName,
+                description: groupDescription,
+                category: groupCategory,
+                imageData: groupImageData,
               );
+              groupId = newGroup.id;
+              _showSuccessSnackBar('グループを作成しました');
+            } else {
+              // 既存グループ選択の場合
+              groupId = result['group_id'] as String;
+            }
 
-              _showSuccessSnackBar('タスクを作成しました');
+            // タスク作成
+            await _cacheService.createTodo(
+              userId: widget.user.id,
+              groupId: groupId,
+              title: title,
+              description: description?.isNotEmpty == true ? description : null,
+              dueDate: deadline,
+              category: 'other',
+              assignedUserIds: assigneeIds,
+            );
 
-              // ローディング非表示（フレーム完了後に実行）
-              if (mounted) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) Navigator.of(context, rootNavigator: true).pop();
-                });
-              }
-            } catch (e, stackTrace) {
-              debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
+            _showSuccessSnackBar('タスクを作成しました');
 
-              // ローディング非表示
-              if (mounted) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) Navigator.of(context, rootNavigator: true).pop();
-                });
-              }
+            // ローディング非表示（フレーム完了後に実行）
+            if (mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                // ignore: use_build_context_synchronously
+                if (mounted) {
+                  Navigator.of(localContext, rootNavigator: true).pop();
+                }
+              });
+            }
+          } catch (e, stackTrace) {
+            debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
 
-              // エラーログ記録
-              final errorLog = await ErrorLogService().logError(
-                userId: widget.user.id,
-                errorType: 'タスク作成エラー',
-                errorMessage: e.toString(),
-                stackTrace: stackTrace.toString(),
-                screenName: 'ホーム画面',
-              );
+            // ローディング非表示
+            if (mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                // ignore: use_build_context_synchronously
+                if (mounted) {
+                  Navigator.of(localContext, rootNavigator: true).pop();
+                }
+              });
+            }
 
-              // エラーメッセージ表示（フレーム完了後に安全に表示）
-              if (mounted) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('タスク/グループの作成に失敗しました（ID: ${errorLog.id}）'),
-                        backgroundColor: Theme.of(context).colorScheme.error,
-                        duration: const Duration(seconds: 5),
-                      ),
-                    );
-                  }
-                });
-              }
+            // エラーログ記録
+            final errorLog = await ErrorLogService().logError(
+              userId: widget.user.id,
+              errorType: 'タスク作成エラー',
+              errorMessage: e.toString(),
+              stackTrace: stackTrace.toString(),
+              screenName: 'ホーム画面',
+            );
+
+            // エラーメッセージ表示（フレーム完了後に安全に表示）
+            if (mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  // ignore: use_build_context_synchronously
+                  ScaffoldMessenger.of(localContext).showSnackBar(
+                    SnackBar(
+                      content: Text('タスク/グループの作成に失敗しました（ID: ${errorLog.id}）'),
+                      // ignore: use_build_context_synchronously
+                      backgroundColor: Theme.of(localContext).colorScheme.error,
+                      duration: const Duration(seconds: 5),
+                    ),
+                  );
+                }
+              });
             }
           }
         },

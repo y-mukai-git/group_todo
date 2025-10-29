@@ -61,7 +61,20 @@ class _GroupsScreenState extends State<GroupsScreen> {
       enableDrag: true,
       isDismissible: true,
       useRootNavigator: false,
-      builder: (context) => const CreateGroupBottomSheet(),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: const CreateGroupBottomSheet(),
+        );
+      },
     );
 
     if (result != null && mounted) {
@@ -252,6 +265,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(_isReorderMode ? '並び替え' : 'グループ'),
         leadingWidth: _isReorderMode ? 100 : null,

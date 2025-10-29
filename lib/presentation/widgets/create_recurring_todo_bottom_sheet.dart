@@ -380,7 +380,6 @@ class _CreateRecurringTodoBottomSheetState
         return GestureDetector(
           onTap: () {}, // シート内のタップが外側に抜けないように
           child: Container(
-            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.vertical(

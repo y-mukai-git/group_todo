@@ -104,7 +104,6 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         return GestureDetector(
           onTap: () {},
           child: Container(
-            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.vertical(
@@ -222,83 +221,89 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                 const Divider(height: 1),
 
                 // ユーザー招待UI
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ユーザーを招待',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 24,
+                      right: 24,
+                      top: 24,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ユーザーを招待',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      // 非オーナー時のメッセージ
-                      if (widget.currentUserId != widget.groupOwnerId) ...[
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'オーナーのみがユーザー招待できます',
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
+                        const SizedBox(height: 12),
+                        // 非オーナー時のメッセージ
+                        if (widget.currentUserId != widget.groupOwnerId) ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'オーナーのみがユーザー招待できます',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          // オーナー時の招待UI
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _userIdController,
+                                  decoration: InputDecoration(
+                                    labelText: 'ユーザーID',
+                                    hintText: 'ユーザーIDを入力',
+                                    prefixIcon: const Icon(Icons.person_add),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              FilledButton(
+                                onPressed: _inviteUser,
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                child: const Text('招待'),
                               ),
                             ],
                           ),
-                        ),
-                      ] else ...[
-                        // オーナー時の招待UI
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _userIdController,
-                                decoration: InputDecoration(
-                                  labelText: 'ユーザーID',
-                                  hintText: 'ユーザーIDを入力',
-                                  prefixIcon: const Icon(Icons.person_add),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            FilledButton(
-                              onPressed: _inviteUser,
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                              ),
-                              child: const Text('招待'),
-                            ),
-                          ],
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ],

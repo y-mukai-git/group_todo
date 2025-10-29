@@ -65,50 +65,63 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return GroupMembersBottomSheet(
-            members: _groupMembers,
-            currentUserId: widget.user.id,
-            groupOwnerId: widget.group.ownerId,
-            onRemoveMember: _removeMember,
-            onInviteMember: (displayId) async {
-              // ローディング表示
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) =>
-                    const Center(child: CircularProgressIndicator()),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return GroupMembersBottomSheet(
+                members: _groupMembers,
+                currentUserId: widget.user.id,
+                groupOwnerId: widget.group.ownerId,
+                onRemoveMember: _removeMember,
+                onInviteMember: (displayId) async {
+                  // ローディング表示
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  try {
+                    await _inviteMember(displayId);
+                    // メンバー招待成功後、ボトムシートを再描画
+                    setModalState(() {});
+
+                    // ローディング非表示（フレーム完了後に実行）
+                    if (mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          Navigator.of(context, rootNavigator: true).pop();
+                        }
+                      });
+                    }
+                  } catch (e) {
+                    // ローディング非表示
+                    if (mounted) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          Navigator.of(context, rootNavigator: true).pop();
+                        }
+                      });
+                    }
+                    rethrow;
+                  }
+                },
               );
-
-              try {
-                await _inviteMember(displayId);
-                // メンバー招待成功後、ボトムシートを再描画
-                setModalState(() {});
-
-                // ローディング非表示（フレーム完了後に実行）
-                if (mounted) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      Navigator.of(context, rootNavigator: true).pop();
-                    }
-                  });
-                }
-              } catch (e) {
-                // ローディング非表示
-                if (mounted) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      Navigator.of(context, rootNavigator: true).pop();
-                    }
-                  });
-                }
-                rethrow;
-              }
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -253,21 +266,34 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       enableDrag: true,
       isDismissible: true,
       useRootNavigator: false,
-      builder: (context) => CreateRecurringTodoBottomSheet(
-        groupId: widget.group.id,
-        groupName: widget.group.name,
-        userId: widget.user.id,
-        availableAssignees: _groupMembers
-            .map(
-              (member) => {
-                'id': member.id,
-                'name': member.id == widget.user.id
-                    ? _cacheService.currentUser!.displayName
-                    : member.displayName,
-              },
-            )
-            .toList(),
-      ),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: CreateRecurringTodoBottomSheet(
+            groupId: widget.group.id,
+            groupName: widget.group.name,
+            userId: widget.user.id,
+            availableAssignees: _groupMembers
+                .map(
+                  (member) => {
+                    'id': member.id,
+                    'name': member.id == widget.user.id
+                        ? _cacheService.currentUser!.displayName
+                        : member.displayName,
+                  },
+                )
+                .toList(),
+          ),
+        );
+      },
     );
 
     if (result == true && mounted) {
@@ -287,22 +313,35 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       enableDrag: true,
       isDismissible: true,
       useRootNavigator: false,
-      builder: (context) => CreateRecurringTodoBottomSheet(
-        groupId: widget.group.id,
-        groupName: widget.group.name,
-        userId: widget.user.id,
-        availableAssignees: _groupMembers
-            .map(
-              (member) => {
-                'id': member.id,
-                'name': member.id == widget.user.id
-                    ? _cacheService.currentUser!.displayName
-                    : member.displayName,
-              },
-            )
-            .toList(),
-        existingRecurringTodo: recurringTodo,
-      ),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: CreateRecurringTodoBottomSheet(
+            groupId: widget.group.id,
+            groupName: widget.group.name,
+            userId: widget.user.id,
+            availableAssignees: _groupMembers
+                .map(
+                  (member) => {
+                    'id': member.id,
+                    'name': member.id == widget.user.id
+                        ? _cacheService.currentUser!.displayName
+                        : member.displayName,
+                  },
+                )
+                .toList(),
+            existingRecurringTodo: recurringTodo,
+          ),
+        );
+      },
     );
 
     if (result == true && mounted) {
@@ -466,18 +505,31 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       enableDrag: true,
       isDismissible: true,
       useRootNavigator: false,
-      builder: (context) => CreateTodoBottomSheet(
-        fixedGroupId: widget.group.id,
-        fixedGroupName: widget.group.name,
-        currentUserId: widget.user.id,
-        currentUserName: _cacheService.currentUser!.displayName,
-        availableAssignees: _groupMembers.map((member) {
-          final memberName = member.id == widget.user.id
-              ? _cacheService.currentUser!.displayName
-              : member.displayName;
-          return {'id': member.id, 'name': memberName};
-        }).toList(),
-      ),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: CreateTodoBottomSheet(
+            fixedGroupId: widget.group.id,
+            fixedGroupName: widget.group.name,
+            currentUserId: widget.user.id,
+            currentUserName: _cacheService.currentUser!.displayName,
+            availableAssignees: _groupMembers.map((member) {
+              final memberName = member.id == widget.user.id
+                  ? _cacheService.currentUser!.displayName
+                  : member.displayName;
+              return {'id': member.id, 'name': memberName};
+            }).toList(),
+          ),
+        );
+      },
     );
 
     if (result != null && mounted) {
@@ -599,7 +651,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       enableDrag: true,
       isDismissible: true,
       useRootNavigator: false,
-      builder: (context) => EditGroupBottomSheet(group: _currentGroup),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: EditGroupBottomSheet(group: _currentGroup),
+        );
+      },
     );
 
     if (result != null && mounted) {
@@ -736,19 +801,32 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => CreateTodoBottomSheet(
-        fixedGroupId: widget.group.id,
-        fixedGroupName: widget.group.name,
-        availableAssignees: _groupMembers.map((member) {
-          final memberName = member.id == widget.user.id
-              ? _cacheService.currentUser!.displayName
-              : member.displayName;
-          return {'id': member.id, 'name': memberName};
-        }).toList(),
-        currentUserId: widget.user.id,
-        currentUserName: _cacheService.currentUser!.displayName,
-        existingTodo: todo, // 編集モード：既存TODOデータを渡す
-      ),
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: CreateTodoBottomSheet(
+            fixedGroupId: widget.group.id,
+            fixedGroupName: widget.group.name,
+            availableAssignees: _groupMembers.map((member) {
+              final memberName = member.id == widget.user.id
+                  ? _cacheService.currentUser!.displayName
+                  : member.displayName;
+              return {'id': member.id, 'name': memberName};
+            }).toList(),
+            currentUserId: widget.user.id,
+            currentUserName: _cacheService.currentUser!.displayName,
+            existingTodo: todo, // 編集モード：既存TODOデータを渡す
+          ),
+        );
+      },
     );
 
     // 編集モード時：結果を受け取ってDB更新
@@ -806,6 +884,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(_currentGroup.name),
         actions: [

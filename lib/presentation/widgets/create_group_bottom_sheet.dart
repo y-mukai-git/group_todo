@@ -162,9 +162,6 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
           child: GestureDetector(
             onTap: () {},
             child: Container(
-              constraints: BoxConstraints(
-                maxHeight: constraints.maxHeight * 0.7,
-              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: const BorderRadius.vertical(

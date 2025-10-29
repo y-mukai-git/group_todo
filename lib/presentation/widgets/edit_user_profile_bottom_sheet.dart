@@ -191,130 +191,140 @@ class _EditUserProfileBottomSheetState
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 24,
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Container(
-            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ヘッダー
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.person,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'プロフィール編集',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.bold),
+          child: Column(
+            children: [
+              // ヘッダー
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'プロフィール編集',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 ),
+              ),
 
-                const Divider(height: 1),
-                const SizedBox(height: 24),
+              const Divider(height: 1),
 
-                // アバター画像
-                GestureDetector(
-                  onTap: _showImageSourceDialog,
-                  child: Stack(
+              // スクロール可能コンテンツ
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                    left: 16,
+                    right: 16,
+                    top: 24,
+                  ),
+                  child: Column(
                     children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundImage: _selectedImageBase64 != null
-                            ? MemoryImage(
-                                base64Decode(
-                                  _selectedImageBase64!.split(',')[1],
+                      // アバター画像
+                      GestureDetector(
+                        onTap: _showImageSourceDialog,
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 60,
+                              backgroundImage: _selectedImageBase64 != null
+                                  ? MemoryImage(
+                                      base64Decode(
+                                        _selectedImageBase64!.split(',')[1],
+                                      ),
+                                    )
+                                  : (widget.currentSignedAvatarUrl != null
+                                            ? NetworkImage(
+                                                widget.currentSignedAvatarUrl!,
+                                              )
+                                            : null)
+                                        as ImageProvider?,
+                              child:
+                                  (_selectedImageBase64 == null &&
+                                      widget.currentSignedAvatarUrl == null)
+                                  ? Text(
+                                      widget.user.displayName.isNotEmpty
+                                          ? widget.user.displayName[0]
+                                          : 'U',
+                                      style: const TextStyle(fontSize: 48),
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: CircleAvatar(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
+                                radius: 18,
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  size: 18,
+                                  color: Colors.white,
                                 ),
-                              )
-                            : (widget.currentSignedAvatarUrl != null
-                                      ? NetworkImage(
-                                          widget.currentSignedAvatarUrl!,
-                                        )
-                                      : null)
-                                  as ImageProvider?,
-                        child:
-                            (_selectedImageBase64 == null &&
-                                widget.currentSignedAvatarUrl == null)
-                            ? Text(
-                                widget.user.displayName.isNotEmpty
-                                    ? widget.user.displayName[0]
-                                    : 'U',
-                                style: const TextStyle(fontSize: 48),
-                              )
-                            : null,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: CircleAvatar(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          radius: 18,
-                          child: const Icon(
-                            Icons.camera_alt,
-                            size: 18,
-                            color: Colors.white,
-                          ),
+                      const SizedBox(height: 24),
+
+                      // ユーザー名入力
+                      TextField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'ユーザー名',
+                          hintText: 'ユーザー名を入力',
+                          border: OutlineInputBorder(),
+                        ),
+                        enabled: !_isLoading,
+                        maxLength: 15,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 保存ボタン
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _isLoading ? null : _saveProfile,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('保存'),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-
-                // ユーザー名入力
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'ユーザー名',
-                    hintText: 'ユーザー名を入力',
-                    border: OutlineInputBorder(),
-                  ),
-                  enabled: !_isLoading,
-                  maxLength: 15,
-                ),
-                const SizedBox(height: 24),
-
-                // 保存ボタン
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : _saveProfile,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('保存'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

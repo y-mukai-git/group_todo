@@ -345,7 +345,6 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
-          constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

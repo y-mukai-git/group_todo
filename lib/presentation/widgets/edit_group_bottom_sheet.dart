@@ -172,9 +172,6 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
           child: GestureDetector(
             onTap: () {},
             child: Container(
-              constraints: BoxConstraints(
-                maxHeight: constraints.maxHeight * 0.7,
-              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: const BorderRadius.vertical(
@@ -292,7 +289,6 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          autofocus: true,
                           textInputAction: TextInputAction.next,
                           maxLength: 30,
                         ),

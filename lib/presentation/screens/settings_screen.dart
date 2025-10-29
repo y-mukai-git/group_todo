@@ -46,11 +46,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => EditUserProfileBottomSheet(
-        user: _currentUser!,
-        currentSignedAvatarUrl: _signedAvatarUrl,
-        onProfileUpdated: () {}, // notifyListenersで自動更新されるため不要
-      ),
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: EditUserProfileBottomSheet(
+            user: _currentUser!,
+            currentSignedAvatarUrl: _signedAvatarUrl,
+            onProfileUpdated: () {}, // notifyListenersで自動更新されるため不要
+          ),
+        );
+      },
     );
   }
 
@@ -92,8 +106,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) =>
-          TransferPasswordBottomSheet(userId: _currentUser!.id),
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        // コンテンツエリアの70%を固定値として計算
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.7,
+          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          child: TransferPasswordBottomSheet(userId: _currentUser!.id),
+        );
+      },
     );
 
     if (result != null && result is Map<String, String>) {
@@ -239,8 +266,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (context) =>
-                ContactInquiryBottomSheet(user: _currentUser!),
+            backgroundColor: Colors.transparent,
+            builder: (context) {
+              // コンテンツエリアの70%を固定値として計算
+              final mediaQuery = MediaQuery.of(context);
+              final contentHeight =
+                  mediaQuery.size.height -
+                  mediaQuery.padding.top -
+                  mediaQuery.padding.bottom;
+
+              return Container(
+                height: contentHeight * 0.7,
+                margin: EdgeInsets.only(top: contentHeight * 0.3),
+                child: ContactInquiryBottomSheet(user: _currentUser!),
+              );
+            },
           );
         },
       ),
@@ -281,6 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('設定')),
       body: SingleChildScrollView(
         child: Column(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../data/models/inquiry_type.dart';
 import '../../data/models/user_model.dart';
 import '../../services/contact_service.dart';
@@ -25,6 +26,60 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
   void dispose() {
     _messageController.dispose();
     super.dispose();
+  }
+
+  /// お問い合わせ種別選択ピッカー表示
+  Future<void> _showTypePicker() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              // ヘッダー
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('キャンセル'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('完了'),
+                    ),
+                  ],
+                ),
+              ),
+              // ピッカー
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: InquiryType.values.indexOf(_selectedType),
+                  ),
+                  onSelectedItemChanged: (int index) {
+                    setState(() {
+                      _selectedType = InquiryType.values[index];
+                    });
+                  },
+                  children: InquiryType.values
+                      .map((type) => Center(child: Text(type.displayName)))
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// お問い合わせ送信
@@ -90,7 +145,6 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
-          constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -131,96 +185,97 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
 
               // コンテンツ
               Expanded(
-                child: SingleChildScrollView(
+                child: ListView(
                   padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // お問い合わせ種別選択
-                      Text(
-                        'お問い合わせ種別',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                  children: [
+                    // お問い合わせ種別選択
+                    Text(
+                      'お問い合わせ種別',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<InquiryType>(
-                        initialValue: _selectedType,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: _showTypePicker,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        items: InquiryType.values.map((type) {
-                          return DropdownMenuItem(
-                            value: type,
-                            child: Text(type.displayName),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedType = value;
-                            });
-                          }
-                        },
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // お問い合わせ内容入力
-                      Text(
-                        'お問い合わせ内容',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _messageController,
-                        maxLines: 8,
-                        maxLength: 1000,
-                        decoration: InputDecoration(
-                          hintText: 'お問い合わせ内容を入力してください',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.all(16),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // 送信ボタン
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isSubmitting ? null : _submitInquiry,
-                          icon: _isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.send),
-                          label: Text(_isSubmitting ? '送信中...' : '送信'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _selectedType.displayName,
+                              style: Theme.of(context).textTheme.bodyLarge,
                             ),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // お問い合わせ内容入力
+                    Text(
+                      'お問い合わせ内容',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _messageController,
+                      maxLines: 8,
+                      maxLength: 1000,
+                      decoration: InputDecoration(
+                        hintText: 'お問い合わせ内容を入力してください',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 送信ボタン
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _isSubmitting ? null : _submitInquiry,
+                        icon: _isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.send),
+                        label: Text(_isSubmitting ? '送信中...' : '送信'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],

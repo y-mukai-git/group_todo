@@ -214,15 +214,40 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result != null && mounted) {
       final todoId = result['todo_id'] as String?;
       if (todoId != null) {
-        // 編集モード：タスク更新
-        await _updateTodo(
-          todoId: todoId,
-          title: result['title'] as String,
-          description: result['description'] as String?,
-          deadline: result['deadline'] as DateTime?,
-          assigneeIds: (result['assignee_ids'] as List<dynamic>?)
-              ?.cast<String>(),
+        // ローディング表示
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
         );
+
+        try {
+          // 編集モード：タスク更新
+          await _updateTodo(
+            todoId: todoId,
+            title: result['title'] as String,
+            description: result['description'] as String?,
+            deadline: result['deadline'] as DateTime?,
+            assigneeIds: (result['assignee_ids'] as List<dynamic>?)
+                ?.cast<String>(),
+          );
+
+          // ローディング非表示（フレーム完了後に実行）
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context, rootNavigator: true).pop();
+            });
+          }
+        } catch (e) {
+          // ローディング非表示
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context, rootNavigator: true).pop();
+            });
+          }
+          rethrow;
+        }
       }
     }
   }
@@ -337,6 +362,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
                 [widget.user.id];
 
+            // ローディング表示
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) =>
+                  const Center(child: CircularProgressIndicator()),
+            );
+
             try {
               String groupId;
 
@@ -376,8 +410,22 @@ class _HomeScreenState extends State<HomeScreen> {
               );
 
               _showSuccessSnackBar('タスクを作成しました');
+
+              // ローディング非表示（フレーム完了後に実行）
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) Navigator.of(context, rootNavigator: true).pop();
+                });
+              }
             } catch (e, stackTrace) {
               debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
+
+              // ローディング非表示
+              if (mounted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) Navigator.of(context, rootNavigator: true).pop();
+                });
+              }
 
               // エラーログ記録
               final errorLog = await ErrorLogService().logError(

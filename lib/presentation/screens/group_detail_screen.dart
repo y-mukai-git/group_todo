@@ -73,9 +73,38 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             groupOwnerId: widget.group.ownerId,
             onRemoveMember: _removeMember,
             onInviteMember: (displayId) async {
-              await _inviteMember(displayId);
-              // メンバー招待成功後、ボトムシートを再描画
-              setModalState(() {});
+              // ローディング表示
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
+              );
+
+              try {
+                await _inviteMember(displayId);
+                // メンバー招待成功後、ボトムシートを再描画
+                setModalState(() {});
+
+                // ローディング非表示（フレーム完了後に実行）
+                if (mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      Navigator.of(context, rootNavigator: true).pop();
+                    }
+                  });
+                }
+              } catch (e) {
+                // ローディング非表示
+                if (mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      Navigator.of(context, rootNavigator: true).pop();
+                    }
+                  });
+                }
+                rethrow;
+              }
             },
           );
         },
@@ -453,12 +482,37 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
     if (result != null && mounted) {
       final assigneeIds = result['assignee_ids'] as List<dynamic>?;
-      _createTodo(
-        title: result['title'] as String,
-        description: result['description'] as String?,
-        deadline: result['deadline'] as DateTime?,
-        assigneeIds: assigneeIds?.cast<String>() ?? [widget.user.id],
+
+      // ローディング表示
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
+
+      try {
+        await _createTodo(
+          title: result['title'] as String,
+          description: result['description'] as String?,
+          deadline: result['deadline'] as DateTime?,
+          assigneeIds: assigneeIds?.cast<String>() ?? [widget.user.id],
+        );
+
+        // ローディング非表示（フレーム完了後に実行）
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
+          });
+        }
+      } catch (e) {
+        // ローディング非表示
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
+          });
+        }
+        rethrow;
+      }
     }
   }
 
@@ -549,12 +603,36 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
 
     if (result != null && mounted) {
-      _updateGroup(
-        name: result['name'] as String,
-        description: result['description'] as String?,
-        category: result['category'] as String?,
-        imageData: result['image_data'] as String?,
+      // ローディング表示
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
+
+      try {
+        await _updateGroup(
+          name: result['name'] as String,
+          description: result['description'] as String?,
+          category: result['category'] as String?,
+          imageData: result['image_data'] as String?,
+        );
+
+        // ローディング非表示（フレーム完了後に実行）
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
+          });
+        }
+      } catch (e) {
+        // ローディング非表示
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
+          });
+        }
+        rethrow;
+      }
     }
   }
 
@@ -677,15 +755,40 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     if (result != null && mounted) {
       final todoId = result['todo_id'] as String?;
       if (todoId != null) {
-        // 編集モード
-        final assigneeIds = result['assignee_ids'] as List<dynamic>?;
-        _updateTodo(
-          todoId: todoId,
-          title: result['title'] as String,
-          description: result['description'] as String?,
-          deadline: result['deadline'] as DateTime?,
-          assigneeIds: assigneeIds?.cast<String>() ?? [widget.user.id],
+        // ローディング表示
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
         );
+
+        try {
+          // 編集モード
+          final assigneeIds = result['assignee_ids'] as List<dynamic>?;
+          await _updateTodo(
+            todoId: todoId,
+            title: result['title'] as String,
+            description: result['description'] as String?,
+            deadline: result['deadline'] as DateTime?,
+            assigneeIds: assigneeIds?.cast<String>() ?? [widget.user.id],
+          );
+
+          // ローディング非表示（フレーム完了後に実行）
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context, rootNavigator: true).pop();
+            });
+          }
+        } catch (e) {
+          // ローディング非表示
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context, rootNavigator: true).pop();
+            });
+          }
+          rethrow;
+        }
       }
     }
   }

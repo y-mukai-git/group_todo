@@ -65,12 +65,36 @@ class _GroupsScreenState extends State<GroupsScreen> {
     );
 
     if (result != null && mounted) {
-      _createGroup(
-        name: result['name'] as String,
-        description: result['description'] as String?,
-        category: result['category'] as String?,
-        imageData: result['image_data'] as String?,
+      // ローディング表示
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
+
+      try {
+        await _createGroup(
+          name: result['name'] as String,
+          description: result['description'] as String?,
+          category: result['category'] as String?,
+          imageData: result['image_data'] as String?,
+        );
+
+        // ローディング非表示（フレーム完了後に実行）
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
+          });
+        }
+      } catch (e) {
+        // ローディング非表示
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
+          });
+        }
+        rethrow;
+      }
     }
   }
 

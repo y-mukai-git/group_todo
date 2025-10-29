@@ -86,153 +86,160 @@ class _TransferPasswordBottomSheetState
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        height: screenHeight * 0.7,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            // ヘッダー
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.phone_android,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'データ引き継ぎ設定',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      if (!mounted) return;
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
             ),
-
-            const Divider(height: 1),
-
-            // コンテンツ
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 説明
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
+            child: Column(
+              children: [
+                // ヘッダー
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.phone_android,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 28,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'データ引き継ぎ設定',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Divider(height: 1),
+
+                // コンテンツ
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 説明
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 20,
-                                color: Theme.of(context).colorScheme.primary,
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 20,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'データ引き継ぎについて',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'データ引き継ぎについて',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '新しい端末でデータを引き継ぐには、ユーザーID（8桁）とパスワードの両方が必要です。',
+                                style: TextStyle(fontSize: 13),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'パスワード設定後に表示される情報を必ず控えておいてください。',
+                                style: TextStyle(fontSize: 13),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '新しい端末でデータを引き継ぐには、ユーザーID（8桁）とパスワードの両方が必要です。',
-                            style: TextStyle(fontSize: 13),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // パスワード入力
+                        TextField(
+                          controller: _passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'パスワード',
+                            hintText: '8文字以上',
+                            prefixIcon: Icon(Icons.lock),
+                            border: OutlineInputBorder(),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'パスワード設定後に表示される情報を必ず控えておいてください。',
-                            style: TextStyle(fontSize: 13),
+                          obscureText: true,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // パスワード確認入力
+                        TextField(
+                          controller: _confirmController,
+                          decoration: const InputDecoration(
+                            labelText: 'パスワード（確認）',
+                            hintText: '再度入力',
+                            prefixIcon: Icon(Icons.lock),
+                            border: OutlineInputBorder(),
                           ),
-                        ],
-                      ),
-                    ),
+                          obscureText: true,
+                        ),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // パスワード入力
-                    TextField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'パスワード',
-                        hintText: '8文字以上',
-                        prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // パスワード確認入力
-                    TextField(
-                      controller: _confirmController,
-                      decoration: const InputDecoration(
-                        labelText: 'パスワード（確認）',
-                        hintText: '再度入力',
-                        prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // 設定ボタン
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _setPassword,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        // 設定ボタン
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: _setPassword,
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('設定'),
                           ),
                         ),
-                        child: const Text('設定'),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

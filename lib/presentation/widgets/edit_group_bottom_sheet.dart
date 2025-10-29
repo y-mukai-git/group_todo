@@ -165,251 +165,261 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return SlideTransition(
-      position: _slideAnimation,
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: screenHeight * 0.7,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SlideTransition(
+          position: _slideAnimation,
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: constraints.maxHeight * 0.7,
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // ヘッダー
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.edit,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'グループ編集',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
               ),
+              child: Column(
+                children: [
+                  // ヘッダー
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.edit,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'グループ編集',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              const Divider(height: 1),
+                  const Divider(height: 1),
 
-              // コンテンツ（スクロール可能）
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    // グループアイコン画像選択
-                    Center(
-                      child: GestureDetector(
-                        onTap: _showImageSourceDialog,
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              backgroundImage: _selectedImageBase64 != null
-                                  ? MemoryImage(
-                                      base64Decode(
-                                        _selectedImageBase64!.split(',')[1],
-                                      ),
-                                    )
-                                  : widget.group.signedIconUrl != null
-                                  ? NetworkImage(widget.group.signedIconUrl!)
-                                  : null,
-                              child:
-                                  _selectedImageBase64 == null &&
-                                      widget.group.signedIconUrl == null
-                                  ? Icon(
-                                      Icons.group,
-                                      size: 60,
+                  // コンテンツ（スクロール可能）
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(24),
+                      children: [
+                        // グループアイコン画像選択
+                        Center(
+                          child: GestureDetector(
+                            onTap: _showImageSourceDialog,
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
+                                  backgroundImage: _selectedImageBase64 != null
+                                      ? MemoryImage(
+                                          base64Decode(
+                                            _selectedImageBase64!.split(',')[1],
+                                          ),
+                                        )
+                                      : widget.group.signedIconUrl != null
+                                      ? NetworkImage(
+                                          widget.group.signedIconUrl!,
+                                        )
+                                      : null,
+                                  child:
+                                      _selectedImageBase64 == null &&
+                                          widget.group.signedIconUrl == null
+                                      ? Icon(
+                                          Icons.group,
+                                          size: 60,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimaryContainer,
+                                        )
+                                      : null,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      size: 20,
                                       color: Theme.of(
                                         context,
-                                      ).colorScheme.onPrimaryContainer,
-                                    )
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary,
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  size: 20,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // グループ名入力
-                    TextField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'グループ名',
-                        hintText: 'グループ名を入力',
-                        prefixIcon: const Icon(Icons.group),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
-                      maxLength: 30,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 説明入力
-                    TextField(
-                      controller: _descriptionController,
-                      decoration: InputDecoration(
-                        labelText: '説明（任意）',
-                        hintText: 'グループの説明を入力',
-                        prefixIcon: const Icon(Icons.description),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      maxLines: 3,
-                      textInputAction: TextInputAction.done,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // カテゴリ選択
-                    Text(
-                      'カテゴリ',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _categoryNames.entries.map((entry) {
-                        final isSelected = _selectedCategory == entry.key;
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedCategory = entry.key;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: (MediaQuery.of(context).size.width - 72) / 3,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.primaryContainer
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  _categoryIcons[entry.key],
-                                  color: isSelected
-                                      ? Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimaryContainer
-                                      : Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  entry.value,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isSelected
-                                        ? Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimaryContainer
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
+                                      ).colorScheme.onPrimary,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
+                        ),
 
-                    const SizedBox(height: 32),
+                        const SizedBox(height: 24),
 
-                    // 更新ボタン
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _updateGroup,
-                        icon: const Icon(Icons.check),
-                        label: const Text('更新'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        // グループ名入力
+                        TextField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: 'グループ名',
+                            hintText: 'グループ名を入力',
+                            prefixIcon: const Icon(Icons.group),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          autofocus: true,
+                          textInputAction: TextInputAction.next,
+                          maxLength: 30,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // 説明入力
+                        TextField(
+                          controller: _descriptionController,
+                          decoration: InputDecoration(
+                            labelText: '説明（任意）',
+                            hintText: 'グループの説明を入力',
+                            prefixIcon: const Icon(Icons.description),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          maxLines: 3,
+                          textInputAction: TextInputAction.done,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // カテゴリ選択
+                        Text(
+                          'カテゴリ',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _categoryNames.entries.map((entry) {
+                            final isSelected = _selectedCategory == entry.key;
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategory = entry.key;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width:
+                                    (MediaQuery.of(context).size.width - 72) /
+                                    3,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.primaryContainer
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      _categoryIcons[entry.key],
+                                      color: isSelected
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      entry.value,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isSelected
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimaryContainer
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // 更新ボタン
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _updateGroup,
+                            icon: const Icon(Icons.check),
+                            label: const Text('更新'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

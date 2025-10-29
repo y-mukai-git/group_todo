@@ -189,23 +189,25 @@ class _HomeScreenState extends State<HomeScreen> {
       isDismissible: true,
       barrierColor: Colors.black54,
       backgroundColor: Colors.transparent,
-      builder: (context) => CreateTodoBottomSheet(
-        fixedGroupId: todo.groupId,
-        fixedGroupName: group?.name ?? 'グループ',
-        availableAssignees:
-            membersData != null && membersData['success'] == true
-            ? (membersData['members'] as List<dynamic>).map((m) {
-                final memberId = m['id'] as String;
-                final memberName = memberId == _cacheService.currentUser!.id
-                    ? _cacheService.currentUser!.displayName
-                    : m['display_name'] as String;
-                return {'id': memberId, 'name': memberName};
-              }).toList()
-            : null,
-        currentUserId: widget.user.id,
-        currentUserName: _cacheService.currentUser!.displayName,
-        existingTodo: todo, // 編集モード：既存TODOデータを渡す
-      ),
+      builder: (context) {
+        return CreateTodoBottomSheet(
+          fixedGroupId: todo.groupId,
+          fixedGroupName: group?.name ?? 'グループ',
+          availableAssignees:
+              membersData != null && membersData['success'] == true
+              ? (membersData['members'] as List<dynamic>).map((m) {
+                  final memberId = m['id'] as String;
+                  final memberName = memberId == _cacheService.currentUser!.id
+                      ? _cacheService.currentUser!.displayName
+                      : m['display_name'] as String;
+                  return {'id': memberId, 'name': memberName};
+                }).toList()
+              : null,
+          currentUserId: widget.user.id,
+          currentUserName: _cacheService.currentUser!.displayName,
+          existingTodo: todo, // 編集モード：既存TODOデータを渡す
+        );
+      },
     );
 
     // 更新処理
@@ -304,24 +306,26 @@ class _HomeScreenState extends State<HomeScreen> {
             enableDrag: true,
             isDismissible: true,
             useRootNavigator: false,
-            builder: (context) => CreateTodoBottomSheet(
-              fixedGroupId: null, // グループ選択UI表示
-              defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
-              availableAssignees:
-                  membersData != null && membersData['success'] == true
-                  ? (membersData['members'] as List<dynamic>).map((m) {
-                      final memberId = m['id'] as String;
-                      final memberName =
-                          memberId == _cacheService.currentUser!.id
-                          ? _cacheService.currentUser!.displayName
-                          : m['display_name'] as String;
-                      return {'id': memberId, 'name': memberName};
-                    }).toList()
-                  : null,
-              currentUserId: widget.user.id,
-              currentUserName: _cacheService.currentUser!.displayName,
-              existingTodo: null,
-            ),
+            builder: (context) {
+              return CreateTodoBottomSheet(
+                fixedGroupId: null, // グループ選択UI表示
+                defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
+                availableAssignees:
+                    membersData != null && membersData['success'] == true
+                    ? (membersData['members'] as List<dynamic>).map((m) {
+                        final memberId = m['id'] as String;
+                        final memberName =
+                            memberId == _cacheService.currentUser!.id
+                            ? _cacheService.currentUser!.displayName
+                            : m['display_name'] as String;
+                        return {'id': memberId, 'name': memberName};
+                      }).toList()
+                    : null,
+                currentUserId: widget.user.id,
+                currentUserName: _cacheService.currentUser!.displayName,
+                existingTodo: null,
+              );
+            },
           );
 
           if (result != null && mounted) {

@@ -31,8 +31,7 @@ class CreateTodoBottomSheet extends StatefulWidget {
   State<CreateTodoBottomSheet> createState() => _CreateTodoBottomSheetState();
 }
 
-class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
-    with SingleTickerProviderStateMixin {
+class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -48,9 +47,6 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
   bool _isCreatingNewGroup = false;
   String? _selectedCategory = 'none'; // デフォルト：未設定
   String? _selectedGroupImageBase64; // グループ画像（base64）
-
-  late AnimationController _animationController;
-  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
@@ -79,25 +75,6 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
         }
       }
     }
-
-    // アニメーション設定
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _slideAnimation =
-        Tween<Offset>(
-          begin: const Offset(0, 1), // 画面下から
-          end: Offset.zero, // 通常位置へ
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
-
-    // アニメーション開始
-    _animationController.forward();
   }
 
   @override
@@ -106,7 +83,6 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
     _descriptionController.dispose();
     _groupNameController.dispose();
     _groupDescriptionController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -366,14 +342,10 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return SlideTransition(
-      position: _slideAnimation,
-      child: GestureDetector(
-        onTap: () {}, // シート内のタップが外側（バリア）に抜けないように
-        child: Container(
-          height: screenHeight * 0.7,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.7),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -387,7 +359,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
           ),
           child: Column(
             children: [
-              // ヘッダー
+              // ヘッダー（固定）
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                 child: Row(
@@ -446,7 +418,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      autofocus: true,
+                      autofocus: false,
                       textInputAction: TextInputAction.next,
                       maxLength: 30,
                     ),
@@ -818,8 +790,8 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet>
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

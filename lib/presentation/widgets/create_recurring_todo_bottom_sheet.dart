@@ -378,7 +378,11 @@ class _CreateRecurringTodoBottomSheetState
     return LayoutBuilder(
       builder: (context, constraints) {
         return GestureDetector(
-          onTap: () {}, // シート内のタップが外側に抜けないように
+          onTap: () {
+            // キーボードを閉じる
+            FocusScope.of(context).unfocus();
+          },
+          behavior: HitTestBehavior.opaque,
           child: Container(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,

@@ -344,177 +344,276 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
+        return GestureDetector(
+          onTap: () {
+            // キーボードを閉じる
+            FocusScope.of(context).unfocus();
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              // ヘッダー（固定）
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.add_task,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.existingTodo != null ? 'TODO編集' : '新しいTODO',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          if (widget.fixedGroupName != null)
-                            Text(
-                              widget.fixedGroupName!,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
                 ),
-              ),
-
-              const Divider(height: 1),
-
-              // コンテンツ（スクロール可能）
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    // タイトル入力
-                    TextField(
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        labelText: 'タイトル',
-                        hintText: 'タスクのタイトルを入力',
-                        prefixIcon: const Icon(Icons.title),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // ヘッダー（固定）
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.add_task,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 28,
                       ),
-                      autofocus: false,
-                      textInputAction: TextInputAction.next,
-                      maxLength: 30,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // 説明入力
-                    TextField(
-                      controller: _descriptionController,
-                      decoration: InputDecoration(
-                        labelText: '説明（任意）',
-                        hintText: 'タスクの詳細を入力',
-                        prefixIcon: const Icon(Icons.description),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      maxLines: 2,
-                      textInputAction: TextInputAction.done,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 期限設定
-                    Text(
-                      '期限',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    InkWell(
-                      onTap: _selectDeadline,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: Theme.of(context).colorScheme.primary,
+                            Text(
+                              widget.existingTodo != null
+                                  ? 'TODO編集'
+                                  : '新しいTODO',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _selectedDeadline != null
-                                    ? DateFormat(
-                                        'yyyy年MM月dd日（E）',
-                                        'ja',
-                                      ).format(_selectedDeadline!)
-                                    : '期限なし',
-                                style: TextStyle(
-                                  color: _selectedDeadline != null
-                                      ? Theme.of(context).colorScheme.onSurface
-                                      : Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
+                            if (widget.fixedGroupName != null)
+                              Text(
+                                widget.fixedGroupName!,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
                               ),
-                            ),
-                            // クリアボタンのスペースを常に確保（非表示時は透明）
-                            SizedBox(
-                              width: 40,
-                              height: 24,
-                              child: _selectedDeadline != null
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 20),
-                                      onPressed: _clearDeadline,
-                                      padding: EdgeInsets.zero,
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
                           ],
                         ),
                       ),
-                    ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
 
-                    const SizedBox(height: 16),
+                const Divider(height: 1),
 
-                    // 担当者選択
-                    if (widget.availableAssignees != null &&
-                        widget.availableAssignees!.isNotEmpty) ...[
+                // コンテンツ（スクロール可能）
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      // タイトル入力
+                      TextField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          labelText: 'タイトル',
+                          hintText: 'タスクのタイトルを入力',
+                          prefixIcon: const Icon(Icons.title),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        autofocus: false,
+                        textInputAction: TextInputAction.next,
+                        maxLength: 30,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // 説明入力
+                      TextField(
+                        controller: _descriptionController,
+                        decoration: InputDecoration(
+                          labelText: '説明（任意）',
+                          hintText: 'タスクの詳細を入力',
+                          prefixIcon: const Icon(Icons.description),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        maxLines: 2,
+                        textInputAction: TextInputAction.done,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 期限設定
                       Text(
-                        '担当者',
+                        '期限',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // グループに1人のみ：表示のみ（変更不可）
-                      if (widget.availableAssignees!.length == 1)
+                      InkWell(
+                        onTap: _selectDeadline,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _selectedDeadline != null
+                                      ? DateFormat(
+                                          'yyyy年MM月dd日（E）',
+                                          'ja',
+                                        ).format(_selectedDeadline!)
+                                      : '期限なし',
+                                  style: TextStyle(
+                                    color: _selectedDeadline != null
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              // クリアボタンのスペースを常に確保（非表示時は透明）
+                              SizedBox(
+                                width: 40,
+                                height: 24,
+                                child: _selectedDeadline != null
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 20),
+                                        onPressed: _clearDeadline,
+                                        padding: EdgeInsets.zero,
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 担当者選択
+                      if (widget.availableAssignees != null &&
+                          widget.availableAssignees!.isNotEmpty) ...[
+                        Text(
+                          '担当者',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        // グループに1人のみ：表示のみ（変更不可）
+                        if (widget.availableAssignees!.length == 1)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  widget.availableAssignees!.first['name'] ??
+                                      '',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.lock,
+                                  size: 16,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ],
+                            ),
+                          )
+                        // グループに複数人：ピッカーで選択可能
+                        else
+                          InkWell(
+                            onTap: _showAssigneePicker,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.person,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _selectedAssigneeIds.isEmpty
+                                        ? '担当者を選択'
+                                        : widget.availableAssignees!.firstWhere(
+                                                (a) =>
+                                                    a['id'] ==
+                                                    _selectedAssigneeIds.first,
+                                                orElse: () => {
+                                                  'id': '',
+                                                  'name': '担当者を選択',
+                                                },
+                                              )['name'] ??
+                                              '担当者を選択',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyLarge,
+                                  ),
+                                  const Spacer(),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                      ] else ...[
+                        // MY タスク: 自分のみ固定（表示のみ）
+                        Text(
+                          '担当者',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -531,7 +630,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                widget.availableAssignees!.first['name'] ?? '',
+                                widget.currentUserName,
                                 style: Theme.of(context).textTheme.bodyLarge,
                               ),
                               const Spacer(),
@@ -542,252 +641,173 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                               ),
                             ],
                           ),
-                        )
-                      // グループに複数人：ピッカーで選択可能
-                      else
-                        InkWell(
-                          onTap: _showAssigneePicker,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.person,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  _selectedAssigneeIds.isEmpty
-                                      ? '担当者を選択'
-                                      : widget.availableAssignees!.firstWhere(
-                                              (a) =>
-                                                  a['id'] ==
-                                                  _selectedAssigneeIds.first,
-                                              orElse: () => {
-                                                'id': '',
-                                                'name': '担当者を選択',
-                                              },
-                                            )['name'] ??
-                                            '担当者を選択',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const Spacer(),
-                                Icon(
-                                  Icons.arrow_drop_down,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
-                      const SizedBox(height: 8),
-                    ] else ...[
-                      // MY タスク: 自分のみ固定（表示のみ）
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      // グループ選択・表示
                       Text(
-                        '担当者',
+                        'グループ',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.person,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              widget.currentUserName,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.lock,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 16),
-
-                    // グループ選択・表示
-                    Text(
-                      'グループ',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // グループ選択可能（新規作成時・fixedGroupIdがnull）
-                    if (widget.fixedGroupId == null &&
-                        widget.existingTodo == null) ...[
-                      _buildGroupSelector(),
-                      const SizedBox(height: 16),
-                      // 新規グループ作成時の入力項目
-                      if (_isCreatingNewGroup) ...[
-                        // グループアイコン画像選択
-                        Center(
-                          child: GestureDetector(
-                            onTap: _showImageSourceDialog,
-                            child: Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 50,
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primaryContainer,
-                                  backgroundImage:
-                                      _selectedGroupImageBase64 != null
-                                      ? MemoryImage(
-                                          base64Decode(
-                                            _selectedGroupImageBase64!.split(
-                                              ',',
-                                            )[1],
-                                          ),
-                                        )
-                                      : null,
-                                  child: _selectedGroupImageBase64 == null
-                                      ? Icon(
-                                          Icons.group,
-                                          size: 50,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimaryContainer,
-                                        )
-                                      : null,
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: CircleAvatar(
-                                    radius: 18,
+                      // グループ選択可能（新規作成時・fixedGroupIdがnull）
+                      if (widget.fixedGroupId == null &&
+                          widget.existingTodo == null) ...[
+                        _buildGroupSelector(),
+                        const SizedBox(height: 16),
+                        // 新規グループ作成時の入力項目
+                        if (_isCreatingNewGroup) ...[
+                          // グループアイコン画像選択
+                          Center(
+                            child: GestureDetector(
+                              onTap: _showImageSourceDialog,
+                              child: Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 50,
                                     backgroundColor: Theme.of(
                                       context,
-                                    ).colorScheme.primary,
-                                    child: Icon(
-                                      Icons.camera_alt,
-                                      size: 18,
-                                      color: Theme.of(
+                                    ).colorScheme.primaryContainer,
+                                    backgroundImage:
+                                        _selectedGroupImageBase64 != null
+                                        ? MemoryImage(
+                                            base64Decode(
+                                              _selectedGroupImageBase64!.split(
+                                                ',',
+                                              )[1],
+                                            ),
+                                          )
+                                        : null,
+                                    child: _selectedGroupImageBase64 == null
+                                        ? Icon(
+                                            Icons.group,
+                                            size: 50,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer,
+                                          )
+                                        : null,
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: Theme.of(
                                         context,
-                                      ).colorScheme.onPrimary,
+                                      ).colorScheme.primary,
+                                      child: Icon(
+                                        Icons.camera_alt,
+                                        size: 18,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _groupNameController,
-                          decoration: InputDecoration(
-                            labelText: 'グループ名',
-                            hintText: 'グループ名を入力',
-                            prefixIcon: const Icon(Icons.group),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _groupNameController,
+                            decoration: InputDecoration(
+                              labelText: 'グループ名',
+                              hintText: 'グループ名を入力',
+                              prefixIcon: const Icon(Icons.group),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
+                            textInputAction: TextInputAction.next,
                           ),
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _groupDescriptionController,
-                          decoration: InputDecoration(
-                            labelText: 'グループ説明（任意）',
-                            hintText: 'グループの説明を入力',
-                            prefixIcon: const Icon(Icons.description),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _groupDescriptionController,
+                            decoration: InputDecoration(
+                              labelText: 'グループ説明（任意）',
+                              hintText: 'グループの説明を入力',
+                              prefixIcon: const Icon(Icons.description),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
+                            maxLines: 2,
+                            textInputAction: TextInputAction.next,
                           ),
-                          maxLines: 2,
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildCategorySelector(),
-                        const SizedBox(height: 16),
-                      ],
-                    ]
-                    // グループ表示のみ（編集時・fixedGroupIdがある場合）
-                    else ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.folder,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              widget.fixedGroupName ?? 'グループ',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.lock,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    const SizedBox(height: 4),
-
-                    // 作成・更新ボタン
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _createTodo,
-                        icon: Icon(
-                          widget.existingTodo != null ? Icons.edit : Icons.add,
-                        ),
-                        label: Text(widget.existingTodo != null ? '更新' : '作成'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
+                          const SizedBox(height: 12),
+                          _buildCategorySelector(),
+                          const SizedBox(height: 16),
+                        ],
+                      ]
+                      // グループ表示のみ（編集時・fixedGroupIdがある場合）
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.folder,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                widget.fixedGroupName ?? 'グループ',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.lock,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      const SizedBox(height: 4),
+
+                      // 作成・更新ボタン
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _createTodo,
+                          icon: Icon(
+                            widget.existingTodo != null
+                                ? Icons.edit
+                                : Icons.add,
+                          ),
+                          label: Text(
+                            widget.existingTodo != null ? '更新' : '作成',
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

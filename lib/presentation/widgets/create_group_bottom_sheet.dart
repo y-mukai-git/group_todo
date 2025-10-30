@@ -160,7 +160,11 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
         return SlideTransition(
           position: _slideAnimation,
           child: GestureDetector(
-            onTap: () {},
+            onTap: () {
+              // キーボードを閉じる
+              FocusScope.of(context).unfocus();
+            },
+            behavior: HitTestBehavior.opaque,
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,

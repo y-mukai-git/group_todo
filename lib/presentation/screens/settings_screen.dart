@@ -221,7 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (_versionInfo!.hasNewVersion) {
-      return 'バージョン $_appVersion(新しいバージョン: ${_versionInfo!.latestVersion})';
+      return 'バージョン $_appVersion';
     }
 
     return 'バージョン $_appVersion(最新)';

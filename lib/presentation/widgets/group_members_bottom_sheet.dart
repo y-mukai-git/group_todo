@@ -102,7 +102,11 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return GestureDetector(
-          onTap: () {},
+          onTap: () {
+            // キーボードを閉じる
+            FocusScope.of(context).unfocus();
+          },
+          behavior: HitTestBehavior.opaque,
           child: Container(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,

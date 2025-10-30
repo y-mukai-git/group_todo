@@ -687,7 +687,16 @@ class _HomeScreenState extends State<HomeScreen> {
         // PageView for group content
         Expanded(
           child: myGroups.isEmpty
-              ? const Center(child: Text('TODOがありません'))
+              ? RefreshIndicator(
+                  onRefresh: _refreshData,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height - 200,
+                      child: const Center(child: Text('TODOがありません')),
+                    ),
+                  ),
+                )
               : PageView.builder(
                   controller: _pageController,
                   onPageChanged: (index) {

@@ -5,6 +5,8 @@ import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import 'error_dialog.dart';
+import '../../core/utils/content_validator.dart';
+import '../screens/content_policy_screen.dart';
 
 /// プロフィール編集ボトムシート
 class EditUserProfileBottomSheet extends StatefulWidget {
@@ -123,6 +125,13 @@ class _EditUserProfileBottomSheetState
 
     if (displayName.isEmpty) {
       _showErrorSnackBar('ユーザー名を入力してください');
+      return;
+    }
+
+    // コンテンツバリデーション
+    final validationError = ContentValidator.validate(displayName);
+    if (validationError != null) {
+      _showErrorSnackBar(validationError);
       return;
     }
 
@@ -248,6 +257,33 @@ class _EditUserProfileBottomSheetState
                     ),
                     child: Column(
                       children: [
+                        // コンテンツポリシーリンク
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ContentPolicyScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'コンテンツポリシー',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
                         // アバター画像
                         GestureDetector(
                           onTap: _showImageSourceDialog,

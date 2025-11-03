@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/utils/content_validator.dart';
+import '../screens/content_policy_screen.dart';
 
 /// グループ作成ボトムシート
 class CreateGroupBottomSheet extends StatefulWidget {
@@ -144,6 +146,18 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
       return;
     }
 
+    // コンテンツバリデーション
+    final validationError = ContentValidator.validate(name);
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validationError),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     // 結果を返す
     Navigator.pop(context, {
       'name': name,
@@ -214,6 +228,33 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
                     child: ListView(
                       padding: const EdgeInsets.all(24),
                       children: [
+                        // コンテンツポリシーリンク
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ContentPolicyScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'コンテンツポリシー',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
                         // グループアイコン画像選択
                         Center(
                           child: GestureDetector(
@@ -279,7 +320,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
                           ),
                           autofocus: false,
                           textInputAction: TextInputAction.next,
-                          maxLength: 30,
+                          maxLength: 15,
                         ),
 
                         const SizedBox(height: 16),
@@ -303,7 +344,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
 
                         // カテゴリ選択
                         Text(
-                          'カテゴリ',
+                          'タグ',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),

@@ -9,6 +9,7 @@ import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
 import '../widgets/transfer_password_bottom_sheet.dart';
 import 'announcements_screen.dart';
+import 'content_policy_screen.dart';
 
 /// 設定画面
 class SettingsScreen extends StatefulWidget {
@@ -250,6 +251,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => AnnouncementsScreen(user: widget.user),
+            ),
+          );
+        },
+      ),
+
+      // コンテンツポリシー
+      ListTile(
+        leading: const Icon(Icons.policy),
+        title: const Text('コンテンツポリシー'),
+        subtitle: const Text('入力禁止事項'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ContentPolicyScreen(),
             ),
           );
         },

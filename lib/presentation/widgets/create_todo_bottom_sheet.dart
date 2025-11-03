@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../core/utils/content_validator.dart';
+import '../screens/content_policy_screen.dart';
 
 /// タスク作成・編集ボトムシート
 class CreateTodoBottomSheet extends StatefulWidget {
@@ -297,6 +299,18 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
       return;
     }
 
+    // コンテンツバリデーション
+    final validationError = ContentValidator.validate(title);
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validationError),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     // グループ選択モードの場合、グループが選択されているかチェック
     if (widget.fixedGroupId == null) {
       if (!_isCreatingNewGroup && _selectedGroupId == null) {
@@ -416,6 +430,33 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                   child: ListView(
                     padding: const EdgeInsets.all(24),
                     children: [
+                      // コンテンツポリシーリンク
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ContentPolicyScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'コンテンツポリシー',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // タイトル入力
                       TextField(
                         controller: _titleController,
@@ -429,7 +470,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                         ),
                         autofocus: false,
                         textInputAction: TextInputAction.next,
-                        maxLength: 30,
+                        maxLength: 15,
                       ),
 
                       const SizedBox(height: 12),
@@ -955,7 +996,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'カテゴリ',
+          'タグ',
           style: Theme.of(
             context,
           ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),

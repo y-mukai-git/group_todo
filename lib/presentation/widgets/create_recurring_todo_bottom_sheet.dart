@@ -4,6 +4,8 @@ import '../../data/models/recurring_todo_model.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
 import 'error_dialog.dart';
+import '../../core/utils/content_validator.dart';
+import '../screens/content_policy_screen.dart';
 
 /// 定期タスク作成・編集ボトムシート
 class CreateRecurringTodoBottomSheet extends StatefulWidget {
@@ -291,6 +293,15 @@ class _CreateRecurringTodoBottomSheetState
       return;
     }
 
+    // コンテンツバリデーション
+    final validationError = ContentValidator.validate(title);
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(validationError), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     // パターン別のバリデーション
     if (_selectedPattern == 'weekly' && _selectedWeekdays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -451,6 +462,33 @@ class _CreateRecurringTodoBottomSheetState
                   child: ListView(
                     padding: const EdgeInsets.all(24),
                     children: [
+                      // コンテンツポリシーリンク
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ContentPolicyScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'コンテンツポリシー',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // タイトル入力
                       TextField(
                         controller: _titleController,
@@ -464,7 +502,7 @@ class _CreateRecurringTodoBottomSheetState
                         ),
                         autofocus: false,
                         textInputAction: TextInputAction.next,
-                        maxLength: 30,
+                        maxLength: 15,
                       ),
 
                       const SizedBox(height: 12),

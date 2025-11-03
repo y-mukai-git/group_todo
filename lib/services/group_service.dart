@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../core/utils/api_client.dart';
 import '../data/models/group_model.dart';
+import '../data/models/group_invitation.dart';
 
 /// グループ管理サービス
 class GroupService {
@@ -191,6 +192,149 @@ class GroupService {
       );
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ並び順更新エラー: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== 招待関連メソッド ====================
+
+  /// 招待前のユーザー情報取得・確認
+  Future<Map<String, dynamic>> validateUserForInvitation({
+    required String groupId,
+    required String displayId,
+    required String inviterId,
+  }) async {
+    try {
+      final response = await _apiClient.callFunction(
+        functionName: 'validate-user-for-invitation',
+        body: {
+          'group_id': groupId,
+          'display_id': displayId,
+          'inviter_id': inviterId,
+        },
+      );
+
+      return response;
+    } catch (e) {
+      debugPrint('[GroupService] ❌ ユーザー招待前確認エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// ユーザーをグループに招待
+  Future<GroupInvitationModel> inviteUserToGroup({
+    required String groupId,
+    required String inviterId,
+    required String invitedUserId,
+    required String invitedRole, // 'owner' or 'member'
+  }) async {
+    try {
+      final response = await _apiClient.callFunction(
+        functionName: 'invite-user',
+        body: {
+          'group_id': groupId,
+          'inviter_id': inviterId,
+          'invited_user_id': invitedUserId,
+          'invited_role': invitedRole,
+        },
+      );
+
+      return GroupInvitationModel.fromJson(
+        response['invitation'] as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('[GroupService] ❌ ユーザー招待エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 自分宛の承認待ち招待一覧取得
+  Future<List<Map<String, dynamic>>> getPendingInvitations({
+    required String userId,
+  }) async {
+    try {
+      final response = await _apiClient.callFunction(
+        functionName: 'get-pending-invitations',
+        body: {'user_id': userId},
+      );
+
+      final invitationsList = response['invitations'] as List<dynamic>;
+      return invitationsList
+          .map((json) => json as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      debugPrint('[GroupService] ❌ 承認待ち招待一覧取得エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 招待を承認
+  Future<void> acceptInvitation({
+    required String invitationId,
+    required String userId,
+  }) async {
+    try {
+      await _apiClient.callFunction(
+        functionName: 'accept-invitation',
+        body: {'invitation_id': invitationId, 'user_id': userId},
+      );
+    } catch (e) {
+      debugPrint('[GroupService] ❌ 招待承認エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 招待を却下
+  Future<void> rejectInvitation({
+    required String invitationId,
+    required String userId,
+  }) async {
+    try {
+      await _apiClient.callFunction(
+        functionName: 'reject-invitation',
+        body: {'invitation_id': invitationId, 'user_id': userId},
+      );
+    } catch (e) {
+      debugPrint('[GroupService] ❌ 招待却下エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 招待をキャンセル
+  Future<void> cancelInvitation({
+    required String invitationId,
+    required String userId,
+  }) async {
+    try {
+      await _apiClient.callFunction(
+        functionName: 'cancel-invitation',
+        body: {'invitation_id': invitationId, 'user_id': userId},
+      );
+    } catch (e) {
+      debugPrint('[GroupService] ❌ 招待キャンセルエラー: $e');
+      rethrow;
+    }
+  }
+
+  /// メンバーのロールを変更
+  Future<void> changeMemberRole({
+    required String groupId,
+    required String targetUserId,
+    required String newRole,
+    required String requesterId,
+  }) async {
+    try {
+      await _apiClient.callFunction(
+        functionName: 'change-member-role',
+        body: {
+          'group_id': groupId,
+          'target_user_id': targetUserId,
+          'new_role': newRole,
+          'requester_id': requesterId,
+        },
+      );
+    } catch (e) {
+      debugPrint('[GroupService] ❌ メンバーロール変更エラー: $e');
       rethrow;
     }
   }

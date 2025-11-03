@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
+import '../../data/models/group_invitation.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/group_service.dart';
 import '../../services/error_log_service.dart';
 import '../widgets/create_group_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
@@ -19,8 +21,10 @@ class GroupsScreen extends StatefulWidget {
 
 class _GroupsScreenState extends State<GroupsScreen> {
   final DataCacheService _cacheService = DataCacheService();
+  final GroupService _groupService = GroupService();
   List<GroupModel> _groups = [];
   List<GroupModel> _reorderingGroups = []; // 並び替え中の一時リスト
+  List<GroupInvitationModel> _pendingInvitations = []; // 承認待ち招待一覧
   bool _isReorderMode = false; // 並び替えモードフラグ
   bool _isCompleting = false; // 完了処理中フラグ
 
@@ -50,6 +54,31 @@ class _GroupsScreenState extends State<GroupsScreen> {
         _groups = groups;
       });
     }
+
+    // 承認待ち招待一覧を取得
+    _loadPendingInvitations();
+  }
+
+  /// 承認待ち招待一覧を取得
+  Future<void> _loadPendingInvitations() async {
+    try {
+      final invitationsList = await _groupService.getPendingInvitations(
+        userId: widget.user.id,
+      );
+
+      if (mounted) {
+        final invitations = invitationsList
+            .map((json) => GroupInvitationModel.fromJson(json))
+            .toList();
+
+        setState(() {
+          _pendingInvitations = invitations;
+        });
+      }
+    } catch (e) {
+      debugPrint('[GroupsScreen] 承認待ち招待一覧取得エラー: $e');
+      // エラーは無視（承認待ちがない場合も含む）
+    }
   }
 
   /// グループ作成ボトムシート表示
@@ -62,7 +91,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       isDismissible: true,
       useRootNavigator: false,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -70,8 +99,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: const CreateGroupBottomSheet(),
         );
       },
@@ -357,12 +386,188 @@ class _GroupsScreenState extends State<GroupsScreen> {
     // 上部余白
     widgets.add(const SizedBox(height: 12));
 
+    // 承認待ち招待セクション
+    if (_pendingInvitations.isNotEmpty) {
+      widgets.add(_buildPendingInvitationsSection());
+      widgets.add(const SizedBox(height: 16));
+    }
+
     // 全グループを表示（displayOrder順）
     for (final group in _groups) {
       widgets.add(_buildGroupItem(group));
     }
 
     return widgets;
+  }
+
+  /// 承認待ち招待セクションを構築
+  Widget _buildPendingInvitationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            '承認待ちの招待',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        ..._pendingInvitations.map((invitation) {
+          return _buildInvitationCard(invitation);
+        }),
+      ],
+    );
+  }
+
+  /// 招待カードを構築
+  Widget _buildInvitationCard(GroupInvitationModel invitation) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // グループ名
+            Text(
+              invitation.groupName ?? '不明なグループ',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            // 招待者名
+            Row(
+              children: [
+                const Icon(Icons.person, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '招待者: ${invitation.inviterName ?? '不明'}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            // ロール
+            Row(
+              children: [
+                Icon(
+                  invitation.invitedRole == 'owner' ? Icons.star : Icons.person,
+                  size: 16,
+                  color: invitation.invitedRole == 'owner'
+                      ? Colors.amber
+                      : null,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'ロール: ${invitation.invitedRole == 'owner' ? 'オーナー' : 'メンバー'}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // 承認/却下ボタン
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => _rejectInvitation(invitation.id),
+                  child: const Text('却下'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => _acceptInvitation(invitation.id),
+                  child: const Text('承認'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// グループ招待を承認
+  Future<void> _acceptInvitation(String invitationId) async {
+    // ローディング表示
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await _groupService.acceptInvitation(
+        invitationId: invitationId,
+        userId: widget.user.id,
+      );
+
+      // キャッシュを再読み込み（承認したグループが追加される）
+      await _cacheService.refreshCache();
+
+      // 招待一覧を再取得
+      await _loadPendingInvitations();
+
+      // ローディング非表示
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _showSuccessSnackBar('招待を承認しました');
+      }
+    } catch (e) {
+      debugPrint('[GroupsScreen] 招待承認エラー: $e');
+
+      // ローディング非表示
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('招待の承認に失敗しました'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// グループ招待を却下
+  Future<void> _rejectInvitation(String invitationId) async {
+    // ローディング表示
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await _groupService.rejectInvitation(
+        invitationId: invitationId,
+        userId: widget.user.id,
+      );
+
+      // 招待一覧を再取得
+      await _loadPendingInvitations();
+
+      // ローディング非表示
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _showSuccessSnackBar('招待を却下しました');
+      }
+    } catch (e) {
+      debugPrint('[GroupsScreen] 招待却下エラー: $e');
+
+      // ローディング非表示
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('招待の却下に失敗しました'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   /// 並び替えモード用リスト構築

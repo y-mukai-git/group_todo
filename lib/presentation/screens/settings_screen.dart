@@ -48,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -56,8 +56,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: EditUserProfileBottomSheet(
             user: _currentUser!,
             currentSignedAvatarUrl: _signedAvatarUrl,
@@ -108,7 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -116,8 +116,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: TransferPasswordBottomSheet(userId: _currentUser!.id),
         );
       },
@@ -268,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (context) {
-              // コンテンツエリアの70%を固定値として計算
+              // コンテンツエリアの80%を固定値として計算
               final mediaQuery = MediaQuery.of(context);
               final contentHeight =
                   mediaQuery.size.height -
@@ -276,8 +276,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   mediaQuery.padding.bottom;
 
               return Container(
-                height: contentHeight * 0.7,
-                margin: EdgeInsets.only(top: contentHeight * 0.3),
+                height: contentHeight * 0.8,
+                margin: EdgeInsets.only(top: contentHeight * 0.2),
                 child: ContactInquiryBottomSheet(user: _currentUser!),
               );
             },

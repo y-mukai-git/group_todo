@@ -27,7 +27,6 @@ class GroupDetailScreen extends StatefulWidget {
 class _GroupDetailScreenState extends State<GroupDetailScreen>
     with SingleTickerProviderStateMixin {
   final DataCacheService _cacheService = DataCacheService();
-  final GroupService _groupService = GroupService();
   final RecurringTodoService _recurringTodoService = RecurringTodoService();
   List<TodoModel> _todos = [];
   late GroupModel _currentGroup;
@@ -60,13 +59,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   }
 
   /// グループメンバー一覧ボトムシート表示
-  void _showGroupMembers() {
+  void _showGroupMembers({int initialTab = 0}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -74,49 +73,21 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: StatefulBuilder(
             builder: (context, setModalState) {
               return GroupMembersBottomSheet(
+                groupId: widget.group.id,
                 members: _groupMembers,
                 currentUserId: widget.user.id,
                 groupOwnerId: widget.group.ownerId,
                 onRemoveMember: _removeMember,
-                onInviteMember: (displayId) async {
-                  // ローディング表示
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) =>
-                        const Center(child: CircularProgressIndicator()),
-                  );
-
-                  try {
-                    await _inviteMember(displayId);
-                    // メンバー招待成功後、ボトムシートを再描画
-                    setModalState(() {});
-
-                    // ローディング非表示（フレーム完了後に実行）
-                    if (mounted) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          Navigator.of(context, rootNavigator: true).pop();
-                        }
-                      });
-                    }
-                  } catch (e) {
-                    // ローディング非表示
-                    if (mounted) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          Navigator.of(context, rootNavigator: true).pop();
-                        }
-                      });
-                    }
-                    rethrow;
-                  }
+                onMembersUpdated: () {
+                  _updateGroupData();
+                  setModalState(() {});
                 },
+                initialTab: initialTab,
               );
             },
           ),
@@ -156,60 +127,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
           context: context,
           errorId: errorLog.id,
           errorMessage: 'メンバーの削除に失敗しました',
-        );
-      }
-    }
-  }
-
-  /// メンバー招待（display_id で招待）
-  Future<void> _inviteMember(String displayId) async {
-    try {
-      // GroupService経由でメンバー追加
-      await _groupService.addGroupMember(
-        groupId: widget.group.id,
-        displayId: displayId,
-        inviterId: widget.user.id,
-      );
-
-      // 成功時（ApiClientが例外をスローするので、ここに到達=成功）
-      if (!mounted) return;
-      // キャッシュを更新
-      await _cacheService.refreshGroupMembers(
-        groupId: widget.group.id,
-        requesterId: widget.user.id,
-      );
-      _showSuccessSnackBar('メンバーを招待しました');
-    } catch (e, stackTrace) {
-      debugPrint('[GroupDetailScreen] ❌ メンバー招待エラー: $e');
-
-      // ユーザー入力エラー（User not found、既にメンバー）の場合はSnackBarで通知
-      final errorMessage = e.toString();
-      if (errorMessage.contains('User not found')) {
-        if (mounted) {
-          _showErrorSnackBar('該当するユーザーが見つかりませんでした');
-        }
-        return;
-      }
-      if (errorMessage.contains('User is already a member of this group')) {
-        if (mounted) {
-          _showErrorSnackBar('このユーザーは既にメンバーです');
-        }
-        return;
-      }
-
-      // システムエラーの場合はErrorDialogで表示
-      final errorLog = await ErrorLogService().logError(
-        userId: widget.user.id,
-        errorType: 'メンバー招待エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
-        screenName: 'グループ詳細画面',
-      );
-      if (mounted) {
-        await ErrorDialog.show(
-          context: context,
-          errorId: errorLog.id,
-          errorMessage: 'メンバーの招待に失敗しました',
         );
       }
     }
@@ -267,7 +184,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       isDismissible: true,
       useRootNavigator: false,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -275,8 +192,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: CreateRecurringTodoBottomSheet(
             groupId: widget.group.id,
             groupName: widget.group.name,
@@ -314,7 +231,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       isDismissible: true,
       useRootNavigator: false,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -322,8 +239,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: CreateRecurringTodoBottomSheet(
             groupId: widget.group.id,
             groupName: widget.group.name,
@@ -506,7 +423,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       isDismissible: true,
       useRootNavigator: false,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -514,8 +431,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: CreateTodoBottomSheet(
             fixedGroupId: widget.group.id,
             fixedGroupName: widget.group.name,
@@ -652,7 +569,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       isDismissible: true,
       useRootNavigator: false,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -660,8 +577,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: EditGroupBottomSheet(group: _currentGroup),
         );
       },
@@ -802,7 +719,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -810,8 +727,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: CreateTodoBottomSheet(
             fixedGroupId: widget.group.id,
             fixedGroupName: widget.group.name,
@@ -941,7 +858,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 // 5人以上いる場合は「+N」表示
                 if (_groupMembers.length > 5)
                   InkWell(
-                    onTap: _showGroupMembers,
+                    onTap: () => _showGroupMembers(initialTab: 0),
                     borderRadius: BorderRadius.circular(20),
                     child: CircleAvatar(
                       radius: 20,
@@ -964,7 +881,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 // ユーザー招待ボタン
                 IconButton(
                   icon: const Icon(Icons.person_add),
-                  onPressed: _showGroupMembers,
+                  onPressed: () => _showGroupMembers(initialTab: 1),
                   tooltip: 'ユーザー招待',
                 ),
               ],

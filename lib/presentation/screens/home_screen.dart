@@ -188,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
       isDismissible: true,
       useRootNavigator: false,
       builder: (context) {
-        // コンテンツエリアの70%を固定値として計算
+        // コンテンツエリアの80%を固定値として計算
         final mediaQuery = MediaQuery.of(context);
         final contentHeight =
             mediaQuery.size.height -
@@ -196,8 +196,8 @@ class _HomeScreenState extends State<HomeScreen> {
             mediaQuery.padding.bottom;
 
         return Container(
-          height: contentHeight * 0.7,
-          margin: EdgeInsets.only(top: contentHeight * 0.3),
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
           child: CreateTodoBottomSheet(
             fixedGroupId: todo.groupId,
             fixedGroupName: group?.name ?? 'グループ',
@@ -346,7 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
             isDismissible: true,
             useRootNavigator: false,
             builder: (context) {
-              // コンテンツエリアの70%を固定値として計算
+              // コンテンツエリアの80%を固定値として計算
               final mediaQuery = MediaQuery.of(context);
               final contentHeight =
                   mediaQuery.size.height -
@@ -354,8 +354,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   mediaQuery.padding.bottom;
 
               return Container(
-                height: contentHeight * 0.7,
-                margin: EdgeInsets.only(top: contentHeight * 0.3),
+                height: contentHeight * 0.8,
+                margin: EdgeInsets.only(top: contentHeight * 0.2),
                 child: CreateTodoBottomSheet(
                   fixedGroupId: null, // グループ選択UI表示
                   defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定

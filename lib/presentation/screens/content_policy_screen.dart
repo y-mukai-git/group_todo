@@ -13,71 +13,33 @@ class ContentPolicyScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 個人情報入力禁止
+            // 禁止事項
             _buildSection(
               context: context,
-              icon: Icons.privacy_tip,
-              iconColor: Colors.orange,
-              title: '個人情報の入力禁止',
-              description: '個人を特定できる情報の入力はお控えください。',
-              examples: ['氏名、住所', 'メールアドレス', '電話番号', 'クレジットカード番号'],
+              title: '禁止事項',
+              description: '以下の内容の入力はお控えください。',
+              examples: [
+                '個人情報（メールアドレス、電話番号など）',
+                '差別的な表現',
+                '暴力的な表現',
+                '性的な表現',
+                '誹謗中傷',
+              ],
             ),
 
-            const SizedBox(height: 32),
-
-            // 不適切な表現の禁止
-            _buildSection(
-              context: context,
-              icon: Icons.block,
-              iconColor: Colors.red,
-              title: '不適切な表現の禁止',
-              description: '以下のような表現の使用は禁止されています。',
-              examples: ['差別的な表現', '暴力的な表現', '性的な表現', '誹謗中傷'],
-            ),
-
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // 違反時の対応
-            _buildSection(
-              context: context,
-              icon: Icons.warning,
-              iconColor: Colors.deepOrange,
-              title: '違反時の対応',
-              description: '上記のコンテンツを入力しようとした場合、保存がブロックされます。',
-              examples: [],
+            Text(
+              '違反時の対応',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-
-            const SizedBox(height: 32),
-
-            // 注意事項
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Colors.blue.shade700,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'このアプリは家族や友人との情報共有を目的としています。'
-                      '安全で快適な環境を維持するため、ご協力をお願いします。',
-                      style: TextStyle(
-                        color: Colors.blue.shade900,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 8),
+            Text(
+              '上記のコンテンツを入力しようとした場合、保存がブロックされます。',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
@@ -87,8 +49,6 @@ class ContentPolicyScreen extends StatelessWidget {
 
   Widget _buildSection({
     required BuildContext context,
-    required IconData icon,
-    required Color iconColor,
     required String title,
     required String description,
     required List<String> examples,
@@ -97,25 +57,17 @@ class ContentPolicyScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // タイトル
-        Row(
-          children: [
-            Icon(icon, color: iconColor, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
 
         const SizedBox(height: 12),
 
         // 説明
-        Text(description, style: Theme.of(context).textTheme.bodyLarge),
+        Text(description, style: Theme.of(context).textTheme.bodyMedium),
 
         // 例
         if (examples.isNotEmpty) ...[

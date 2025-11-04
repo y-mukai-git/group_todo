@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import '../../data/models/user_model.dart';
 import '../../services/group_service.dart';
 
@@ -315,7 +316,33 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                 ],
               ],
             ),
-            subtitle: Text('ID: ${member.displayId}'),
+            subtitle: InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: member.displayId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('ユーザーIDをコピーしました'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('ID: ${member.displayId}'),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.copy,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             trailing:
                 (widget.currentUserId == widget.groupOwnerId && !isCurrentUser)
                 ? Row(
@@ -362,7 +389,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'ユーザーを招待（8桁ID入力）',
+              'ユーザーID',
               style: Theme.of(
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -413,7 +440,15 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              // ロール選択見出し
+              Text(
+                '権限',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
               // ロール選択
               InkWell(
                 onTap: _showRolePicker,

@@ -476,7 +476,7 @@ class _CreateRecurringTodoBottomSheetState
                             );
                           },
                           child: Text(
-                            'コンテンツポリシー',
+                            '入力における注意事項',
                             style: TextStyle(
                               fontSize: 12,
                               color: Theme.of(

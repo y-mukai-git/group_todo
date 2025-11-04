@@ -256,11 +256,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       ),
 
-      // コンテンツポリシー
+      // 入力における注意事項
       ListTile(
         leading: const Icon(Icons.policy),
-        title: const Text('コンテンツポリシー'),
-        subtitle: const Text('入力禁止事項'),
+        title: const Text('入力における注意事項'),
+        subtitle: const Text('入力時の注意点'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.push(
@@ -388,9 +388,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              'ユーザーID: ${_currentUser?.displayId ?? ''}',
-                              style: Theme.of(context).textTheme.bodySmall,
+                            InkWell(
+                              onTap: () {
+                                final displayId = _currentUser?.displayId ?? '';
+                                if (displayId.isNotEmpty) {
+                                  Clipboard.setData(
+                                    ClipboardData(text: displayId),
+                                  );
+                                  _showSuccessSnackBar('ユーザーIDをコピーしました');
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'ユーザーID: ${_currentUser?.displayId ?? ''}',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.copy,
+                                      size: 14,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),

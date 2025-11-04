@@ -69,28 +69,46 @@ diff schema_dumps/$(date +%Y-%m-%d)/dev_schema.sql schema_dumps/$(date +%Y-%m-%d
 □ その他差異: ________________
 ```
 
-#### 1-2. Edge Functionsのチェック
+#### 1-2. Edge Functionsのチェック（必須・全体比較）
+
+**⚠️ 重要**: 特定機能のみではなく、**必ず全体のEdge Functionsを比較**してください。
 
 ```bash
-# DEV環境のFunction一覧を取得
-supabase functions list --project-ref ${SOURCE_PROJECT_REF} > dev_functions.txt
+# DEV環境のFunction一覧を取得（名前のみ、ソート済み）
+supabase functions list --project-ref ${SOURCE_PROJECT_REF} | awk 'NR>1 {print $3}' | sort > /tmp/dev_functions.txt
 
-# STG環境のFunction一覧を取得
-supabase functions list --project-ref ${TARGET_PROJECT_REF} > stg_functions.txt
+# STG環境のFunction一覧を取得（名前のみ、ソート済み）
+supabase functions list --project-ref ${TARGET_PROJECT_REF} | awk 'NR>1 {print $3}' | sort > /tmp/stg_functions.txt
 
-# 差分確認
-diff dev_functions.txt stg_functions.txt
+# DEVにあってSTGにないFunctionsを確認
+echo "=== DEVにあってSTGにないFunctions ==="
+comm -23 /tmp/dev_functions.txt /tmp/stg_functions.txt
+
+# STGにあってDEVにないFunctionsを確認
+echo "=== STGにあってDEVにないFunctions ==="
+comm -13 /tmp/dev_functions.txt /tmp/stg_functions.txt
 ```
 
 **確認ポイント**:
-- 新規追加されたFunctionsの有無
-- 更新が必要なFunctionsの特定
+- **DEVにあってSTGにないFunctionsを全てリストアップ**
+- **STGにあってDEVにないFunctions（不要なものがないか確認）**
+- ローカルディレクトリ `supabase/functions/` と照合し、実際に使用されているか確認
 
-**差分の記録**:
+**差分の記録**（必須）:
 ```
 ■ Edge Functionsの差分
-□ 新規Functions: ________________
-□ 更新Functions: ________________
+【DEVにあってSTGにない】:
+  □ ________________
+  □ ________________
+  □ ________________
+
+【STGにあってDEVにない】:
+  □ ________________
+  □ ________________
+
+【デプロイが必要なFunctions】:
+  □ ________________
+  □ ________________
 ```
 
 ---
@@ -153,9 +171,11 @@ supabase functions list --project-ref ${TARGET_PROJECT_REF}
 
 ---
 
-### 手順4: **最終確認 - DEVとの構成一致チェック**
+### 手順4: **最終確認 - DEVとの構成完全一致チェック**
 
-マイグレーション実行後、DEV環境と同じ構成になったかを確認します。
+マイグレーション実行後、DEV環境と**完全に同じ構成**になったかを確認します。
+
+**⚠️ 重要**: 差分が0件になるまで確認してください。差分がある場合は追加デプロイが必要です。
 
 #### 4-1. データベーススキーマの再チェック
 
@@ -170,17 +190,34 @@ diff schema_dumps/$(date +%Y-%m-%d)/dev_schema.sql schema_dumps/$(date +%Y-%m-%d
 
 **期待結果**: 差分なし（または環境固有の差分のみ）
 
-#### 4-2. Edge Functionsの再チェック
+**差分があった場合**: 不足しているテーブル・カラムを追加マイグレーション
+
+#### 4-2. Edge Functionsの再チェック（完全一致確認）
 
 ```bash
-# STG環境のFunction一覧を再取得
-supabase functions list --project-ref ${TARGET_PROJECT_REF} > stg_functions_after.txt
+# STG環境のFunction一覧を再取得（名前のみ、ソート済み）
+supabase functions list --project-ref ${TARGET_PROJECT_REF} | awk 'NR>1 {print $3}' | sort > /tmp/stg_functions_after.txt
 
-# DEV環境と差分確認
-diff dev_functions.txt stg_functions_after.txt
+# DEVにあってSTGにないFunctionsを確認（差分0が期待値）
+echo "=== DEVにあってSTGにないFunctions（0件が正常） ==="
+comm -23 /tmp/dev_functions.txt /tmp/stg_functions_after.txt
+
+# STGにあってDEVにないFunctionsを確認
+echo "=== STGにあってDEVにないFunctions ==="
+comm -13 /tmp/dev_functions.txt /tmp/stg_functions_after.txt
 ```
 
-**期待結果**: 差分なし（同じFunctionがデプロイされている）
+**期待結果**:
+- **DEVにあってSTGにないFunctions: 0件**
+- STGにあってDEVにないFunctions: 古い不要なFunctionのみ（あれば削除検討）
+
+**差分があった場合の対応**:
+```bash
+# 不足しているFunctionを追加デプロイ
+supabase functions deploy <function-name> --project-ref ${TARGET_PROJECT_REF}
+
+# 再度確認して差分0になるまで繰り返す
+```
 
 ---
 
@@ -222,25 +259,28 @@ curl -X POST "https://${TARGET_PROJECT_REF}.supabase.co/functions/v1/<function-n
 日時: ____年__月__日 __:__
 実施者: ________
 
-■ 事前チェック
+■ 事前チェック（手順1）
 □ DEV環境とSTG環境のスキーマ差分を確認済み
-□ DEV環境とSTG環境のEdge Functions差分を確認済み
+□ DEV環境とSTG環境のEdge Functions差分を【全体比較】で確認済み
+□ 差分をすべてリストアップし、デプロイが必要なFunctionsを特定済み
 
-■ マイグレーション実行
+■ マイグレーション実行（手順2）
 □ データベースマイグレーションファイルを実行済み
 □ マイグレーション実行後、エラーなし
 □ 新規テーブルが作成されている
 
-■ Edge Functionsデプロイ
+■ Edge Functionsデプロイ（手順3）
 □ 新規Functionsをデプロイ済み
 □ 既存Functions更新をデプロイ済み
 □ デプロイ後、Functionsが正常に表示されている
 
-■ 最終確認
+■ 最終確認（手順4）- **完全一致確認**
 □ DEV環境とSTG環境のスキーマが一致している
-□ DEV環境とSTG環境のEdge Functionsが一致している
+□ **DEVにあってSTGにないEdge Functions: 0件を確認済み**
+□ STGにあってDEVにないEdge Functions: 不要なもののみ（または0件）
+□ 差分がある場合は追加デプロイを実施し、差分0になるまで確認済み
 
-■ 動作確認
+■ 動作確認（手順5）
 □ データベース接続が成功する
 □ Edge Functionsが動作する
 □ アプリ側で新機能が動作する

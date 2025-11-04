@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../../data/models/user_model.dart';
 import '../../services/group_service.dart';
+import '../../services/error_log_service.dart';
+import '../widgets/error_dialog.dart';
 
 /// グループメンバー一覧ボトムシート
 class GroupMembersBottomSheet extends StatefulWidget {
@@ -139,15 +141,22 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
       // メンバー更新通知
       widget.onMembersUpdated?.call();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ロール変更に失敗しました: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
+    } catch (e, stackTrace) {
+      debugPrint('[GroupMembersBottomSheet] ❌ ロール変更エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.currentUserId,
+        errorType: 'ロール変更エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループメンバー一覧',
       );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: 'ロールの変更に失敗しました',
+        );
+      }
     }
   }
 

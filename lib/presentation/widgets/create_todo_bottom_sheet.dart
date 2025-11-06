@@ -487,6 +487,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                           ),
                         ),
                         maxLines: 2,
+                        maxLength: 200,
                         textInputAction: TextInputAction.done,
                       ),
 
@@ -779,6 +780,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                               ),
                             ),
                             maxLines: 2,
+                            maxLength: 200,
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: 12),

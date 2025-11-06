@@ -122,7 +122,7 @@ CREATE TABLE todos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   group_id UUID REFERENCES groups(id) ON DELETE CASCADE, -- NULL = 個人TODO
   title TEXT NOT NULL CHECK (char_length(title) <= 100),
-  description TEXT CHECK (char_length(description) <= 500),
+  description TEXT CHECK (char_length(description) <= 200),
   deadline TIMESTAMPTZ, -- 期限（nullable）
   category TEXT NOT NULL CHECK (category IN ('shopping', 'housework', 'other')),
   is_completed BOOLEAN NOT NULL DEFAULT false,
@@ -193,7 +193,7 @@ CREATE TABLE recurring_todos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   title TEXT NOT NULL CHECK (char_length(title) <= 100),
-  description TEXT CHECK (char_length(description) <= 500),
+  description TEXT CHECK (char_length(description) <= 200),
   category TEXT NOT NULL CHECK (category IN ('shopping', 'housework', 'other')),
 
   -- 繰り返し設定
@@ -858,5 +858,37 @@ COMMENT ON COLUMN app_versions.release_notes IS 'リリースノート';
 COMMENT ON COLUMN app_versions.force_update_message IS '強制アップデート時に表示するメッセージ';
 COMMENT ON COLUMN app_versions.store_url_ios IS 'App StoreのURL';
 COMMENT ON COLUMN app_versions.store_url_android IS 'Google PlayのURL';
+
+-- ===================================
+-- 14. Group Invitations (グループ招待)
+-- ===================================
+CREATE TABLE group_invitations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  inviter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invited_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invited_role TEXT NOT NULL CHECK (invited_role IN ('owner', 'member')),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'rejected')),
+  invited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  responded_at TIMESTAMPTZ,
+
+  -- 同じグループへの重複招待防止（同一ユーザーへのpending招待は1つまで）
+  UNIQUE(group_id, invited_user_id)
+);
+
+-- グループ招待テーブルのインデックス
+CREATE INDEX idx_group_invitations_group_id ON group_invitations(group_id);
+CREATE INDEX idx_group_invitations_invited_user_id ON group_invitations(invited_user_id);
+CREATE INDEX idx_group_invitations_status ON group_invitations(status);
+CREATE INDEX idx_group_invitations_inviter_id ON group_invitations(inviter_id);
+
+COMMENT ON TABLE group_invitations IS 'グループ招待管理テーブル - 承認フロー対応';
+COMMENT ON COLUMN group_invitations.group_id IS '招待先のグループID';
+COMMENT ON COLUMN group_invitations.inviter_id IS '招待したユーザーID（オーナー）';
+COMMENT ON COLUMN group_invitations.invited_user_id IS '招待されたユーザーID';
+COMMENT ON COLUMN group_invitations.invited_role IS '招待時に指定したロール（owner: オーナー, member: メンバー）';
+COMMENT ON COLUMN group_invitations.status IS '招待ステータス（pending: 保留中, accepted: 承認済み, rejected: 却下済み）';
+COMMENT ON COLUMN group_invitations.invited_at IS '招待日時';
+COMMENT ON COLUMN group_invitations.responded_at IS '承認/却下日時';
 
 -- ===================================

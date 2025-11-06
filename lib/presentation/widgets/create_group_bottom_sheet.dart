@@ -337,6 +337,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
                             ),
                           ),
                           maxLines: 3,
+                          maxLength: 200,
                           textInputAction: TextInputAction.done,
                         ),
 

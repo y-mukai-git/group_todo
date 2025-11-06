@@ -352,6 +352,7 @@ class _EditGroupBottomSheetState extends State<EditGroupBottomSheet>
                             ),
                           ),
                           maxLines: 3,
+                          maxLength: 200,
                           textInputAction: TextInputAction.done,
                         ),
 

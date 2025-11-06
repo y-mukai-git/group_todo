@@ -519,6 +519,7 @@ class _CreateRecurringTodoBottomSheetState
                           ),
                         ),
                         maxLines: 2,
+                        maxLength: 200,
                         textInputAction: TextInputAction.done,
                       ),
 

@@ -230,10 +230,10 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: userInfo['icon_url'] != null
-                      ? NetworkImage(userInfo['icon_url'])
+                  backgroundImage: userInfo['avatar_url'] != null
+                      ? NetworkImage(userInfo['avatar_url'])
                       : null,
-                  child: userInfo['icon_url'] == null
+                  child: userInfo['avatar_url'] == null
                       ? Text(userInfo['display_name']?[0] ?? 'U')
                       : null,
                 ),
@@ -526,17 +526,28 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
     try {
       // 1. ユーザー情報取得・確認
-      final response = await _groupService.validateUserForInvitation(
+      final validateResponse = await _groupService.validateUserForInvitation(
         groupId: widget.groupId,
         displayId: displayId,
-        inviterId: widget.currentUserId,
       );
 
       if (!mounted) return;
 
+      // successチェック
+      if (validateResponse['success'] != true) {
+        final errorMessage = _getErrorMessage(validateResponse['error']);
+        if (!mounted) return;
+        await ErrorDialog.show(
+          context: context,
+          errorId: '',
+          errorMessage: errorMessage,
+        );
+        return;
+      }
+
       // 2. 確認ダイアログ表示
       final confirmed = await _showInviteConfirmDialog(
-        response['user'],
+        validateResponse['user'],
         _selectedRole,
       );
       if (confirmed != true) return; // キャンセル
@@ -545,7 +556,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       await _groupService.inviteUserToGroup(
         groupId: widget.groupId,
         inviterId: widget.currentUserId,
-        invitedUserId: response['user']['id'],
+        invitedUserId: validateResponse['user']['id'],
         invitedRole: _selectedRole,
       );
 
@@ -563,15 +574,40 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
       // メンバー更新通知
       widget.onMembersUpdated?.call();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('招待に失敗しました: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
+    } catch (e, stackTrace) {
+      debugPrint('[GroupMembersBottomSheet] ❌ 招待エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.currentUserId,
+        errorType: '招待エラー',
+        errorMessage: e.toString(),
+        stackTrace: stackTrace.toString(),
+        screenName: 'グループメンバー一覧',
       );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '招待に失敗しました',
+        );
+      }
+    }
+  }
+
+  /// エラーメッセージを取得
+  String _getErrorMessage(String? error) {
+    if (error == null) return '招待に失敗しました';
+
+    switch (error) {
+      case 'User not found':
+        return '指定されたユーザーIDが見つかりません';
+      case 'User is already a member of this group':
+        return 'このユーザーは既にメンバーです';
+      case 'User is already invited to this group':
+        return 'このユーザーは既に招待済みです';
+      case 'Only group owner can invite members':
+        return 'オーナーのみが招待できます';
+      default:
+        return '招待に失敗しました';
     }
   }
 

@@ -59,9 +59,14 @@ serve(async (req) => {
       .lte('published_at', new Date().toISOString())
       .order('published_at', { ascending: false })
 
-    if (announcementsError || !announcements) {
+    // エラーの場合は詳細をログに記録
+    if (announcementsError) {
+      console.error('[get-announcements] Database error:', announcementsError)
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to fetch announcements' }),
+        JSON.stringify({
+          success: false,
+          error: 'お知らせの取得に失敗しました。しばらくしてから再度お試しください'
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -69,9 +74,10 @@ serve(async (req) => {
       )
     }
 
+    // データが0件の場合は正常終了
     const response: GetAnnouncementsResponse = {
       success: true,
-      announcements: announcements
+      announcements: announcements || []
     }
 
     return new Response(

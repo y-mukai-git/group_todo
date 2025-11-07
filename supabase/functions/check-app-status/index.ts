@@ -13,6 +13,7 @@ interface CheckAppStatusRequest {
 }
 
 interface CheckAppStatusResponse {
+  success: boolean
   maintenance: {
     is_maintenance: boolean
     message?: string
@@ -109,6 +110,7 @@ serve(async (req) => {
     const hasNewVersion = latestVersion && compareVersions(latestVersion.version, current_version) > 0
 
     const response: CheckAppStatusResponse = {
+      success: true,
       maintenance: {
         is_maintenance: maintenanceData.is_maintenance,
         message: maintenanceData.is_maintenance ? maintenanceData.maintenance_message : undefined,
@@ -135,7 +137,7 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

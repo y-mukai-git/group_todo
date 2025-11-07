@@ -218,6 +218,67 @@ class _CreateRecurringTodoBottomSheetState
     );
   }
 
+  /// 期限選択ピッカー表示
+  void _showDeadlinePicker() {
+    // 「期限なし」= null、「1日後」～「30日後」= 1～30
+    final deadlineOptions = <int?>[
+      null,
+      ...List.generate(30, (index) => index + 1),
+    ];
+    final deadlineLabels = [
+      '期限なし',
+      ...List.generate(30, (index) => '${index + 1}日後'),
+    ];
+    final currentIndex = _selectedDeadlineDaysAfter == null
+        ? 0
+        : deadlineOptions.indexOf(_selectedDeadlineDaysAfter);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('キャンセル'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('完了'),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: currentIndex >= 0 ? currentIndex : 0,
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedDeadlineDaysAfter = deadlineOptions[index];
+                    });
+                  },
+                  children: deadlineLabels
+                      .map((label) => Center(child: Text(label)))
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// 担当者選択ピッカー表示
   void _showAssigneePicker() {
     if (widget.availableAssignees == null ||
@@ -696,34 +757,38 @@ class _CreateRecurringTodoBottomSheetState
                         ),
                       ),
                       const SizedBox(height: 8),
-                      DropdownButtonFormField<int?>(
-                        initialValue: _selectedDeadlineDaysAfter,
-                        decoration: InputDecoration(
-                          prefixIcon: Icon(
-                            Icons.calendar_today,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          border: OutlineInputBorder(
+                      InkWell(
+                        onTap: _showDeadlinePicker,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _selectedDeadlineDaysAfter == null
+                                    ? '期限なし'
+                                    : '$_selectedDeadlineDaysAfter日後',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              const Spacer(),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ],
+                          ),
                         ),
-                        items: [
-                          const DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text('期限なし'),
-                          ),
-                          ...List.generate(30, (index) => index + 1).map(
-                            (days) => DropdownMenuItem<int?>(
-                              value: days,
-                              child: Text('$days日後'),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedDeadlineDaysAfter = value;
-                          });
-                        },
                       ),
 
                       const SizedBox(height: 16),

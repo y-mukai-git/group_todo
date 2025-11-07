@@ -29,73 +29,87 @@ interface CreateRecurringTodoResponse {
   error?: string
 }
 
-// 次回生成日時を計算
+// 次回生成日時を計算（JST対応版）
+// generation_timeをJST（Asia/Tokyo）として解釈し、UTCのDateを返す
 function calculateNextGeneration(
   pattern: string,
   days: number[] | null,
   time: string
 ): Date {
-  const now = new Date()
-  const [hours, minutes] = time.split(':').map(Number)
+  const JST_OFFSET = 9 * 60 * 60 * 1000; // 9時間をミリ秒で
+  const now = new Date();
+  const [hours, minutes] = time.split(':').map(Number);
+
+  // 現在時刻をJSTに変換（UTC時刻に9時間加算）
+  const nowJst = new Date(now.getTime() + JST_OFFSET);
 
   if (pattern === 'daily') {
-    const next = new Date(now)
-    next.setHours(hours, minutes, 0, 0)
-    if (next <= now) {
-      next.setDate(next.getDate() + 1)
-    }
-    return next
+    // JSTで翌日の日付を取得
+    const nextJst = new Date(nowJst);
+    nextJst.setUTCDate(nextJst.getUTCDate() + 1);
+    nextJst.setUTCHours(hours, minutes, 0, 0);
+
+    // UTCに戻す（9時間減算）
+    return new Date(nextJst.getTime() - JST_OFFSET);
   }
 
   if (pattern === 'weekly' && days && days.length > 0) {
-    const next = new Date(now)
-    next.setHours(hours, minutes, 0, 0)
-    const currentDay = next.getDay()
+    const currentDay = nowJst.getUTCDay();
+    let daysToAdd = 7; // デフォルトは1週間後
 
-    // 今週の残りの曜日をチェック
-    const futureDays = days.filter(d => d > currentDay || (d === currentDay && next > now))
-    if (futureDays.length > 0) {
-      const nextDay = Math.min(...futureDays)
-      next.setDate(next.getDate() + (nextDay - currentDay))
-      return next
-    }
-
-    // 来週の最初の曜日
-    const nextDay = Math.min(...days)
-    next.setDate(next.getDate() + (7 - currentDay + nextDay))
-    return next
-  }
-
-  if (pattern === 'monthly' && days && days.length > 0) {
-    const next = new Date(now)
-    next.setHours(hours, minutes, 0, 0)
-
-    for (const day of days.sort((a, b) => a - b)) {
-      if (day === -1) {
-        // 月末
-        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0)
-        if (lastDay > now) {
-          return lastDay
-        }
-      } else if (day > next.getDate()) {
-        next.setDate(day)
-        return next
+    // 次の該当曜日を探す
+    for (let i = 1; i <= 7; i++) {
+      const targetDay = (currentDay + i) % 7;
+      if (days.includes(targetDay)) {
+        daysToAdd = i;
+        break;
       }
     }
 
-    // 来月
-    next.setMonth(next.getMonth() + 1)
-    const firstDay = days[0] === -1
-      ? new Date(next.getFullYear(), next.getMonth() + 1, 0)
-      : new Date(next.getFullYear(), next.getMonth(), days[0])
-    return firstDay
+    // JSTで該当曜日の日付を取得
+    const nextJst = new Date(nowJst);
+    nextJst.setUTCDate(nextJst.getUTCDate() + daysToAdd);
+    nextJst.setUTCHours(hours, minutes, 0, 0);
+
+    // UTCに戻す
+    return new Date(nextJst.getTime() - JST_OFFSET);
   }
 
-  // デフォルト：明日
-  const next = new Date(now)
-  next.setDate(next.getDate() + 1)
-  next.setHours(hours, minutes, 0, 0)
-  return next
+  if (pattern === 'monthly' && days && days.length > 0) {
+    const targetDay = days[0];
+
+    if (targetDay === -1) {
+      // 月末の場合
+      const nextJst = new Date(nowJst);
+      // 来月の0日 = 今月の最終日
+      nextJst.setUTCMonth(nextJst.getUTCMonth() + 1, 0);
+      nextJst.setUTCHours(hours, minutes, 0, 0);
+
+      // UTCに戻す
+      return new Date(nextJst.getTime() - JST_OFFSET);
+    } else {
+      // 特定の日付の場合
+      const nextJst = new Date(nowJst);
+      nextJst.setUTCMonth(nextJst.getUTCMonth() + 1, targetDay);
+      nextJst.setUTCHours(hours, minutes, 0, 0);
+
+      // 日付が存在しない場合（例：2月30日）は月末に調整
+      if (nextJst.getUTCDate() !== targetDay) {
+        nextJst.setUTCMonth(nextJst.getUTCMonth() + 1, 0);
+      }
+
+      // UTCに戻す
+      return new Date(nextJst.getTime() - JST_OFFSET);
+    }
+  }
+
+  // デフォルト：翌日
+  const nextJst = new Date(nowJst);
+  nextJst.setUTCDate(nextJst.getUTCDate() + 1);
+  nextJst.setUTCHours(hours, minutes, 0, 0);
+
+  // UTCに戻す
+  return new Date(nextJst.getTime() - JST_OFFSET);
 }
 
 serve(async (req) => {

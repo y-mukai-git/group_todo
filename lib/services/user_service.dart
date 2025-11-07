@@ -17,6 +17,11 @@ class UserService {
         body: {'device_id': deviceId},
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'ユーザーの作成に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return UserModel.fromJson(response['user'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[UserService] ❌ ユーザー作成エラー: $e');
@@ -34,6 +39,11 @@ class UserService {
         functionName: 'get-user-by-device',
         body: {'device_id': deviceId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'ユーザーの取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       if (response['user'] == null) {
         debugPrint('[UserService] ⚠️ ユーザー未登録');
@@ -67,6 +77,11 @@ class UserService {
         body: body,
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'プロフィールの更新に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       final user = UserModel.fromJson(response['user'] as Map<String, dynamic>);
       final signedAvatarUrl = response['user']['signed_avatar_url'] as String?;
 
@@ -87,6 +102,12 @@ class UserService {
         functionName: 'set-transfer-password',
         body: {'user_id': userId, 'password': password},
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? '引き継ぎ用パスワードの設定に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       final result = {
         'display_id': response['display_id'] as String, // 8桁displayIdを返す

@@ -118,8 +118,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'メンバー削除エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'メンバーの削除に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
       if (mounted) {
@@ -157,8 +157,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '定期タスク一覧取得エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '定期タスク一覧の取得に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
       if (mounted) {
@@ -284,8 +284,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '定期タスク削除エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '定期タスクの削除に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
       if (mounted) {
@@ -320,8 +320,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '定期TODO切り替えエラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '定期タスクの切り替えに失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
       if (mounted) {

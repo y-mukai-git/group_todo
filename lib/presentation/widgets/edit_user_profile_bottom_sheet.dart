@@ -73,8 +73,8 @@ class _EditUserProfileBottomSheetState
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '画像選択エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '画像の選択に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'プロフィール編集',
       );
 
@@ -158,8 +158,8 @@ class _EditUserProfileBottomSheetState
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'プロフィール更新エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'プロフィールの更新に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'プロフィール編集',
       );
 

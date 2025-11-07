@@ -73,7 +73,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Invitation not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -84,7 +84,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Only inviter can cancel invitation' }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -95,7 +95,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Only pending invitation can be cancelled' }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

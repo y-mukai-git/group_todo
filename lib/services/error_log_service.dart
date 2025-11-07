@@ -77,11 +77,17 @@ class ErrorLogService {
   /// Edge Function経由でDB送信
   Future<bool> _sendToDatabase(ErrorLogModel errorLog) async {
     try {
-      await ApiClient().callFunction(
+      final response = await ApiClient().callFunction(
         functionName: 'log-error',
         body: errorLog.toJson(),
         timeout: const Duration(seconds: 10),
       );
+
+      if (response['success'] != true) {
+        debugPrint('[ErrorLogService] ❌ DB送信失敗: ${response['error']}');
+        return false;
+      }
+
       return true;
     } catch (e) {
       debugPrint('[ErrorLogService] ❌ DB送信エラー: $e');

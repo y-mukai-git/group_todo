@@ -367,8 +367,10 @@ class _CreateRecurringTodoBottomSheetState
         errorType: widget.existingRecurringTodo != null
             ? '定期タスク更新エラー'
             : '定期タスク作成エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: widget.existingRecurringTodo != null
+            ? '定期タスクの更新に失敗しました'
+            : '定期タスクの作成に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: '定期タスク作成・編集',
       );
 

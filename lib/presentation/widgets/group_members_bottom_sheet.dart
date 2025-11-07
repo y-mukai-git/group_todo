@@ -146,8 +146,8 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.currentUserId,
         errorType: 'ロール変更エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'ロールの変更に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループメンバー一覧',
       );
       if (mounted) {
@@ -579,8 +579,8 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.currentUserId,
         errorType: '招待エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '招待に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループメンバー一覧',
       );
       if (mounted) {

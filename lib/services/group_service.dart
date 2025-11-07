@@ -30,6 +30,11 @@ class GroupService {
         body: body,
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'グループの作成に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return GroupModel.fromJson(response['group'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ作成エラー: $e');
@@ -44,6 +49,11 @@ class GroupService {
         functionName: 'get-user-groups',
         body: {'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'グループ一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       final groupsList = response['groups'] as List<dynamic>;
       final groups = groupsList
@@ -65,6 +75,11 @@ class GroupService {
         body: {'group_id': groupId},
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'グループ詳細の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return GroupModel.fromJson(response['group'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ詳細取得エラー: $e');
@@ -83,6 +98,11 @@ class GroupService {
         body: {'group_id': groupId, 'requester_id': requesterId},
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'メンバー一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return response;
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバー一覧取得エラー: $e');
@@ -97,7 +117,7 @@ class GroupService {
     required String inviterId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'add-group-member',
         body: {
           'group_id': groupId,
@@ -105,6 +125,11 @@ class GroupService {
           'inviter_id': inviterId,
         },
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'メンバーの追加に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバー追加エラー: $e');
       rethrow;
@@ -118,7 +143,7 @@ class GroupService {
     required String targetUserId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'remove-group-member',
         body: {
           'group_id': groupId,
@@ -126,6 +151,11 @@ class GroupService {
           'target_user_id': targetUserId,
         },
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'メンバーの削除に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバー削除エラー: $e');
       rethrow;
@@ -157,6 +187,11 @@ class GroupService {
         body: body,
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'グループの更新に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return GroupModel.fromJson(response['group'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ更新エラー: $e');
@@ -170,10 +205,15 @@ class GroupService {
     required String userId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'delete-group',
         body: {'group_id': groupId, 'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'グループの削除に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ削除エラー: $e');
       rethrow;
@@ -186,10 +226,16 @@ class GroupService {
     required List<Map<String, dynamic>> groupOrders,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'update-group-order',
         body: {'user_id': userId, 'group_orders': groupOrders},
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? 'グループ並び順の更新に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ グループ並び順更新エラー: $e');
       rethrow;
@@ -202,17 +248,18 @@ class GroupService {
   Future<Map<String, dynamic>> validateUserForInvitation({
     required String groupId,
     required String displayId,
-    required String inviterId,
   }) async {
     try {
       final response = await _apiClient.callFunction(
         functionName: 'validate-user-for-invitation',
-        body: {
-          'group_id': groupId,
-          'display_id': displayId,
-          'inviter_id': inviterId,
-        },
+        body: {'group_id': groupId, 'display_id': displayId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? 'ユーザー招待前の確認に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       return response;
     } catch (e) {
@@ -239,6 +286,11 @@ class GroupService {
         },
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'ユーザーの招待に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return GroupInvitationModel.fromJson(
         response['invitation'] as Map<String, dynamic>,
       );
@@ -258,6 +310,12 @@ class GroupService {
         body: {'user_id': userId},
       );
 
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? '承認待ち招待一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       final invitationsList = response['invitations'] as List<dynamic>;
       return invitationsList
           .map((json) => json as Map<String, dynamic>)
@@ -274,10 +332,15 @@ class GroupService {
     required String userId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'accept-invitation',
         body: {'invitation_id': invitationId, 'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '招待の承認に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ 招待承認エラー: $e');
       rethrow;
@@ -290,10 +353,15 @@ class GroupService {
     required String userId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'reject-invitation',
         body: {'invitation_id': invitationId, 'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '招待の却下に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ 招待却下エラー: $e');
       rethrow;
@@ -306,10 +374,15 @@ class GroupService {
     required String userId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'cancel-invitation',
         body: {'invitation_id': invitationId, 'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '招待のキャンセルに失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ 招待キャンセルエラー: $e');
       rethrow;
@@ -324,7 +397,7 @@ class GroupService {
     required String requesterId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'change-member-role',
         body: {
           'group_id': groupId,
@@ -333,6 +406,12 @@ class GroupService {
           'requester_id': requesterId,
         },
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? 'メンバーロールの変更に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバーロール変更エラー: $e');
       rethrow;

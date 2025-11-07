@@ -119,8 +119,8 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'お問い合わせ送信エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'お問い合わせの送信に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'お問い合わせ',
       );
 

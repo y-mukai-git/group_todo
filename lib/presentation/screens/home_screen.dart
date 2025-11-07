@@ -117,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'タスク完了切り替えエラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'タスクの完了状態を更新できませんでした',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'ホーム画面',
       );
 
@@ -151,8 +151,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'データ更新エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'データの更新に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'ホーム画面',
       );
 
@@ -284,8 +284,8 @@ class _HomeScreenState extends State<HomeScreen> {
       await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'todo_update_error',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'タスクの更新に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'home_screen',
       );
 
@@ -465,8 +465,8 @@ class _HomeScreenState extends State<HomeScreen> {
             final errorLog = await ErrorLogService().logError(
               userId: widget.user.id,
               errorType: 'タスク作成エラー',
-              errorMessage: e.toString(),
-              stackTrace: stackTrace.toString(),
+              errorMessage: 'タスクの作成に失敗しました',
+              stackTrace: '${e.toString()}\n${stackTrace.toString()}',
               screenName: 'ホーム画面',
             );
 

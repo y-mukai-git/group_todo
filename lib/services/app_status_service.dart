@@ -26,6 +26,8 @@ class AppStatusService {
         body: {'current_version': currentVersion, 'platform': platform},
       );
 
+      // Note: check-app-statusは他のAPIと異なり、success/errorフィールドを持たず、
+      // 直接データを返す形式のため、successチェックは不要
       return AppStatusResponse.fromJson(response);
     } catch (e) {
       debugPrint('[AppStatusService] ❌ アプリ状態チェックエラー: $e');

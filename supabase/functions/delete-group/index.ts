@@ -72,7 +72,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Group not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -82,7 +82,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Only group owner can delete group' }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

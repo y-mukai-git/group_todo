@@ -18,6 +18,11 @@ class AnnouncementService {
 
       debugPrint('[AnnouncementService] レスポンス取得完了');
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'お知らせ一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       final List<dynamic> announcementsJson =
           response['announcements'] as List<dynamic>;
       final announcements = announcementsJson

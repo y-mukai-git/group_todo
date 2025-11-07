@@ -87,7 +87,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User is not assigned to this TODO' }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -104,7 +104,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'TODO not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

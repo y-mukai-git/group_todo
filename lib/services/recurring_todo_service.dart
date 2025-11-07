@@ -34,6 +34,11 @@ class RecurringTodoService {
         },
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '定期タスクの作成に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return RecurringTodoModel.fromJson(
         response['recurring_todo'] as Map<String, dynamic>,
       );
@@ -53,6 +58,12 @@ class RecurringTodoService {
         functionName: 'get-recurring-todos',
         body: {'group_id': groupId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? '定期タスク一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       final recurringTodos = (response['recurring_todos'] as List<dynamic>)
           .map(
@@ -103,6 +114,11 @@ class RecurringTodoService {
         body: body,
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '定期タスクの更新に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return RecurringTodoModel.fromJson(
         response['recurring_todo'] as Map<String, dynamic>,
       );
@@ -118,10 +134,15 @@ class RecurringTodoService {
     required String recurringTodoId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'delete-recurring-todo',
         body: {'recurring_todo_id': recurringTodoId, 'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '定期タスクの削除に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[RecurringTodoService] ❌ 定期タスク削除エラー: $e');
       rethrow;
@@ -138,6 +159,12 @@ class RecurringTodoService {
         functionName: 'toggle-recurring-todo',
         body: {'recurring_todo_id': recurringTodoId, 'user_id': userId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? '定期タスク有効/無効切り替えに失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       return RecurringTodoModel.fromJson(
         response['recurring_todo'] as Map<String, dynamic>,

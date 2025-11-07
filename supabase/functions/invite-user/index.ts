@@ -95,7 +95,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Inviter is not a member of this group' }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -105,7 +105,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Only group owner can invite members' }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -123,7 +123,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User is already a member of this group' }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -142,7 +142,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User is already invited to this group' }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

@@ -13,7 +13,7 @@ class ContactService {
     required String message,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'submit-contact-inquiry',
         body: {
           'user_id': userId,
@@ -21,6 +21,11 @@ class ContactService {
           'message': message,
         },
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'お問い合わせの送信に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[ContactService] ❌ お問い合わせ送信エラー: $e');
       rethrow;

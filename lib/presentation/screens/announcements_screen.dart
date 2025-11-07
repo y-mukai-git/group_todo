@@ -61,8 +61,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'お知らせ取得エラー',
-        errorMessage: e.toString(),
-        stackTrace: StackTrace.current.toString(),
+        errorMessage: 'お知らせの取得に失敗しました',
+        stackTrace: '${e.toString()}\n${StackTrace.current.toString()}',
       );
 
       if (mounted) {

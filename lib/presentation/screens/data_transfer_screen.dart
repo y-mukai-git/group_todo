@@ -54,8 +54,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: null, // 新規ユーザー作成失敗時はユーザーIDなし
         errorType: '新規ユーザー作成エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '新規ユーザーの作成に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'データ引き継ぎ画面',
       );
 
@@ -125,8 +125,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: null, // データ引き継ぎ失敗時はユーザーIDなし
         errorType: 'データ引き継ぎエラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'データの引き継ぎに失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'データ引き継ぎ画面',
       );
 

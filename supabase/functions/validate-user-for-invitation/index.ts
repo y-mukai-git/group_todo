@@ -22,7 +22,7 @@ interface ValidateUserResponse {
     id: string
     display_id: string
     display_name: string
-    icon_url: string | null
+    avatar_url: string | null
   }
   error?: string
 }
@@ -71,7 +71,7 @@ serve(async (req) => {
     // ユーザー情報を取得
     const { data: user, error: userError } = await supabaseClient
       .from('users')
-      .select('id, display_id, display_name, icon_url')
+      .select('id, display_id, display_name, avatar_url')
       .eq('display_id', display_id)
       .single()
 
@@ -79,7 +79,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -97,7 +97,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User is already a member of this group' }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -116,7 +116,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User is already invited to this group' }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -128,7 +128,7 @@ serve(async (req) => {
         id: user.id,
         display_id: user.display_id,
         display_name: user.display_name,
-        icon_url: user.icon_url
+        avatar_url: user.avatar_url
       }
     }
 

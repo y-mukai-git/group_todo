@@ -81,7 +81,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Group not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -91,7 +91,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Only group owner can add members' }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -108,7 +108,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -129,7 +129,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'User is already a member of this group' }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

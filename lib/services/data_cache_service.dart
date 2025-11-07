@@ -64,6 +64,11 @@ class DataCacheService extends ChangeNotifier {
         body: {'user_id': user.id},
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? '初期データの取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       // タスクデータ整形
       final todosList = response['todos'] as List<dynamic>;
       _todos = todosList

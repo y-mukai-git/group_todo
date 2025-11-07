@@ -30,6 +30,11 @@ class TodoService {
         },
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'タスクの作成に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[TodoService] ❌ タスク作成エラー: $e');
@@ -47,6 +52,12 @@ class TodoService {
         functionName: 'get-my-todos',
         body: {'user_id': userId, 'filter_days': filterDays},
       );
+
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? '自分のタスク一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       final todosList = response['todos'] as List<dynamic>;
       final todos = todosList
@@ -71,6 +82,12 @@ class TodoService {
         body: {'user_id': userId, 'group_id': groupId},
       );
 
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? 'グループタスク一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       final todosList = response['todos'] as List<dynamic>;
       final todos = todosList
           .map((json) => TodoModel.fromJson(json as Map<String, dynamic>))
@@ -93,6 +110,11 @@ class TodoService {
         functionName: 'get-todo-detail',
         body: {'user_id': userId, 'todo_id': todoId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'タスク詳細の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
@@ -123,6 +145,11 @@ class TodoService {
         },
       );
 
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'タスクの更新に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[TodoService] ❌ タスク更新エラー: $e');
@@ -141,6 +168,12 @@ class TodoService {
         body: {'user_id': userId, 'todo_id': todoId},
       );
 
+      if (response['success'] != true) {
+        final errorMessage =
+            response['error'] as String? ?? 'タスク完了状態の切り替えに失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
+
       return TodoModel.fromJson(response['todo'] as Map<String, dynamic>);
     } catch (e) {
       debugPrint('[TodoService] ❌ タスク完了状態切り替えエラー: $e');
@@ -154,10 +187,15 @@ class TodoService {
     required String todoId,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'delete-todo',
         body: {'user_id': userId, 'todo_id': todoId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'タスクの削除に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[TodoService] ❌ タスク削除エラー: $e');
       rethrow;
@@ -171,7 +209,7 @@ class TodoService {
     required String commentText,
   }) async {
     try {
-      await _apiClient.callFunction(
+      final response = await _apiClient.callFunction(
         functionName: 'create-todo-comment',
         body: {
           'user_id': userId,
@@ -179,6 +217,11 @@ class TodoService {
           'comment_text': commentText,
         },
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'コメントの作成に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
     } catch (e) {
       debugPrint('[TodoService] ❌ コメント作成エラー: $e');
       rethrow;
@@ -195,6 +238,11 @@ class TodoService {
         functionName: 'get-todo-comments',
         body: {'user_id': userId, 'todo_id': todoId},
       );
+
+      if (response['success'] != true) {
+        final errorMessage = response['error'] as String? ?? 'コメント一覧の取得に失敗しました';
+        throw ApiException(message: errorMessage, statusCode: 200);
+      }
 
       final comments = response['comments'] as List<dynamic>;
       return comments;

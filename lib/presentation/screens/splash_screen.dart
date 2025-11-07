@@ -135,8 +135,8 @@ class _SplashScreenState extends State<SplashScreen>
       final errorLog = await ErrorLogService().logError(
         userId: null, // 初期化失敗時はユーザーIDなし
         errorType: 'アプリ初期化エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'アプリの初期化に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'スプラッシュ画面',
       );
 

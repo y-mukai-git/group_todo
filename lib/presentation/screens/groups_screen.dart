@@ -165,8 +165,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'グループ作成エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'グループの作成に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ一覧画面',
       );
 
@@ -191,8 +191,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'データ更新エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'データの更新に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ一覧画面',
       );
 
@@ -259,8 +259,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '並び順保存エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: '並び順の保存に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ一覧画面',
       );
 
@@ -672,8 +672,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
               final errorLog = await ErrorLogService().logError(
                 userId: widget.user.id,
                 errorType: 'グループ削除エラー',
-                errorMessage: e.toString(),
-                stackTrace: stackTrace.toString(),
+                errorMessage: 'グループの削除に失敗しました',
+                stackTrace: '${e.toString()}\n${stackTrace.toString()}',
                 screenName: 'グループ一覧画面',
               );
 

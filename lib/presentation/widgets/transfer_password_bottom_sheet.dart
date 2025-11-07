@@ -69,8 +69,8 @@ class _TransferPasswordBottomSheetState
       final errorLog = await ErrorLogService().logError(
         userId: widget.userId,
         errorType: 'データ引き継ぎ設定エラー',
-        errorMessage: e.toString(),
-        stackTrace: stackTrace.toString(),
+        errorMessage: 'データ引き継ぎの設定に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'データ引き継ぎ設定',
       );
 

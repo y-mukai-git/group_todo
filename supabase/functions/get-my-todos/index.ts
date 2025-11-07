@@ -3,13 +3,12 @@
 
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders } from '../_shared/cors.ts'
+import { checkMaintenanceMode } from '../_shared/maintenance.ts'
 
 declare var Deno: any;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 interface GetMyTodosRequest {
   user_id: string
@@ -47,16 +46,7 @@ serve(async (req) => {
     )
 
     // メンテナンスモードチェック
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    const checkResponse = await fetch(`${supabaseUrl}/functions/v1/check-maintenance-mode`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-      },
-    })
-    const checkResult = await checkResponse.json()
+    const checkResult = await checkMaintenanceMode()
     if (checkResult.status === 'error' || checkResult.status === 'maintenance') {
       return new Response(
         JSON.stringify(checkResult),

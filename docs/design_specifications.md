@@ -448,3 +448,214 @@
 | Card | 1 |
 
 ---
+## 11. UI統一ルール
+
+### 11.1 選択UIの統一
+
+**基本方針**: ユーザーにネイティブな操作感を提供するため、iOS/Android共通でCupertinoピッカーを使用
+
+#### 選択肢から選ぶUI（プルダウン相当）
+
+**NG**: `DropdownButton`を使用
+```dart
+// ❌ 使用禁止
+DropdownButton<String>(
+  value: selectedValue,
+  items: items.map((item) => DropdownMenuItem(...)).toList(),
+  onChanged: (value) { ... },
+)
+```
+
+**OK**: `showModalBottomSheet` + `CupertinoPicker`を使用
+```dart
+// ✅ 推奨
+void _showPicker() {
+  showModalBottomSheet(
+    context: context,
+    builder: (BuildContext context) {
+      return Container(
+        height: 250,
+        color: Theme.of(context).colorScheme.surface,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('キャンセル'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() { /* 選択を確定 */ });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('完了'),
+                ),
+              ],
+            ),
+            Expanded(
+              child: CupertinoPicker(
+                itemExtent: 32.0,
+                onSelectedItemChanged: (int index) {
+                  // 選択変更時の処理
+                },
+                children: items.map((item) => Center(child: Text(item))).toList(),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+```
+
+**実装例**:
+- `create_todo_bottom_sheet.dart`: 担当者選択（Line 223-）
+- `create_recurring_todo_bottom_sheet.dart`: 繰り返しパターン選択
+- `group_detail_screen.dart`: カテゴリ選択
+
+---
+
+#### 日付・時刻選択UI
+
+**OK**: `showModalBottomSheet` + `CupertinoDatePicker`を使用
+```dart
+// ✅ 推奨
+Future<void> _selectDate() async {
+  DateTime tempDate = selectedDate ?? DateTime.now();
+
+  await showModalBottomSheet(
+    context: context,
+    builder: (BuildContext context) {
+      return Container(
+        height: 250,
+        color: Theme.of(context).colorScheme.surface,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('キャンセル'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      selectedDate = tempDate;
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('完了'),
+                ),
+              ],
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: selectedDate ?? DateTime.now(),
+                minimumDate: DateTime.now(),
+                onDateTimeChanged: (DateTime newDate) {
+                  tempDate = newDate;
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+```
+
+**実装例**:
+- `create_todo_bottom_sheet.dart`: 期限選択（Line 162-214）
+- `create_recurring_todo_bottom_sheet.dart`: 開始日選択
+
+---
+
+### 11.2 モーダル表示の統一
+
+#### フォーム入力UI
+
+**OK**: `showModalBottomSheet`を使用
+```dart
+showModalBottomSheet(
+  context: context,
+  isScrollControlled: true,  // 高さ可変
+  builder: (BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,  // キーボード対応
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // フォーム内容
+          ],
+        ),
+      ),
+    );
+  },
+);
+```
+
+**実装例**:
+- `create_todo_bottom_sheet.dart`: TODO作成・編集
+- `create_recurring_todo_bottom_sheet.dart`: 定期TODO作成・編集
+- `edit_user_profile_bottom_sheet.dart`: プロフィール編集
+
+---
+
+#### 確認ダイアログ
+
+**OK**: `showDialog` + `AlertDialog`を使用
+```dart
+showDialog(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: const Text('確認'),
+    content: const Text('この操作を実行しますか？'),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context, false),
+        child: const Text('キャンセル'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, true),
+        child: const Text('実行'),
+      ),
+    ],
+  ),
+);
+```
+
+---
+
+### 11.3 UI統一の理由
+
+#### なぜCupertinoピッカーを使用するのか？
+
+1. **ネイティブな操作感**
+   - iOSユーザーに馴染みのある操作方法
+   - Androidユーザーにも違和感なく使える
+
+2. **一貫性の確保**
+   - プラットフォームに関わらず同じUI
+   - ユーザー学習コストの低減
+
+3. **視認性の向上**
+   - ボトムシートで大きく表示
+   - 選択肢が見やすい
+
+4. **誤操作の防止**
+   - キャンセル・完了ボタンで明示的に確定
+   - DropdownButtonのような誤タップが起きにくい
+
+---
+
+**最終更新日**: 2025-11-07

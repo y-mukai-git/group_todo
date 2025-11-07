@@ -38,26 +38,52 @@ function calculateNextGeneration(
 ): Date {
   const JST_OFFSET = 9 * 60 * 60 * 1000; // 9時間をミリ秒で
   const now = new Date();
-  const [hours, minutes] = time.split(':').map(Number);
+
+  // time形式のバリデーション（HH:MM または HH:MM:SS を許可）
+  const timeParts = time.split(':');
+  if (timeParts.length < 2 || timeParts.length > 3) {
+    throw new Error('Invalid time format. Expected HH:MM or HH:MM:SS');
+  }
+  const [hours, minutes] = timeParts.map(Number);
+  if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    throw new Error('Invalid time values. Hours must be 0-23, minutes must be 0-59');
+  }
 
   // 現在時刻をJSTに変換（UTC時刻に9時間加算）
   const nowJst = new Date(now.getTime() + JST_OFFSET);
 
   if (pattern === 'daily') {
-    // JSTで翌日の日付を取得
-    const nextJst = new Date(nowJst);
-    nextJst.setUTCDate(nextJst.getUTCDate() + 1);
-    nextJst.setUTCHours(hours, minutes, 0, 0);
+    // まず当日の指定時刻を計算
+    const todayJst = new Date(nowJst);
+    todayJst.setUTCHours(hours, minutes, 0, 0);
 
-    // UTCに戻す（9時間減算）
-    return new Date(nextJst.getTime() - JST_OFFSET);
+    // 現在時刻と比較
+    if (nowJst.getTime() < todayJst.getTime()) {
+      // 当日の指定時刻がまだ来ていない → 当日
+      return new Date(todayJst.getTime() - JST_OFFSET);
+    } else {
+      // 当日の指定時刻は過ぎた → 翌日
+      todayJst.setUTCDate(todayJst.getUTCDate() + 1);
+      return new Date(todayJst.getTime() - JST_OFFSET);
+    }
   }
 
   if (pattern === 'weekly' && days && days.length > 0) {
     const currentDay = nowJst.getUTCDay();
-    let daysToAdd = 7; // デフォルトは1週間後
 
-    // 次の該当曜日を探す
+    // まず今日が該当曜日かチェック
+    if (days.includes(currentDay)) {
+      const todayJst = new Date(nowJst);
+      todayJst.setUTCHours(hours, minutes, 0, 0);
+
+      if (nowJst.getTime() < todayJst.getTime()) {
+        // 今日の指定時刻がまだ来ていない → 今日
+        return new Date(todayJst.getTime() - JST_OFFSET);
+      }
+    }
+
+    // 今日は該当しない、または今日の時刻は過ぎた → 次の該当曜日を探す
+    let daysToAdd = 7; // デフォルトは1週間後
     for (let i = 1; i <= 7; i++) {
       const targetDay = (currentDay + i) % 7;
       if (days.includes(targetDay)) {
@@ -66,7 +92,6 @@ function calculateNextGeneration(
       }
     }
 
-    // JSTで該当曜日の日付を取得
     const nextJst = new Date(nowJst);
     nextJst.setUTCDate(nextJst.getUTCDate() + daysToAdd);
     nextJst.setUTCHours(hours, minutes, 0, 0);
@@ -77,18 +102,43 @@ function calculateNextGeneration(
 
   if (pattern === 'monthly' && days && days.length > 0) {
     const targetDay = days[0];
+    const currentDate = nowJst.getUTCDate();
 
     if (targetDay === -1) {
       // 月末の場合
+      // 今月の最終日を取得
+      const lastDayOfMonth = new Date(nowJst.getUTCFullYear(), nowJst.getUTCMonth() + 1, 0).getUTCDate();
+
+      if (currentDate === lastDayOfMonth) {
+        // 今日が月末の場合
+        const todayJst = new Date(nowJst);
+        todayJst.setUTCHours(hours, minutes, 0, 0);
+
+        if (nowJst.getTime() < todayJst.getTime()) {
+          // 今日の指定時刻がまだ来ていない → 今月の月末
+          return new Date(todayJst.getTime() - JST_OFFSET);
+        }
+      }
+
+      // 今日は月末ではない、または月末の時刻は過ぎた → 来月の月末
       const nextJst = new Date(nowJst);
-      // 来月の0日 = 今月の最終日
       nextJst.setUTCMonth(nextJst.getUTCMonth() + 1, 0);
       nextJst.setUTCHours(hours, minutes, 0, 0);
-
-      // UTCに戻す
       return new Date(nextJst.getTime() - JST_OFFSET);
     } else {
       // 特定の日付の場合
+      if (currentDate === targetDay) {
+        // 今日が該当日の場合
+        const todayJst = new Date(nowJst);
+        todayJst.setUTCHours(hours, minutes, 0, 0);
+
+        if (nowJst.getTime() < todayJst.getTime()) {
+          // 今日の指定時刻がまだ来ていない → 今月
+          return new Date(todayJst.getTime() - JST_OFFSET);
+        }
+      }
+
+      // 今日は該当日ではない、または該当日の時刻は過ぎた → 来月
       const nextJst = new Date(nowJst);
       nextJst.setUTCMonth(nextJst.getUTCMonth() + 1, targetDay);
       nextJst.setUTCHours(hours, minutes, 0, 0);
@@ -98,7 +148,6 @@ function calculateNextGeneration(
         nextJst.setUTCMonth(nextJst.getUTCMonth() + 1, 0);
       }
 
-      // UTCに戻す
       return new Date(nextJst.getTime() - JST_OFFSET);
     }
   }

@@ -16,6 +16,7 @@ class RecurringTodoService {
     required String recurrencePattern,
     List<int>? recurrenceDays,
     required String generationTime,
+    int? deadlineDaysAfter,
     List<String>? assignedUserIds,
   }) async {
     try {
@@ -29,6 +30,7 @@ class RecurringTodoService {
           'recurrence_pattern': recurrencePattern,
           'recurrence_days': recurrenceDays,
           'generation_time': generationTime,
+          'deadline_days_after': deadlineDaysAfter,
           'assigned_user_ids': assignedUserIds ?? [],
           'created_by': userId,
         },
@@ -91,6 +93,7 @@ class RecurringTodoService {
     String? recurrencePattern,
     List<int>? recurrenceDays,
     String? generationTime,
+    int? deadlineDaysAfter,
     List<String>? assignedUserIds,
   }) async {
     try {
@@ -107,6 +110,9 @@ class RecurringTodoService {
       }
       if (recurrenceDays != null) body['recurrence_days'] = recurrenceDays;
       if (generationTime != null) body['generation_time'] = generationTime;
+      if (deadlineDaysAfter != null) {
+        body['deadline_days_after'] = deadlineDaysAfter;
+      }
       if (assignedUserIds != null) body['assigned_user_ids'] = assignedUserIds;
 
       final response = await _apiClient.callFunction(

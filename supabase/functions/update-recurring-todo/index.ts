@@ -20,6 +20,7 @@ interface UpdateRecurringTodoRequest {
   recurrence_pattern?: 'daily' | 'weekly' | 'monthly'
   recurrence_days?: number[]
   generation_time?: string
+  deadline_days_after?: number
   assigned_user_ids?: string[]
 }
 
@@ -72,6 +73,7 @@ serve(async (req) => {
       recurrence_pattern,
       recurrence_days,
       generation_time,
+      deadline_days_after,
       assigned_user_ids
     }: UpdateRecurringTodoRequest = await req.json()
 
@@ -130,6 +132,7 @@ serve(async (req) => {
     if (recurrence_pattern !== undefined) updateData.recurrence_pattern = recurrence_pattern
     if (recurrence_days !== undefined) updateData.recurrence_days = recurrence_days
     if (generation_time !== undefined) updateData.generation_time = generation_time
+    if (deadline_days_after !== undefined) updateData.deadline_days_after = deadline_days_after
 
     const { data: updated, error: updateError } = await supabaseClient
       .from('recurring_todos')

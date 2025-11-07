@@ -202,6 +202,9 @@ CREATE TABLE recurring_todos (
   generation_time TIME NOT NULL DEFAULT '09:00:00', -- 生成時刻
   next_generation_at TIMESTAMPTZ NOT NULL, -- 次回生成日時
 
+  -- 期限設定
+  deadline_days_after INTEGER CHECK (deadline_days_after > 0), -- 生成から何日後に期限を設定するか（NULL = 期限なし）
+
   is_active BOOLEAN NOT NULL DEFAULT true, -- 有効/一時停止
 
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -218,6 +221,7 @@ COMMENT ON TABLE recurring_todos IS '定期TODO設定テーブル';
 COMMENT ON COLUMN recurring_todos.recurrence_pattern IS '繰り返しパターン（daily: 毎日, weekly: 毎週, monthly: 毎月）';
 COMMENT ON COLUMN recurring_todos.recurrence_days IS '繰り返し曜日または日付（weekly: 0-6, monthly: 1-31/-1）';
 COMMENT ON COLUMN recurring_todos.next_generation_at IS '次回TODO自動生成日時';
+COMMENT ON COLUMN recurring_todos.deadline_days_after IS '生成から何日後に期限を設定するか（NULL = 期限なし、1以上 = 生成日からN日後）';
 
 -- ===================================
 -- 8. Recurring Todo Assignments (定期TODO担当者)
@@ -640,6 +644,7 @@ BEGIN
         title,
         description,
         category,
+        deadline,
         created_by,
         is_completed,
         created_at,
@@ -649,6 +654,12 @@ BEGIN
         recurring_todo_record.title,
         recurring_todo_record.description,
         recurring_todo_record.category,
+        -- 期限計算：deadline_days_after が NULL なら期限なし、値があればN日後
+        CASE
+          WHEN recurring_todo_record.deadline_days_after IS NOT NULL
+          THEN now_time + (recurring_todo_record.deadline_days_after || ' days')::INTERVAL
+          ELSE NULL
+        END,
         recurring_todo_record.created_by,
         false,
         now_time,
@@ -703,7 +714,8 @@ BEGIN
 END;
 $$;
 
--- 次回生成日時計算関数
+-- 次回生成日時計算関数（JST対応版）
+-- generation_timeをJST（Asia/Tokyo）として解釈し、TIMESTAMPTZで返す
 CREATE OR REPLACE FUNCTION calculate_next_generation(
   pattern TEXT,
   days INTEGER[],
@@ -719,22 +731,27 @@ DECLARE
   target_day INTEGER;
   days_to_add INTEGER;
   i INTEGER;
+  base_time_jst TIMESTAMP;
+  next_date DATE;
 BEGIN
-  -- 基準時刻を設定
-  next_time := base_time;
+  -- 基準時刻をJSTに変換
+  base_time_jst := base_time AT TIME ZONE 'Asia/Tokyo';
 
   CASE pattern
-    -- 毎日：翌日の指定時刻
+    -- 毎日：翌日のJST指定時刻
     WHEN 'daily' THEN
-      next_time := (base_time + INTERVAL '1 day')::DATE + generation_time;
+      -- JSTで翌日の日付を取得
+      next_date := (base_time_jst + INTERVAL '1 day')::DATE;
+      -- JSTの日付 + 時刻をTIMESTAMPTZに変換
+      next_time := (next_date + generation_time) AT TIME ZONE 'Asia/Tokyo';
 
-    -- 毎週：次の該当曜日の指定時刻
+    -- 毎週：次の該当曜日のJST指定時刻
     WHEN 'weekly' THEN
       IF days IS NULL OR array_length(days, 1) = 0 THEN
         RAISE EXCEPTION 'Weekly pattern requires recurrence_days';
       END IF;
 
-      current_day := EXTRACT(DOW FROM base_time)::INTEGER;
+      current_day := EXTRACT(DOW FROM base_time_jst)::INTEGER;
       days_to_add := 7; -- デフォルトは1週間後
 
       -- 次の該当曜日を探す
@@ -746,9 +763,12 @@ BEGIN
         END IF;
       END LOOP;
 
-      next_time := (base_time + (days_to_add || ' days')::INTERVAL)::DATE + generation_time;
+      -- JSTで該当曜日の日付を取得
+      next_date := (base_time_jst + (days_to_add || ' days')::INTERVAL)::DATE;
+      -- JSTの日付 + 時刻をTIMESTAMPTZに変換
+      next_time := (next_date + generation_time) AT TIME ZONE 'Asia/Tokyo';
 
-    -- 毎月：次の該当日の指定時刻
+    -- 毎月：次の該当日のJST指定時刻
     WHEN 'monthly' THEN
       IF days IS NULL OR array_length(days, 1) = 0 THEN
         RAISE EXCEPTION 'Monthly pattern requires recurrence_days';
@@ -758,15 +778,18 @@ BEGIN
 
       IF target_day = -1 THEN
         -- 月末の場合
-        next_time := (DATE_TRUNC('month', base_time) + INTERVAL '1 month' - INTERVAL '1 day')::DATE + generation_time;
+        next_date := (DATE_TRUNC('month', base_time_jst) + INTERVAL '1 month' - INTERVAL '1 day')::DATE;
+        next_time := (next_date + generation_time) AT TIME ZONE 'Asia/Tokyo';
       ELSE
         -- 特定の日付の場合
         BEGIN
-          next_time := (DATE_TRUNC('month', base_time) + INTERVAL '1 month')::DATE + (target_day - 1 || ' days')::INTERVAL + generation_time;
+          next_date := (DATE_TRUNC('month', base_time_jst) + INTERVAL '1 month')::DATE + (target_day - 1 || ' days')::INTERVAL;
+          next_time := (next_date + generation_time) AT TIME ZONE 'Asia/Tokyo';
         EXCEPTION
           WHEN OTHERS THEN
             -- 日付が存在しない場合（例：2月30日）は月末に調整
-            next_time := (DATE_TRUNC('month', base_time) + INTERVAL '2 month' - INTERVAL '1 day')::DATE + generation_time;
+            next_date := (DATE_TRUNC('month', base_time_jst) + INTERVAL '2 month' - INTERVAL '1 day')::DATE;
+            next_time := (next_date + generation_time) AT TIME ZONE 'Asia/Tokyo';
         END;
       END IF;
 

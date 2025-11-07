@@ -18,6 +18,7 @@ interface CreateRecurringTodoRequest {
   recurrence_pattern: 'daily' | 'weekly' | 'monthly'
   recurrence_days?: number[] // weekly: 0-6, monthly: 1-31/-1
   generation_time: string // HH:MM形式
+  deadline_days_after?: number // 生成から何日後に期限を設定するか（null = 期限なし）
   assigned_user_ids: string[]
   created_by: string
 }
@@ -134,6 +135,7 @@ serve(async (req) => {
       recurrence_pattern,
       recurrence_days,
       generation_time,
+      deadline_days_after,
       assigned_user_ids,
       created_by
     }: CreateRecurringTodoRequest = await req.json()
@@ -162,6 +164,7 @@ serve(async (req) => {
         recurrence_pattern: recurrence_pattern,
         recurrence_days: recurrence_days || null,
         generation_time: generation_time,
+        deadline_days_after: deadline_days_after || null,
         next_generation_at: nextGeneration.toISOString(),
         is_active: true,
         created_by: created_by,

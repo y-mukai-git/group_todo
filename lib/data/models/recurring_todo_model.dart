@@ -9,6 +9,7 @@ class RecurringTodoModel {
   final List<int>? recurrenceDays; // weekly: 0-6 (0=日曜), monthly: 1-31 (-1=月末)
   final String generationTime; // 'HH:mm:ss'
   final DateTime nextGenerationAt;
+  final int? deadlineDaysAfter; // 生成から何日後に期限を設定するか（null = 期限なし）
   final bool isActive;
   final String createdBy;
   final DateTime createdAt;
@@ -25,6 +26,7 @@ class RecurringTodoModel {
     this.recurrenceDays,
     required this.generationTime,
     required this.nextGenerationAt,
+    this.deadlineDaysAfter,
     required this.isActive,
     required this.createdBy,
     required this.createdAt,
@@ -68,6 +70,7 @@ class RecurringTodoModel {
       recurrenceDays: recurrenceDays,
       generationTime: json['generation_time'] as String,
       nextGenerationAt: DateTime.parse(json['next_generation_at'] as String),
+      deadlineDaysAfter: json['deadline_days_after'] as int?,
       isActive: json['is_active'] as bool,
       createdBy: json['created_by'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -90,6 +93,7 @@ class RecurringTodoModel {
       'recurrence_days': recurrenceDays,
       'generation_time': generationTime,
       'next_generation_at': nextGenerationAt.toIso8601String(),
+      'deadline_days_after': deadlineDaysAfter,
       'is_active': isActive,
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
@@ -109,6 +113,7 @@ class RecurringTodoModel {
     List<int>? recurrenceDays,
     String? generationTime,
     DateTime? nextGenerationAt,
+    int? deadlineDaysAfter,
     bool? isActive,
     String? createdBy,
     DateTime? createdAt,
@@ -125,6 +130,7 @@ class RecurringTodoModel {
       recurrenceDays: recurrenceDays ?? this.recurrenceDays,
       generationTime: generationTime ?? this.generationTime,
       nextGenerationAt: nextGenerationAt ?? this.nextGenerationAt,
+      deadlineDaysAfter: deadlineDaysAfter ?? this.deadlineDaysAfter,
       isActive: isActive ?? this.isActive,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,

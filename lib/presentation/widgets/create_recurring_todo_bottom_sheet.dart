@@ -39,6 +39,7 @@ class _CreateRecurringTodoBottomSheetState
   Set<int> _selectedWeekdays = {}; // 0=日曜, 6=土曜
   int _selectedMonthDay = 1; // 1-31, -1=月末
   TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
+  int? _selectedDeadlineDaysAfter; // 生成から何日後に期限を設定するか（null = 期限なし）
   Set<String> _selectedAssigneeIds = {};
   bool _isLoading = false;
 
@@ -67,6 +68,9 @@ class _CreateRecurringTodoBottomSheetState
         hour: int.parse(timeParts[0]),
         minute: int.parse(timeParts[1]),
       );
+
+      // 期限設定の初期値
+      _selectedDeadlineDaysAfter = existing.deadlineDaysAfter;
 
       _selectedAssigneeIds = existing.assignedUserIds?.toSet() ?? {};
     } else {
@@ -339,6 +343,7 @@ class _CreateRecurringTodoBottomSheetState
           recurrencePattern: _selectedPattern,
           recurrenceDays: recurrenceDays,
           generationTime: generationTime,
+          deadlineDaysAfter: _selectedDeadlineDaysAfter,
           assignedUserIds: _selectedAssigneeIds.toList(),
         );
       } else {
@@ -352,6 +357,7 @@ class _CreateRecurringTodoBottomSheetState
           recurrencePattern: _selectedPattern,
           recurrenceDays: recurrenceDays,
           generationTime: generationTime,
+          deadlineDaysAfter: _selectedDeadlineDaysAfter,
           assignedUserIds: _selectedAssigneeIds.toList(),
         );
       }
@@ -678,6 +684,46 @@ class _CreateRecurringTodoBottomSheetState
                             ],
                           ),
                         ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 期限設定
+                      Text(
+                        '期限設定',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int?>(
+                        initialValue: _selectedDeadlineDaysAfter,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(
+                            Icons.calendar_today,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('期限なし'),
+                          ),
+                          ...List.generate(30, (index) => index + 1).map(
+                            (days) => DropdownMenuItem<int?>(
+                              value: days,
+                              child: Text('$days日後'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedDeadlineDaysAfter = value;
+                          });
+                        },
                       ),
 
                       const SizedBox(height: 16),

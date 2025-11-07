@@ -55,13 +55,20 @@ class _HomeScreenState extends State<HomeScreen> {
         return true;
       }
 
-      // 期限なしTODOは「本日期限」以外で表示
+      // 期限なしTODOは「全量表示」のみ表示
       if (todo.dueDate == null) {
-        return _filterDays != '0';
+        return false; // 全量は上のLine 54-56で処理済み
       }
 
       // 期限切れは常に表示（未完了のみ）
-      if (todo.dueDate!.isBefore(now) && !todo.isCompleted) {
+      // 日付のみで比較（時刻は無視）
+      final today = DateTime(now.year, now.month, now.day);
+      final dueDay = DateTime(
+        todo.dueDate!.year,
+        todo.dueDate!.month,
+        todo.dueDate!.day,
+      );
+      if (dueDay.isBefore(today) && !todo.isCompleted) {
         return true;
       }
 

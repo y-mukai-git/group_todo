@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _filterDays = '0'; // デフォルト: 本日期限
   late PageController _pageController;
   int _currentGroupIndex = 0;
+  Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
 
   @override
   void initState() {
@@ -102,6 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// タスク完了状態切り替え（キャッシュサービス経由）
   Future<void> _toggleTodoCompletion(TodoModel todo) async {
+    // ローディング状態を開始
+    setState(() {
+      _updatingTodoIds.add(todo.id);
+    });
+
     try {
       final wasCompleted = todo.isCompleted;
 
@@ -111,14 +117,30 @@ class _HomeScreenState extends State<HomeScreen> {
         todoId: todo.id,
       );
 
+      // ローディング状態を終了
+      if (mounted) {
+        setState(() {
+          _updatingTodoIds.remove(todo.id);
+        });
+      }
+
       // 成功メッセージを表示
-      if (wasCompleted) {
-        _showSuccessSnackBar('タスクを未完了に戻しました');
-      } else {
-        _showSuccessSnackBar('タスクを完了しました');
+      if (mounted) {
+        if (wasCompleted) {
+          _showSuccessSnackBar('タスクを未完了に戻しました');
+        } else {
+          _showSuccessSnackBar('タスクを完了しました');
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('[HomeScreen] ❌ タスク完了切り替えエラー: $e');
+
+      // ローディング状態を終了
+      if (mounted) {
+        setState(() {
+          _updatingTodoIds.remove(todo.id);
+        });
+      }
 
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
@@ -740,7 +762,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
-                                        'TODOがありません',
+                                        _filterDays == '0'
+                                            ? '本日期限のTODOはありません'
+                                            : _filterDays == '7'
+                                            ? '1週間以内のTODOはありません'
+                                            : _filterDays == '30'
+                                            ? '1ヶ月以内のTODOはありません'
+                                            : 'TODOがありません',
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyLarge
@@ -764,6 +792,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   todo: todo,
                                   onToggle: () => _toggleTodoCompletion(todo),
                                   onTap: () => _showTodoDetail(todo),
+                                  isUpdating: _updatingTodoIds.contains(
+                                    todo.id,
+                                  ),
                                 );
                               },
                             ),
@@ -781,11 +812,13 @@ class _TodoListTile extends StatelessWidget {
   final TodoModel todo;
   final VoidCallback onToggle;
   final VoidCallback onTap;
+  final bool isUpdating;
 
   const _TodoListTile({
     required this.todo,
     required this.onToggle,
     required this.onTap,
+    required this.isUpdating,
   });
 
   @override
@@ -804,16 +837,28 @@ class _TodoListTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                // チェックボックス
-                Transform.scale(
-                  scale: 1.1,
-                  child: Checkbox(
-                    value: todo.isCompleted,
-                    onChanged: (_) => onToggle(),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
+                // チェックボックスまたはローディングインジケーター
+                SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: isUpdating
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : Transform.scale(
+                          scale: 1.1,
+                          child: Checkbox(
+                            value: todo.isCompleted,
+                            onChanged: (_) => onToggle(),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 // タスク内容

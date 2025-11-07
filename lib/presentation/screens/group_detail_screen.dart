@@ -37,6 +37,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   List<UserModel> _groupMembers = []; // グループメンバーリスト
   List<RecurringTodoModel> _recurringTodos = []; // 定期TODOリスト
   bool _isLoadingRecurringTodos = false;
+  Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
 
   @override
   void initState() {
@@ -392,6 +393,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   /// タスク完了状態切り替え（キャッシュサービス経由）
   Future<void> _toggleTodoCompletion(TodoModel todo) async {
+    // ローディング状態を開始
+    setState(() {
+      _updatingTodoIds.add(todo.id);
+    });
+
     try {
       final wasCompleted = todo.isCompleted;
 
@@ -401,15 +407,34 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         todoId: todo.id,
       );
 
+      // ローディング状態を終了
+      if (mounted) {
+        setState(() {
+          _updatingTodoIds.remove(todo.id);
+        });
+      }
+
       // 成功メッセージを表示
-      if (wasCompleted) {
-        _showSuccessSnackBar('タスクを未完了に戻しました');
-      } else {
-        _showSuccessSnackBar('タスクを完了しました');
+      if (mounted) {
+        if (wasCompleted) {
+          _showSuccessSnackBar('タスクを未完了に戻しました');
+        } else {
+          _showSuccessSnackBar('タスクを完了しました');
+        }
       }
     } catch (e) {
       debugPrint('[GroupDetailScreen] ❌ タスク完了切り替えエラー: $e');
-      _showErrorSnackBar('完了状態の更新に失敗しました');
+
+      // ローディング状態を終了
+      if (mounted) {
+        setState(() {
+          _updatingTodoIds.remove(todo.id);
+        });
+      }
+
+      if (mounted) {
+        _showErrorSnackBar('完了状態の更新に失敗しました');
+      }
     }
   }
 
@@ -961,7 +986,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'グループ設定',
+                              '定期TODO設定',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.w600,
@@ -994,18 +1019,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   child: ListView(
                     padding: const EdgeInsets.only(top: 12),
                     children: [
-                      // タスク見出し
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Text(
-                          'TODO',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ),
                       // タスクフィルター（均等配置）
                       Padding(
                         padding: const EdgeInsets.symmetric(
@@ -1057,6 +1070,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                           onToggle: () => _toggleTodoCompletion(todo),
                           onTap: () => _showTodoDetail(todo),
                           onDelete: () => _deleteTodo(todo),
+                          isUpdating: _updatingTodoIds.contains(todo.id),
                         ),
                       ),
                       const SizedBox(height: 80),
@@ -1069,18 +1083,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   child: ListView(
                     padding: const EdgeInsets.only(top: 12),
                     children: [
-                      // グループ設定見出し
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Text(
-                          'グループ設定',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ),
                       // 定期タスク一覧
                       if (_isLoadingRecurringTodos)
                         const Center(
@@ -1323,6 +1325,7 @@ class _TodoListTile extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final bool isUpdating;
 
   const _TodoListTile({
     required this.todo,
@@ -1330,6 +1333,7 @@ class _TodoListTile extends StatelessWidget {
     required this.onToggle,
     required this.onTap,
     required this.onDelete,
+    required this.isUpdating,
   });
 
   @override
@@ -1396,16 +1400,30 @@ class _TodoListTile extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 child: Row(
                   children: [
-                    // チェックボックス
-                    Transform.scale(
-                      scale: 1.1,
-                      child: Checkbox(
-                        value: todo.isCompleted,
-                        onChanged: (_) => onToggle(),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
+                    // チェックボックスまたはローディングインジケーター
+                    SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: isUpdating
+                          ? const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : Transform.scale(
+                              scale: 1.1,
+                              child: Checkbox(
+                                value: todo.isCompleted,
+                                onChanged: (_) => onToggle(),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 12),
                     // タスク内容

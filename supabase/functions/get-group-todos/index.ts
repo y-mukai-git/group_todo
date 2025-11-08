@@ -20,7 +20,6 @@ interface TodoWithAssignees {
   title: string
   description: string | null
   deadline: string | null
-  category: string
   is_completed: boolean
   created_by: string
   created_at: string
@@ -72,7 +71,7 @@ serve(async (req) => {
     // TODOを取得
     let query = supabaseClient
       .from('todos')
-      .select('id, group_id, title, description, deadline, category, is_completed, created_by, created_at')
+      .select('id, group_id, title, description, deadline, is_completed, created_by, created_at')
       .eq('group_id', group_id)
 
     // 完了状態フィルター
@@ -121,7 +120,6 @@ serve(async (req) => {
         title: todo.title,
         description: todo.description,
         deadline: todo.deadline,
-        category: todo.category,
         is_completed: todo.is_completed,
         created_by: todo.created_by,
         created_at: todo.created_at,

@@ -17,7 +17,6 @@ interface RecurringTodoWithAssignees {
   id: string
   title: string
   description: string | null
-  category: string
   recurrence_pattern: string
   recurrence_days: number[] | null
   generation_time: string

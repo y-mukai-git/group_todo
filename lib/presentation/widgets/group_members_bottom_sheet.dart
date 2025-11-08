@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/models/user_model.dart';
 import '../../services/group_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../widgets/error_dialog.dart';
 
 /// グループメンバー一覧ボトムシート
@@ -135,7 +136,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${member.displayName}のロールを変更しました'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: Colors.green,
         ),
       );
 
@@ -328,12 +329,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
             subtitle: InkWell(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: member.displayId));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('ユーザーIDをコピーしました'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                SnackBarHelper.showSuccessSnackBar(context, 'ユーザーIDをコピーしました');
               },
               borderRadius: BorderRadius.circular(4),
               child: Padding(

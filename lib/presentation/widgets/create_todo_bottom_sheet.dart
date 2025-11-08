@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/content_validator.dart';
 import '../screens/content_policy_screen.dart';
 
@@ -109,9 +110,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('画像の読み込みに失敗しました: $e')));
+        SnackBarHelper.showErrorSnackBar(context, '画像の読み込みに失敗しました: $e');
       }
     }
   }
@@ -290,45 +289,25 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
   void _createTodo() {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('タイトルを入力してください'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, 'タイトルを入力してください');
       return;
     }
 
     // コンテンツバリデーション
     final validationError = ContentValidator.validate(title);
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationError),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, validationError);
       return;
     }
 
     // グループ選択モードの場合、グループが選択されているかチェック
     if (widget.fixedGroupId == null) {
       if (!_isCreatingNewGroup && _selectedGroupId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('グループを選択してください'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        SnackBarHelper.showErrorSnackBar(context, 'グループを選択してください');
         return;
       }
       if (_isCreatingNewGroup && _groupNameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('グループ名を入力してください'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        SnackBarHelper.showErrorSnackBar(context, 'グループ名を入力してください');
         return;
       }
     }

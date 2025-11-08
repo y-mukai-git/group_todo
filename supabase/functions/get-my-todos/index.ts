@@ -22,7 +22,6 @@ interface TodoItem {
   title: string
   description: string | null
   deadline: string | null
-  category: string
   is_completed: boolean
   created_by: string
   created_at: string
@@ -115,7 +114,6 @@ serve(async (req) => {
         title,
         description,
         deadline,
-        category,
         is_completed,
         created_by,
         created_at
@@ -150,7 +148,6 @@ serve(async (req) => {
       title: todo.title,
       description: todo.description,
       deadline: todo.deadline,
-      category: todo.category,
       is_completed: todo.is_completed,
       created_by: todo.created_by,
       created_at: todo.created_at

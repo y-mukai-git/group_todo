@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
 import '../../services/app_status_service.dart';
@@ -274,12 +275,7 @@ class _SplashScreenState extends State<SplashScreen>
                     await launchUrl(url, mode: LaunchMode.externalApplication);
                   } else {
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('ストアを開けませんでした'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    SnackBarHelper.showErrorSnackBar(context, 'ストアを開けませんでした');
                   }
                 },
                 icon: const Icon(Icons.download),

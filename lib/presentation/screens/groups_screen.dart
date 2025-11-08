@@ -5,6 +5,7 @@ import '../../data/models/group_invitation.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../widgets/create_group_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 import 'group_detail_screen.dart';
@@ -208,9 +209,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   /// 成功メッセージ表示
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    SnackBarHelper.showSuccessSnackBar(context, message);
   }
 
   /// 並び替えモード開始
@@ -521,12 +520,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       // ローディング非表示
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('招待の承認に失敗しました'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarHelper.showErrorSnackBar(context, '招待の承認に失敗しました');
       }
     }
   }
@@ -560,12 +554,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       // ローディング非表示
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('招待の却下に失敗しました'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarHelper.showErrorSnackBar(context, '招待の却下に失敗しました');
       }
     }
   }
@@ -628,12 +617,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
           confirmDismiss: (direction) async {
             if (!isOwner) {
               // オーナー以外は削除不可
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('オーナーしか消せません'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              SnackBarHelper.showErrorSnackBar(context, 'オーナーしか消せません');
               return false;
             }
 

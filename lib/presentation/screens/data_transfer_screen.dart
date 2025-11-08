@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/data_cache_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/storage_helper.dart';
 import '../widgets/error_dialog.dart';
 import 'main_tab_screen.dart';
@@ -76,12 +77,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
     final password = _passwordController.text.trim();
 
     if (userId.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('ユーザーIDとパスワードを入力してください'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, 'ユーザーIDとパスワードを入力してください');
       return;
     }
 
@@ -96,11 +92,9 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       // ユーザーエラー（ID/パスワード間違い）の場合
       if (user == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('入力のユーザID、パスワードのユーザ情報は見つかりませんでした'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+        SnackBarHelper.showErrorSnackBar(
+          context,
+          '入力のユーザID、パスワードのユーザ情報は見つかりませんでした',
         );
         setState(() => _isLoading = false);
         return;

@@ -15,7 +15,6 @@ interface UpdateRecurringTodoRequest {
   is_active?: boolean
   title?: string
   description?: string
-  category?: 'shopping' | 'housework' | 'other'
   recurrence_pattern?: 'daily' | 'weekly' | 'monthly'
   recurrence_days?: number[]
   generation_time?: string
@@ -191,7 +190,6 @@ serve(async (req) => {
       is_active,
       title,
       description,
-      category,
       recurrence_pattern,
       recurrence_days,
       generation_time,
@@ -250,7 +248,6 @@ serve(async (req) => {
     if (is_active !== undefined) updateData.is_active = is_active
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description
-    if (category !== undefined) updateData.category = category
     if (recurrence_pattern !== undefined) updateData.recurrence_pattern = recurrence_pattern
     if (recurrence_days !== undefined) updateData.recurrence_days = recurrence_days
     if (generation_time !== undefined) updateData.generation_time = generation_time

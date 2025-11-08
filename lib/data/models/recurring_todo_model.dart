@@ -4,7 +4,6 @@ class RecurringTodoModel {
   final String groupId;
   final String title;
   final String? description;
-  final String category; // 'shopping', 'housework', 'other'
   final String recurrencePattern; // 'daily', 'weekly', 'monthly'
   final List<int>? recurrenceDays; // weekly: 0-6 (0=日曜), monthly: 1-31 (-1=月末)
   final String generationTime; // 'HH:mm:ss'
@@ -21,7 +20,6 @@ class RecurringTodoModel {
     required this.groupId,
     required this.title,
     this.description,
-    required this.category,
     required this.recurrencePattern,
     this.recurrenceDays,
     required this.generationTime,
@@ -65,7 +63,6 @@ class RecurringTodoModel {
       groupId: json['group_id'] as String,
       title: json['title'] as String,
       description: json['description'] as String?,
-      category: json['category'] as String,
       recurrencePattern: json['recurrence_pattern'] as String,
       recurrenceDays: recurrenceDays,
       generationTime: json['generation_time'] as String,
@@ -88,7 +85,6 @@ class RecurringTodoModel {
       'group_id': groupId,
       'title': title,
       'description': description,
-      'category': category,
       'recurrence_pattern': recurrencePattern,
       'recurrence_days': recurrenceDays,
       'generation_time': generationTime,
@@ -108,7 +104,6 @@ class RecurringTodoModel {
     String? groupId,
     String? title,
     String? description,
-    String? category,
     String? recurrencePattern,
     List<int>? recurrenceDays,
     String? generationTime,
@@ -125,7 +120,6 @@ class RecurringTodoModel {
       groupId: groupId ?? this.groupId,
       title: title ?? this.title,
       description: description ?? this.description,
-      category: category ?? this.category,
       recurrencePattern: recurrencePattern ?? this.recurrencePattern,
       recurrenceDays: recurrenceDays ?? this.recurrenceDays,
       generationTime: generationTime ?? this.generationTime,

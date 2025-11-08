@@ -7,6 +7,7 @@ import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
@@ -37,7 +38,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   List<UserModel> _groupMembers = []; // グループメンバーリスト
   List<RecurringTodoModel> _recurringTodos = []; // 定期TODOリスト
   bool _isLoadingRecurringTodos = false;
-  Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
+  final Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
 
   @override
   void initState() {
@@ -82,7 +83,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 groupId: widget.group.id,
                 members: _groupMembers,
                 currentUserId: widget.user.id,
-                groupOwnerId: widget.group.ownerId,
+                groupOwnerId: _currentGroup.ownerId,
                 onRemoveMember: _removeMember,
                 onMembersUpdated: () {
                   _updateGroupData();
@@ -347,9 +348,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   Future<void> _updateGroupData() async {
     // キャッシュからグループ情報取得
     final group = _cacheService.getGroupById(widget.group.id);
-    if (group != null) {
-      _currentGroup = group;
-    } else {
+    if (group == null) {
       debugPrint('[GroupDetailScreen] ⚠️ グループ情報取得失敗');
     }
 
@@ -385,6 +384,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
     if (mounted) {
       setState(() {
+        if (group != null) {
+          _currentGroup = group;
+        }
         _todos = todos;
         _groupMembers = members;
       });
@@ -525,7 +527,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         title: title,
         description: description?.isNotEmpty == true ? description : null,
         dueDate: deadline,
-        category: widget.group.category ?? 'other', // グループのカテゴリを使用
         assignedUserIds: assigneeIds,
       );
 
@@ -566,19 +567,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   /// エラーメッセージ表示
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
+    SnackBarHelper.showErrorSnackBar(context, message);
   }
 
   /// 成功メッセージ表示
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    SnackBarHelper.showSuccessSnackBar(context, message);
   }
 
   /// グループ編集ボトムシート表示

@@ -13,7 +13,6 @@ interface CreateRecurringTodoRequest {
   group_id: string
   title: string
   description?: string
-  category: 'shopping' | 'housework' | 'other'
   recurrence_pattern: 'daily' | 'weekly' | 'monthly'
   recurrence_days?: number[] // weekly: 0-6, monthly: 1-31/-1
   generation_time: string // HH:MM形式
@@ -184,7 +183,6 @@ serve(async (req) => {
       group_id,
       title,
       description,
-      category,
       recurrence_pattern,
       recurrence_days,
       generation_time,
@@ -193,7 +191,7 @@ serve(async (req) => {
       created_by
     }: CreateRecurringTodoRequest = await req.json()
 
-    if (!group_id || !title || !category || !recurrence_pattern || !generation_time || !assigned_user_ids || !created_by) {
+    if (!group_id || !title || !recurrence_pattern || !generation_time || !assigned_user_ids || !created_by) {
       return new Response(
         JSON.stringify({ success: false, error: 'Required fields are missing' }),
         {
@@ -213,7 +211,6 @@ serve(async (req) => {
         group_id: group_id,
         title: title,
         description: description || null,
-        category: category,
         recurrence_pattern: recurrence_pattern,
         recurrence_days: recurrence_days || null,
         generation_time: generation_time,

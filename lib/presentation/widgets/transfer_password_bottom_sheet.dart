@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import 'error_dialog.dart';
 
 /// データ引き継ぎ用パスワード設定ボトムシート
@@ -29,12 +30,7 @@ class _TransferPasswordBottomSheetState
 
   /// エラーメッセージ表示
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
+    SnackBarHelper.showErrorSnackBar(context, message);
   }
 
   /// パスワード設定実行

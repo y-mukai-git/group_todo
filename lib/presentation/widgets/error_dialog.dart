@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/utils/snackbar_helper.dart';
 
 /// システムエラーダイアログ
 class ErrorDialog extends StatelessWidget {
@@ -67,12 +68,10 @@ class ErrorDialog extends StatelessWidget {
                     icon: const Icon(Icons.copy, size: 18),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: errorId));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('エラーIDをコピーしました'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 2),
-                        ),
+                      SnackBarHelper.showSuccessSnackBar(
+                        context,
+                        'エラーIDをコピーしました',
+                        duration: const Duration(seconds: 2),
                       );
                     },
                     tooltip: 'コピー',

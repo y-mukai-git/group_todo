@@ -22,7 +22,6 @@ interface ToggleTodoResponse {
     title: string
     description: string | null
     deadline: string | null
-    category: string
     is_completed: boolean
     completed_at: string | null
     created_by: string
@@ -112,7 +111,7 @@ serve(async (req) => {
         updated_at: now
       })
       .eq('id', todo_id)
-      .select('id, group_id, title, description, deadline, category, is_completed, completed_at, created_by, created_at, updated_at')
+      .select('id, group_id, title, description, deadline, is_completed, completed_at, created_by, created_at, updated_at')
       .single()
 
     if (updateError || !updatedTodo) {
@@ -141,7 +140,6 @@ serve(async (req) => {
         title: updatedTodo.title,
         description: updatedTodo.description,
         deadline: updatedTodo.deadline,
-        category: updatedTodo.category,
         is_completed: updatedTodo.is_completed,
         completed_at: updatedTodo.completed_at,
         created_by: updatedTodo.created_by,

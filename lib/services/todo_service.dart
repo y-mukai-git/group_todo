@@ -14,7 +14,6 @@ class TodoService {
     String? description,
     DateTime? dueDate,
     List<String>? assignedUserIds,
-    String? category,
   }) async {
     try {
       final response = await _apiClient.callFunction(
@@ -24,7 +23,6 @@ class TodoService {
           'title': title,
           'description': description,
           'deadline': dueDate?.toIso8601String(),
-          'category': category ?? 'other',
           'assigned_user_ids': assignedUserIds ?? [userId],
           'created_by': userId,
         },

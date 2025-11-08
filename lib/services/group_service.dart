@@ -147,7 +147,7 @@ class GroupService {
         functionName: 'remove-group-member',
         body: {
           'group_id': groupId,
-          'user_id': userId,
+          'requester_id': userId,
           'target_user_id': targetUserId,
         },
       );

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/content_validator.dart';
 import '../screens/content_policy_screen.dart';
 
@@ -87,9 +88,7 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('画像の読み込みに失敗しました: $e')));
+        SnackBarHelper.showErrorSnackBar(context, '画像の読み込みに失敗しました: $e');
       }
     }
   }
@@ -137,24 +136,14 @@ class _CreateGroupBottomSheetState extends State<CreateGroupBottomSheet>
   void _createGroup() {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('グループ名を入力してください'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, 'グループ名を入力してください');
       return;
     }
 
     // コンテンツバリデーション
     final validationError = ContentValidator.validate(name);
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationError),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, validationError);
       return;
     }
 

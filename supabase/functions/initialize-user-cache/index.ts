@@ -21,7 +21,6 @@ interface TodoItem {
   title: string
   description: string | null
   deadline: string | null
-  category: string
   is_completed: boolean
   created_by: string
   created_at: string
@@ -223,7 +222,7 @@ serve(async (req) => {
     if (groupIds.length > 0) {
       const { data: groupTodos, error: groupTodosError } = await supabaseClient
         .from('todos')
-        .select('id, group_id, title, description, deadline, category, is_completed, created_by, created_at')
+        .select('id, group_id, title, description, deadline, is_completed, created_by, created_at')
         .in('group_id', groupIds)
         .order('deadline', { ascending: true, nullsFirst: false })
 
@@ -271,7 +270,6 @@ serve(async (req) => {
         title: todo.title,
         description: todo.description,
         deadline: todo.deadline,
-        category: todo.category,
         is_completed: todo.is_completed,
         created_by: todo.created_by,
         created_at: todo.created_at,

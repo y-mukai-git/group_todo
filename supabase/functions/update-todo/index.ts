@@ -15,7 +15,6 @@ interface UpdateTodoRequest {
   title?: string
   description?: string
   deadline?: string | null
-  category?: 'shopping' | 'housework' | 'other'
   assigned_user_ids?: string[]
 }
 
@@ -27,7 +26,6 @@ interface UpdateTodoResponse {
     title: string
     description: string | null
     deadline: string | null
-    category: string
     is_completed: boolean
     created_by: string
     created_at: string
@@ -61,7 +59,7 @@ serve(async (req) => {
       )
     }
 
-    const { todo_id, user_id, title, description, deadline, category, assigned_user_ids }: UpdateTodoRequest = await req.json()
+    const { todo_id, user_id, title, description, deadline, assigned_user_ids }: UpdateTodoRequest = await req.json()
 
     if (!todo_id || !user_id) {
       return new Response(
@@ -115,13 +113,12 @@ serve(async (req) => {
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description
     if (deadline !== undefined) updateData.deadline = deadline
-    if (category !== undefined) updateData.category = category
 
     const { data: updatedTodo, error: updateError } = await supabaseClient
       .from('todos')
       .update(updateData)
       .eq('id', todo_id)
-      .select('id, group_id, title, description, deadline, category, is_completed, created_by, created_at, updated_at')
+      .select('id, group_id, title, description, deadline, is_completed, created_by, created_at, updated_at')
       .single()
 
     if (updateError || !updatedTodo) {
@@ -181,7 +178,6 @@ serve(async (req) => {
         title: updatedTodo.title,
         description: updatedTodo.description,
         deadline: updatedTodo.deadline,
-        category: updatedTodo.category,
         is_completed: updatedTodo.is_completed,
         created_by: updatedTodo.created_by,
         created_at: updatedTodo.created_at,

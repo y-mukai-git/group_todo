@@ -124,7 +124,6 @@ CREATE TABLE todos (
   title TEXT NOT NULL CHECK (char_length(title) <= 100),
   description TEXT CHECK (char_length(description) <= 200),
   deadline TIMESTAMPTZ, -- 期限（nullable）
-  category TEXT NOT NULL CHECK (category IN ('shopping', 'housework', 'other')),
   is_completed BOOLEAN NOT NULL DEFAULT false,
   completed_at TIMESTAMPTZ,
 
@@ -143,7 +142,6 @@ CREATE INDEX idx_todos_created_at ON todos(created_at DESC);
 
 COMMENT ON TABLE todos IS 'TODO情報テーブル（個人TODO・グループTODO統合管理）';
 COMMENT ON COLUMN todos.group_id IS 'グループID（NULL = 個人TODO、値あり = グループTODO）';
-COMMENT ON COLUMN todos.category IS 'TODOカテゴリ（shopping: 買い物, housework: 家事, other: その他）';
 COMMENT ON COLUMN todos.is_completed IS '完了状態（false: 未完了, true: 完了）';
 
 -- ===================================
@@ -194,7 +192,6 @@ CREATE TABLE recurring_todos (
   group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   title TEXT NOT NULL CHECK (char_length(title) <= 100),
   description TEXT CHECK (char_length(description) <= 200),
-  category TEXT NOT NULL CHECK (category IN ('shopping', 'housework', 'other')),
 
   -- 繰り返し設定
   recurrence_pattern TEXT NOT NULL CHECK (recurrence_pattern IN ('daily', 'weekly', 'monthly')),
@@ -643,7 +640,6 @@ BEGIN
         group_id,
         title,
         description,
-        category,
         deadline,
         created_by,
         is_completed,
@@ -653,7 +649,6 @@ BEGIN
         recurring_todo_record.group_id,
         recurring_todo_record.title,
         recurring_todo_record.description,
-        recurring_todo_record.category,
         -- 期限計算：deadline_days_after が NULL なら期限なし、値があればN日後
         CASE
           WHEN recurring_todo_record.deadline_days_after IS NOT NULL

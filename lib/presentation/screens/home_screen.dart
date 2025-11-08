@@ -3,6 +3,7 @@ import '../../data/models/user_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 
@@ -22,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _filterDays = '0'; // デフォルト: 本日期限
   late PageController _pageController;
   int _currentGroupIndex = 0;
-  Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
+  final Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
 
   @override
   void initState() {
@@ -197,9 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 成功メッセージ表示
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    SnackBarHelper.showSuccessSnackBar(context, message);
   }
 
   /// タスク詳細画面表示
@@ -462,7 +461,6 @@ class _HomeScreenState extends State<HomeScreen> {
               title: title,
               description: description?.isNotEmpty == true ? description : null,
               dueDate: deadline,
-              category: 'other',
               assignedUserIds: assigneeIds,
             );
 
@@ -504,13 +502,10 @@ class _HomeScreenState extends State<HomeScreen> {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
                   // ignore: use_build_context_synchronously
-                  ScaffoldMessenger.of(localContext).showSnackBar(
-                    SnackBar(
-                      content: Text('タスク/グループの作成に失敗しました（ID: ${errorLog.id}）'),
-                      // ignore: use_build_context_synchronously
-                      backgroundColor: Theme.of(localContext).colorScheme.error,
-                      duration: const Duration(seconds: 5),
-                    ),
+                  SnackBarHelper.showErrorSnackBar(
+                    localContext,
+                    'タスク/グループの作成に失敗しました（ID: ${errorLog.id}）',
+                    duration: const Duration(seconds: 5),
                   );
                 }
               });

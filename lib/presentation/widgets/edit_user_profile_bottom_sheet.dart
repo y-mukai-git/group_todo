@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import 'error_dialog.dart';
 import '../../core/utils/content_validator.dart';
 import '../screens/content_policy_screen.dart';
@@ -181,19 +182,12 @@ class _EditUserProfileBottomSheetState
 
   /// 成功メッセージ表示
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    SnackBarHelper.showSuccessSnackBar(context, message);
   }
 
   /// エラーメッセージ表示
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Theme.of(context).colorScheme.error,
-      ),
-    );
+    SnackBarHelper.showErrorSnackBar(context, message);
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../../data/models/recurring_todo_model.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import 'error_dialog.dart';
 import '../../core/utils/content_validator.dart';
 import '../screens/content_policy_screen.dart';
@@ -349,32 +350,20 @@ class _CreateRecurringTodoBottomSheetState
   Future<void> _saveTodo() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('タイトルを入力してください'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, 'タイトルを入力してください');
       return;
     }
 
     // コンテンツバリデーション
     final validationError = ContentValidator.validate(title);
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(validationError), backgroundColor: Colors.red),
-      );
+      SnackBarHelper.showErrorSnackBar(context, validationError);
       return;
     }
 
     // パターン別のバリデーション
     if (_selectedPattern == 'weekly' && _selectedWeekdays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('曜日を選択してください'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, '曜日を選択してください');
       return;
     }
 
@@ -400,7 +389,6 @@ class _CreateRecurringTodoBottomSheetState
           recurringTodoId: widget.existingRecurringTodo!.id,
           title: title,
           description: _descriptionController.text.trim(),
-          category: 'other',
           recurrencePattern: _selectedPattern,
           recurrenceDays: recurrenceDays,
           generationTime: generationTime,
@@ -414,7 +402,6 @@ class _CreateRecurringTodoBottomSheetState
           groupId: widget.groupId,
           title: title,
           description: _descriptionController.text.trim(),
-          category: 'other',
           recurrencePattern: _selectedPattern,
           recurrenceDays: recurrenceDays,
           generationTime: generationTime,

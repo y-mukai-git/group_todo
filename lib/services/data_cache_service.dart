@@ -138,7 +138,6 @@ class DataCacheService extends ChangeNotifier {
     String? description,
     DateTime? dueDate,
     List<String>? assignedUserIds,
-    String? category,
   }) async {
     try {
       // 1. DB作成
@@ -149,7 +148,6 @@ class DataCacheService extends ChangeNotifier {
         description: description,
         dueDate: dueDate,
         assignedUserIds: assignedUserIds,
-        category: category,
       );
 
       // 2. DB作成成功 → キャッシュに追加

@@ -5,6 +5,7 @@ import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/app_status_service.dart';
 import '../../core/config/environment_config.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
 import '../widgets/transfer_password_bottom_sheet.dart';
@@ -206,9 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 成功メッセージ表示
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
+    SnackBarHelper.showSuccessSnackBar(context, message);
   }
 
   /// バージョンテキスト構築

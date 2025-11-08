@@ -4,6 +4,7 @@ import '../../data/models/inquiry_type.dart';
 import '../../data/models/user_model.dart';
 import '../../services/contact_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/snackbar_helper.dart';
 import 'error_dialog.dart';
 
 /// お問い合わせボトムシート
@@ -86,12 +87,7 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
   Future<void> _submitInquiry() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('お問い合わせ内容を入力してください'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, 'お問い合わせ内容を入力してください');
       return;
     }
 
@@ -109,9 +105,7 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
       if (!mounted) return;
 
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('お問い合わせを送信しました'), backgroundColor: Colors.green),
-      );
+      SnackBarHelper.showSuccessSnackBar(context, 'お問い合わせを送信しました');
     } catch (e, stackTrace) {
       debugPrint('[ContactInquiryBottomSheet] ❌ お問い合わせ送信エラー: $e');
 

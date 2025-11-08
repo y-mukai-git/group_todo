@@ -13,7 +13,6 @@ interface CreateTodoRequest {
   title: string
   description?: string
   deadline?: string
-  category: 'shopping' | 'housework' | 'other'
   assigned_user_ids: string[]
   created_by: string
 }
@@ -26,7 +25,6 @@ interface CreateTodoResponse {
     title: string
     description: string | null
     deadline: string | null
-    category: string
     is_completed: boolean
     created_by: string
     created_at: string
@@ -55,11 +53,11 @@ serve(async (req) => {
       )
     }
 
-    const { group_id, title, description, deadline, category, assigned_user_ids, created_by }: CreateTodoRequest = await req.json()
+    const { group_id, title, description, deadline, assigned_user_ids, created_by }: CreateTodoRequest = await req.json()
 
-    if (!group_id || !title || !category || !assigned_user_ids || assigned_user_ids.length === 0 || !created_by) {
+    if (!group_id || !title || !assigned_user_ids || assigned_user_ids.length === 0 || !created_by) {
       return new Response(
-        JSON.stringify({ success: false, error: 'group_id, title, category, assigned_user_ids, and created_by are required' }),
+        JSON.stringify({ success: false, error: 'group_id, title, assigned_user_ids, and created_by are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -77,13 +75,12 @@ serve(async (req) => {
         title: title,
         description: description || null,
         deadline: deadline || null,
-        category: category,
         is_completed: false,
         created_by: created_by,
         created_at: now,
         updated_at: now
       })
-      .select('id, group_id, title, description, deadline, category, is_completed, created_by, created_at')
+      .select('id, group_id, title, description, deadline, is_completed, created_by, created_at')
       .single()
 
     if (todoError || !newTodo) {
@@ -131,7 +128,6 @@ serve(async (req) => {
         title: newTodo.title,
         description: newTodo.description,
         deadline: newTodo.deadline,
-        category: newTodo.category,
         is_completed: newTodo.is_completed,
         created_by: newTodo.created_by,
         created_at: newTodo.created_at,

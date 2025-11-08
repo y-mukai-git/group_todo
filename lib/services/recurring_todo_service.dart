@@ -12,7 +12,6 @@ class RecurringTodoService {
     required String groupId,
     required String title,
     String? description,
-    required String category,
     required String recurrencePattern,
     List<int>? recurrenceDays,
     required String generationTime,
@@ -26,7 +25,6 @@ class RecurringTodoService {
           'group_id': groupId,
           'title': title,
           'description': description,
-          'category': category,
           'recurrence_pattern': recurrencePattern,
           'recurrence_days': recurrenceDays,
           'generation_time': generationTime,
@@ -89,7 +87,6 @@ class RecurringTodoService {
     required String recurringTodoId,
     String? title,
     String? description,
-    String? category,
     String? recurrencePattern,
     List<int>? recurrenceDays,
     String? generationTime,
@@ -104,7 +101,6 @@ class RecurringTodoService {
 
       if (title != null) body['title'] = title;
       if (description != null) body['description'] = description;
-      if (category != null) body['category'] = category;
       if (recurrencePattern != null) {
         body['recurrence_pattern'] = recurrencePattern;
       }

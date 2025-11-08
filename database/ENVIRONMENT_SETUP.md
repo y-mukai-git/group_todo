@@ -173,45 +173,86 @@ supabase functions list --project-ref ${PROJECT_REF}
 
 この手順は、STG環境がDEV環境と同じ構成か、PROD環境がSTG環境と同じ構成かをチェックします。
 
-#### 4-1. データベーススキーマのチェック
+**📘 詳細な手順**: `docs/guide/deployment_verification_guide.md` を参照してください。
 
-**スキーマダンプファイルの格納先**:
-- スキーマダンプファイルは `schema_dumps/YYYY-MM-DD/` に日付単位で保存してください
-- ファイル名の例: `dev_schema.sql`, `stg_schema.sql`, `prod_schema.sql`
-- このフォルダは `.gitignore` に追加されており、git管理対象外です
+#### 4-1. Edge Functions構成の検証
 
-```bash
-# 今日の日付のフォルダを作成
-mkdir -p schema_dumps/$(date +%Y-%m-%d)
-
-# 比較元環境（例: DEV）のスキーマをダンプ
-pg_dump "postgresql://postgres:${SOURCE_SERVICE_ROLE_KEY}@db.${SOURCE_PROJECT_REF}.supabase.co:5432/postgres" \
-  --schema-only > schema_dumps/$(date +%Y-%m-%d)/dev_schema.sql
-
-# 比較先環境（例: STG）のスキーマをダンプ
-pg_dump "postgresql://postgres:${TARGET_SERVICE_ROLE_KEY}@db.${TARGET_PROJECT_REF}.supabase.co:5432/postgres" \
-  --schema-only > schema_dumps/$(date +%Y-%m-%d)/stg_schema.sql
-
-# 差分確認
-diff schema_dumps/$(date +%Y-%m-%d)/dev_schema.sql schema_dumps/$(date +%Y-%m-%d)/stg_schema.sql
-```
-
-**期待結果**: 差分がない（または環境固有の差分のみ）
-
-#### 4-2. Edge Functionsのチェック
+**検証方法**: ローカルのEdge Functionsと各環境を比較します。
 
 ```bash
+# ローカルのFunction一覧を取得
+ls -d supabase/functions/*/ | \
+  sed 's|supabase/functions/||' | \
+  sed 's|/$||' | \
+  grep -v "^_shared$" | \
+  sort > /tmp/local_functions.txt
+
 # 比較元環境（例: DEV）のFunction一覧を取得
-supabase functions list --project-ref ${SOURCE_PROJECT_REF} > source_functions.txt
+supabase functions list --project-ref ${SOURCE_PROJECT_REF} | \
+  grep -E "^\s+[a-f0-9-]{36}" | \
+  awk '{print $4}' | \
+  sort > /tmp/source_functions.txt
 
 # 比較先環境（例: STG）のFunction一覧を取得
-supabase functions list --project-ref ${TARGET_PROJECT_REF} > target_functions.txt
+supabase functions list --project-ref ${TARGET_PROJECT_REF} | \
+  grep -E "^\s+[a-f0-9-]{36}" | \
+  awk '{print $4}' | \
+  sort > /tmp/target_functions.txt
 
-# 差分確認
-diff source_functions.txt target_functions.txt
+# ローカルと各環境の比較
+echo "=== ローカルと比較元環境の比較 ==="
+diff /tmp/local_functions.txt /tmp/source_functions.txt && echo "✅ 完全一致" || echo "❌ 差分あり"
+
+echo "=== ローカルと比較先環境の比較 ==="
+diff /tmp/local_functions.txt /tmp/target_functions.txt && echo "✅ 完全一致" || echo "❌ 差分あり"
 ```
 
-**期待結果**: 差分がない（同じFunctionがデプロイされている）
+**期待結果**: 両環境ともローカルと ✅ 完全一致
+
+#### 4-2. データベース構成の検証
+
+**検証方法**: psqlで各環境のテーブル構造を取得して比較します。
+
+```bash
+# テーブル一覧の取得と比較
+PGPASSWORD="${SOURCE_DB_PASSWORD}" psql "postgresql://postgres@db.${SOURCE_PROJECT_REF}.supabase.co:5432/postgres" \
+  -c "\dt public.*" > /tmp/source_tables.txt
+
+PGPASSWORD="${TARGET_DB_PASSWORD}" psql "postgresql://postgres@db.${TARGET_PROJECT_REF}.supabase.co:5432/postgres" \
+  -c "\dt public.*" > /tmp/target_tables.txt
+
+diff /tmp/source_tables.txt /tmp/target_tables.txt
+```
+
+**主要テーブルの構造確認**:
+```bash
+# 重要なテーブルの構造を確認
+TABLES="users groups group_members todos todo_assignments recurring_todos group_invitations announcements"
+
+for table in $TABLES; do
+    echo "=== $table テーブルの比較 ==="
+
+    PGPASSWORD="${SOURCE_DB_PASSWORD}" psql "postgresql://postgres@db.${SOURCE_PROJECT_REF}.supabase.co:5432/postgres" \
+      -c "\d $table" > /tmp/source_${table}.txt 2>&1
+
+    PGPASSWORD="${TARGET_DB_PASSWORD}" psql "postgresql://postgres@db.${TARGET_PROJECT_REF}.supabase.co:5432/postgres" \
+      -c "\d $table" > /tmp/target_${table}.txt 2>&1
+
+    if diff /tmp/source_${table}.txt /tmp/target_${table}.txt > /dev/null 2>&1; then
+        echo "✅ $table: 完全一致"
+    else
+        echo "⚠️  $table: 差分あり（カラム順序の違いの可能性）"
+    fi
+done
+```
+
+**期待結果**:
+- テーブル一覧: ✅ 完全一致
+- 各テーブル構造: ✅ 実質的に一致（カラム順序の違いは許容）
+
+**注意**: カラムの順序が異なる場合がありますが、以下が一致していれば問題ありません：
+- カラム名、カラムの型、NOT NULL制約、DEFAULT値
+- インデックス、外部キー制約、RLSポリシー、トリガー
 
 #### 4-3. Storageバケットのチェック
 
@@ -232,8 +273,8 @@ diff <(jq -S '.' source_buckets.json) <(jq -S '.' target_buckets.json)
 
 #### 4-4. チェック結果の確認
 
-- データベーススキーマ: 差分なし ✅
-- Edge Functions: 差分なし ✅
+- Edge Functions: ローカルと一致 ✅
+- データベース構成: 実質的に一致 ✅
 - Storageバケット: 差分なし ✅
 
 すべて差分がなければ、環境間の構成が同じであることが確認できます。

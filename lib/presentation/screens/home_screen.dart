@@ -20,9 +20,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final DataCacheService _cacheService = DataCacheService();
   List<TodoModel> _todos = [];
-  String _filterDays = '0'; // デフォルト: 本日期限
+  String _filterDays = 'all'; // デフォルト: 全て
   late PageController _pageController;
   int _currentGroupIndex = 0;
+  String? _selectedGroupId; // 選択中のグループIDを追跡（並び替え対応）
   final Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
 
   @override
@@ -94,6 +95,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
       return false;
     }).toList();
+
+    // グループ並び替え対応：選択中のグループIDの新しいインデックスを検索
+    final myGroups = _cacheService.groups;
+    if (_selectedGroupId != null && myGroups.isNotEmpty) {
+      final newIndex = myGroups.indexWhere((g) => g.id == _selectedGroupId);
+      if (newIndex != -1 && newIndex != _currentGroupIndex) {
+        // グループが見つかり、インデックスが変わった場合、PageControllerをジャンプ
+        _currentGroupIndex = newIndex;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(newIndex);
+        }
+      } else if (newIndex == -1) {
+        // グループが見つからない場合（削除された場合）、インデックス0にリセット
+        _currentGroupIndex = 0;
+        _selectedGroupId = myGroups.isNotEmpty ? myGroups[0].id : null;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
+      }
+    } else if (myGroups.isNotEmpty && _selectedGroupId == null) {
+      // 初回起動時：一番左のグループを選択
+      _selectedGroupId = myGroups[0].id;
+    }
 
     if (mounted) {
       setState(() {
@@ -532,17 +556,9 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Expanded(
                 child: _FilterChip(
-                  label: '本日期限',
-                  isSelected: _filterDays == '0',
-                  onTap: () => _changeFilter('0'),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _FilterChip(
-                  label: '1週間以内',
-                  isSelected: _filterDays == '7',
-                  onTap: () => _changeFilter('7'),
+                  label: '全て',
+                  isSelected: _filterDays == 'all',
+                  onTap: () => _changeFilter('all'),
                 ),
               ),
               const SizedBox(width: 6),
@@ -556,9 +572,17 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: _FilterChip(
-                  label: '全て',
-                  isSelected: _filterDays == 'all',
-                  onTap: () => _changeFilter('all'),
+                  label: '1週間以内',
+                  isSelected: _filterDays == '7',
+                  onTap: () => _changeFilter('7'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _FilterChip(
+                  label: '本日期限',
+                  isSelected: _filterDays == '0',
+                  onTap: () => _changeFilter('0'),
                 ),
               ),
             ],
@@ -726,6 +750,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPageChanged: (index) {
                     setState(() {
                       _currentGroupIndex = index;
+                      // グループIDを記録（並び替え対応）
+                      if (index < myGroups.length) {
+                        _selectedGroupId = myGroups[index].id;
+                      }
                     });
                   },
                   itemCount: myGroups.length,

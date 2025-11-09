@@ -1,0 +1,645 @@
+{
+  "database": {
+    "tables": {
+      "announcements": {
+        "columns": {
+          "content": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "published_at": {
+            "default": null,
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "title": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "version": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          }
+        }
+      },
+      "app_versions": {
+        "columns": {
+          "created_at": {
+            "default": "now()",
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "force_update_message": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "force_update_required": {
+            "default": "false",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "id": {
+            "default": "uuid_generate_v4()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "release_date": {
+            "default": null,
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "release_notes": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "store_url_android": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "store_url_ios": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "version": {
+            "default": null,
+            "nullable": false,
+            "type": "character varying"
+          }
+        }
+      },
+      "contact_inquiries": {
+        "columns": {
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "inquiry_type": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "message": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "status": {
+            "default": "'open'::text",
+            "nullable": false,
+            "type": "text"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "user_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          }
+        }
+      },
+      "error_logs": {
+        "columns": {
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "device_info": {
+            "default": null,
+            "nullable": true,
+            "type": "jsonb"
+          },
+          "error_message": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "error_type": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "screen_name": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "stack_trace": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "user_id": {
+            "default": null,
+            "nullable": true,
+            "type": "uuid"
+          }
+        }
+      },
+      "group_invitations": {
+        "columns": {
+          "group_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "invited_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "invited_role": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "invited_user_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "inviter_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "responded_at": {
+            "default": null,
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "status": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          }
+        }
+      },
+      "group_members": {
+        "columns": {
+          "display_order": {
+            "default": null,
+            "nullable": false,
+            "type": "integer"
+          },
+          "group_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "joined_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "role": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "user_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          }
+        }
+      },
+      "groups": {
+        "columns": {
+          "category": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "description": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "icon_url": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "name": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "owner_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          }
+        }
+      },
+      "maintenance_mode": {
+        "columns": {
+          "created_at": {
+            "default": "now()",
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "end_time": {
+            "default": null,
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "id": {
+            "default": "uuid_generate_v4()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "is_maintenance": {
+            "default": "false",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "maintenance_message": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "start_time": {
+            "default": null,
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": true,
+            "type": "timestamp with time zone"
+          }
+        }
+      },
+      "recurring_todo_assignments": {
+        "columns": {
+          "assigned_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "recurring_todo_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "user_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          }
+        }
+      },
+      "recurring_todos": {
+        "columns": {
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "created_by": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "deadline_days_after": {
+            "default": null,
+            "nullable": true,
+            "type": "integer"
+          },
+          "description": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "generation_time": {
+            "default": "'09:00:00'::time without time zone",
+            "nullable": false,
+            "type": "time without time zone"
+          },
+          "group_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "is_active": {
+            "default": "true",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "next_generation_at": {
+            "default": null,
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "recurrence_days": {
+            "default": null,
+            "nullable": true,
+            "type": "ARRAY"
+          },
+          "recurrence_pattern": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "title": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          }
+        }
+      },
+      "todo_assignments": {
+        "columns": {
+          "assigned_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "todo_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "user_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          }
+        }
+      },
+      "todo_comments": {
+        "columns": {
+          "content": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "todo_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "user_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          }
+        }
+      },
+      "todos": {
+        "columns": {
+          "completed_at": {
+            "default": null,
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "created_by": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "deadline": {
+            "default": null,
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "description": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "group_id": {
+            "default": null,
+            "nullable": true,
+            "type": "uuid"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "is_completed": {
+            "default": "false",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "title": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          }
+        }
+      },
+      "users": {
+        "columns": {
+          "avatar_url": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "created_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "device_id": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "display_id": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "display_name": {
+            "default": null,
+            "nullable": false,
+            "type": "text"
+          },
+          "id": {
+            "default": "gen_random_uuid()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "last_accessed_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          },
+          "notification_assigned": {
+            "default": "true",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "notification_deadline": {
+            "default": "true",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "notification_new_todo": {
+            "default": "true",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "transfer_password_hash": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "updated_at": {
+            "default": "now()",
+            "nullable": false,
+            "type": "timestamp with time zone"
+          }
+        }
+      }
+    }
+  },
+  "edge_functions": {
+    "accept-invitation": "cc49b8efd0a507f1653747f6c06ad3ad517c0f0f8d3d637c9783408d405df376",
+    "add-group-member": "6d40e05948aab8652723f0498d6278c7f64ef483e2699eb0523e502cd982e20b",
+    "cancel-invitation": "c90a37dc73c354dd476b2c96a03fbb3c7280e7d3bf3d79c90a363a5d5cd79496",
+    "change-member-role": "572a3cd18755f597dcd6970a90148b1061281a678d4171c891917ad0331229f3",
+    "check-app-status": "554595a985c7ab93ed9c48d878ec6314ffbdab72613fb7df0a969c923a74d1ec",
+    "check-maintenance-mode": "28da1e9bd930786d0c8ed627aec86dbee2d6a3b96e3e64a54751d0340cb4da7c",
+    "create-group": "fd5f544e2fac8c34209521bb4970bf94a5be7f573ce26e9b649945c9ef40850c",
+    "create-recurring-todo": "1f0d059f814b13e45e4c52155b25ff118f914b45d589d307ac64998d472b3546",
+    "create-todo": "6eb37a86f800d2e429cf5af204c3b3810e8e4c878f3d76c67111694911c28ef8",
+    "create-todo-comment": "3d409c06c565745caf82f9611fa7103c45836542602174849daaa7051393efcd",
+    "create-user": "98e3b31728e327aa55a18748ad02a1a5d409dcf645f6d679c2ba72d0a0a062ee",
+    "delete-group": "aac5a9143131a86166cc16ccfecec581cbc6f37d9757d35b027720baf2134e7c",
+    "delete-recurring-todo": "4d02643131e492e4614d5040f11804e61b910f15d05c4881fbb57136d0e38eb2",
+    "delete-todo": "66100261de6f77140dc52b1ce9f92ef49950397044d70ec1c08ab7a4de5f41be",
+    "get-announcements": "2df90029bb19926ae3044228008c3a271ed4125484c7aca4143aa47b2f506b1a",
+    "get-group-detail": "b05af0f722492f5bd12228c2addebc63c71c8759749010482cd85973097ae25c",
+    "get-group-members": "5686084b7570c9440979c0d2ac0e17f23044cd538b673c4d1cf407aca4331fb9",
+    "get-group-todos": "d145a6da74848de8a12fd495a2aa1145ee1f1ea8ff6faf141053ef2f9547415b",
+    "get-my-todos": "6cc52b3c74273c7e128ad61c4d50995476cae9f6851bab1cece4dc58f084ae8a",
+    "get-pending-invitations": "c970c14ed192cac218e383621b1dc03d4aafd30b9587fdba48a32a30f55dc567",
+    "get-recurring-todos": "538f9e5e0e6cf7ad88a60ea2df6d3d632c9bc3fa47f1af404e3e3ed29bf7bd34",
+    "get-todo-comments": "bc989ea069995e8dcb41136f1272eeb367f97377bf05db406b9515f77898ab02",
+    "get-todo-detail": "5f0140c5d7342214bf525160b0950fad67fd0b325c9b20f845f99f018bf599ef",
+    "get-user-by-device": "5b4b96ea0994c542247003c649b69678e161d09c1f8c28d2331384d7561aafd3",
+    "get-user-groups": "5a9630828f9d6d88d9e06ade12a516180241e1d376dc44580ee2620c37d9fbe3",
+    "initialize-user-cache": "2ad00413611ee3c3f4b5b5b5e253a20776ceb048b195c430d27257eb214238a5",
+    "invite-user": "07df375e67df004644ae327659543e80a8fbc994cbfda61cfe8c66f5fdd294fa",
+    "log-error": "13b614a14b0a580901408e32a390f49a05f779a33657464509432cc23da8e658",
+    "reject-invitation": "3c0478d56ef865c7c30e1e7d9668e47060ec11e538fa19fca944e5135ffa4ba9",
+    "remove-group-member": "bd23d53b5ef75bcf4339c8630e24a36c109089d49c0027c0f6cebe03764b31ef",
+    "set-transfer-password": "f9edc86db2986cb0f54d36133c28c502762a7148bc838101053671ba6476ef34",
+    "submit-contact-inquiry": "23cfb81360058439238167b4c1cb1013efd8625e914633e68b71890c40049c33",
+    "toggle-recurring-todo": "b855c330b27ea2580539539e56d3924794c9decf23d7951466cb5cb940d12393",
+    "toggle-todo-completion": "4a22c0f410a6042c50a1cf854a158bc9605b23b23f2b8d4f2ab618920e8c9f1c",
+    "transfer-user-data": "1c78023f399b273873efae1d05921d69e96381c3e99c53f5ad824cf0f6591133",
+    "update-group": "836f702b4373966d073ddc67f961183e6feff1d778e328edf9021e4daaf3ff0b",
+    "update-group-order": "f0e607f9ec153a33143c48926128399e3eb2188d6f61fe6bc5478dfdf86fe88c",
+    "update-recurring-todo": "f9cde926bb62e50768ae31be30fb72bbbef125897aa1529db01dacc57869593d",
+    "update-todo": "58784c9afaf3346a6f7772ddf17884a2db9c717fa65977452ef5dc5a0ae96e7a",
+    "update-user-profile": "7e6cb97be72bfb7f2724ead66d28c60fc70cc6e124f0be28ff614bbd09494a53",
+    "validate-user-for-invitation": "57083441533d2206444b0e03a272474f3f7a29f8ecefb0351c9fee6dd49f2fb5"
+  }
+}

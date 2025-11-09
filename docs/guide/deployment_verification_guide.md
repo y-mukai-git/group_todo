@@ -162,228 +162,163 @@ ID                                   | NAME                  | SLUG             
 
 ---
 
-## ✅ デプロイ後の構成検証（標準手順）
+## 🗂️ デプロイ時の環境状態記録（JSONファイル更新）
 
-デプロイ後、以下の手順で環境間の構成が一致しているかを確認します。
+デプロイを実行したら、該当環境のJSONファイルを更新して環境の状態を記録します。
 
-### 手順1: Edge Functions構成の検証
+### JSONファイルの配置
 
-**検証方法**: ローカルのEdge Functionsと各環境を比較します。
+- `supabase/deployment_history_dev.json` - DEV環境
+- `supabase/deployment_history_stg.json` - STG環境
+- `supabase/deployment_history_prod.json` - PROD環境
 
-#### 1-1. ローカルのFunction一覧を取得
+### Edge Functionデプロイ時の手順
+
+#### 1. Edge Functionのハッシュ値を計算
 
 ```bash
-ls -d supabase/functions/*/ | \
-  sed 's|supabase/functions/||' | \
-  sed 's|/$||' | \
-  grep -v "^_shared$" | \
-  sort > /tmp/local_functions.txt
-
-cat /tmp/local_functions.txt
+cd supabase/functions/<function-name>
+sha256sum index.ts | awk '{print $1}'
 ```
 
-#### 1-2. 各環境のFunction一覧を取得
-
+**例**:
 ```bash
-# DEV環境
-supabase functions list --project-ref <dev-project-ref> | \
-  grep -E "^\s+[a-f0-9-]{36}" | \
-  awk '{print $4}' | \
-  sort > /tmp/dev_functions.txt
-
-# STG環境（または確認したい環境）
-supabase functions list --project-ref <stg-project-ref> | \
-  grep -E "^\s+[a-f0-9-]{36}" | \
-  awk '{print $4}' | \
-  sort > /tmp/stg_functions.txt
+cd supabase/functions/create-todo
+sha256sum index.ts | awk '{print $1}'
+# 出力: 6eb37a86f800d2e429cf5af204c3b3810e8e4c878f3d76c67111694911c28ef8
 ```
 
-#### 1-3. 差分確認
+#### 2. Edge Functionをデプロイ
 
 ```bash
-# ローカルとDEV環境の比較
-echo "=== ローカルとDEV環境の比較 ==="
-diff /tmp/local_functions.txt /tmp/dev_functions.txt && echo "✅ 完全一致" || echo "❌ 差分あり"
-
-# ローカルとSTG環境の比較
-echo "=== ローカルとSTG環境の比較 ==="
-diff /tmp/local_functions.txt /tmp/stg_functions.txt && echo "✅ 完全一致" || echo "❌ 差分あり"
+supabase functions deploy <function-name> --project-ref <project-ref>
 ```
 
-**期待結果**:
-- ローカルとDEV環境: ✅ 完全一致
-- ローカルとSTG環境: ✅ 完全一致
+#### 3. 該当環境のJSONファイルを更新
 
-**差分がある場合の対応**:
-```bash
-# 不足しているFunctionを追加デプロイ
-supabase functions deploy <missing-function-name> --project-ref <project-ref>
+デプロイした環境のJSONファイル（例: `supabase/deployment_history_dev.json`）を編集：
 
-# 再度確認して一致するまで繰り返す
+```json
+{
+  "edge_functions": {
+    "<function-name>": "<手順1で計算したハッシュ値>"
+  }
+}
 ```
 
-#### 1-4. Pythonスクリプトによる詳細比較（オプション）
+### データベースマイグレーション実行時の手順
 
-より詳細な比較が必要な場合：
+#### 1. マイグレーションを実行
 
 ```bash
-python3 <<'EOF'
+supabase db push -p "<db-password>"
+```
+
+#### 2. 該当環境のJSONファイルを更新
+
+Pythonスクリプトで全テーブルの構造を取得してJSONファイルを更新：
+
+```bash
+python3 <<'PYTHON_EOF'
 import subprocess
+import json
 
-# ローカルの関数を読み込み
-with open('/tmp/local_functions.txt', 'r') as f:
-    local_funcs = sorted([line.strip() for line in f if line.strip()])
+# 環境情報（例: DEV環境）
+project_ref = "your-project-ref"
+db_password = "your-password"
+conn_str = f"postgresql://postgres@db.{project_ref}.supabase.co:5432/postgres"
 
-# DEV環境の関数を読み込み
-with open('/tmp/dev_functions.txt', 'r') as f:
-    dev_funcs = sorted([line.strip() for line in f if line.strip()])
+# テーブル一覧を取得
+get_tables_cmd = f'PGPASSWORD="{db_password}" psql "{conn_str}" -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema = \'public\' ORDER BY table_name"'
+result = subprocess.run(get_tables_cmd, shell=True, capture_output=True, text=True)
+tables = [t.strip() for t in result.stdout.strip().split('\n') if t.strip()]
 
-# STG環境の関数を読み込み
-with open('/tmp/stg_functions.txt', 'r') as f:
-    stg_funcs = sorted([line.strip() for line in f if line.strip()])
+# 各テーブルの構造を取得
+db_structure = {}
+for table in tables:
+    get_columns_cmd = f'''PGPASSWORD="{db_password}" psql "{conn_str}" -t -c "
+    SELECT jsonb_object_agg(
+      column_name,
+      jsonb_build_object(
+        'type', data_type,
+        'nullable', is_nullable = 'YES',
+        'default', column_default
+      )
+    )
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = '{table}'"'''
 
-print(f"ローカル: {len(local_funcs)}個の関数")
-print(f"DEV環境: {len(dev_funcs)}個の関数")
-print(f"STG環境: {len(stg_funcs)}個の関数")
+    result = subprocess.run(get_columns_cmd, shell=True, capture_output=True, text=True)
+    columns = json.loads(result.stdout.strip())
+    db_structure[table] = {"columns": columns}
 
-# ローカルとDEV環境の比較
-dev_only = set(dev_funcs) - set(local_funcs)
-local_only_vs_dev = set(local_funcs) - set(dev_funcs)
+# 既存のJSONファイルを読み込み
+with open('supabase/deployment_history_dev.json', 'r') as f:
+    deployment_history = json.load(f)
 
-print("\n=== ローカルとDEV環境の比較 ===")
-if dev_only:
-    print(f"DEV環境のみに存在する関数（{len(dev_only)}個）:")
-    for func in sorted(dev_only):
-        print(f"  - {func}")
-if local_only_vs_dev:
-    print(f"ローカルのみに存在する関数（{len(local_only_vs_dev)}個）:")
-    for func in sorted(local_only_vs_dev):
-        print(f"  - {func}")
-if not dev_only and not local_only_vs_dev:
-    print("✅ 完全一致")
+# database.tablesを更新
+deployment_history['database']['tables'] = db_structure
 
-# ローカルとSTG環境の比較
-stg_only = set(stg_funcs) - set(local_funcs)
-local_only_vs_stg = set(local_funcs) - set(stg_funcs)
+# JSONファイルに書き出し
+with open('supabase/deployment_history_dev.json', 'w') as f:
+    json.dump(deployment_history, f, indent=2, sort_keys=True)
 
-print("\n=== ローカルとSTG環境の比較 ===")
-if stg_only:
-    print(f"STG環境のみに存在する関数（{len(stg_only)}個）:")
-    for func in sorted(stg_only):
-        print(f"  - {func}")
-if local_only_vs_stg:
-    print(f"ローカルのみに存在する関数（{len(local_only_vs_stg)}個）:")
-    for func in sorted(local_only_vs_stg):
-        print(f"  - {func}")
-if not stg_only and not local_only_vs_stg:
-    print("✅ 完全一致")
-EOF
+print("✅ JSONファイルを更新しました")
+PYTHON_EOF
 ```
 
 ---
 
-### 手順2: データベース構成の検証
+## ✅ デプロイ後の構成検証（標準手順）
 
-**検証方法**: psqlで各環境のテーブル構造を取得して比較します。
+デプロイ後、以下の手順で環境間の構成が一致しているかを確認します。
 
-#### 2-1. テーブル一覧の取得
+### 手順1: Edge Functions・Database構成の検証（環境間比較）
 
-```bash
-# DEV環境
-PGPASSWORD="<dev-db-password>" psql "postgresql://postgres@db.<dev-project-ref>.supabase.co:5432/postgres" \
-  -c "\dt public.*" > /tmp/dev_tables.txt
+**検証方法**: DEV環境とSTG環境のJSONファイルを比較します。
 
-# STG環境
-PGPASSWORD="<stg-db-password>" psql "postgresql://postgres@db.<stg-project-ref>.supabase.co:5432/postgres" \
-  -c "\dt public.*" > /tmp/stg_tables.txt
-
-# テーブル一覧の比較
-diff /tmp/dev_tables.txt /tmp/stg_tables.txt
-```
-
-**期待結果**: テーブル一覧が一致
-
-#### 2-2. 主要テーブルの構造確認
-
-重要なテーブルの構造を確認します：
+#### 1-1. 環境間の差分確認（diffコマンド）
 
 ```bash
-# 確認するテーブルリスト
-TABLES="users groups group_members todos todo_assignments recurring_todos group_invitations announcements"
-
-# DEV環境とSTG環境の各テーブル構造を比較
-for table in $TABLES; do
-    echo "=== $table テーブルの比較 ==="
-
-    # DEV環境
-    PGPASSWORD="<dev-db-password>" psql "postgresql://postgres@db.<dev-project-ref>.supabase.co:5432/postgres" \
-      -c "\d $table" > /tmp/dev_${table}.txt 2>&1
-
-    # STG環境
-    PGPASSWORD="<stg-db-password>" psql "postgresql://postgres@db.<stg-project-ref>.supabase.co:5432/postgres" \
-      -c "\d $table" > /tmp/stg_${table}.txt 2>&1
-
-    # 差分確認
-    if diff /tmp/dev_${table}.txt /tmp/stg_${table}.txt > /dev/null 2>&1; then
-        echo "✅ $table: 完全一致"
-    else
-        echo "⚠️  $table: 差分あり（カラム順序の違いの可能性）"
-    fi
-done
+diff supabase/deployment_history_dev.json supabase/deployment_history_stg.json
 ```
 
-#### 2-3. Pythonスクリプトによる構造比較（オプション）
+**期待結果**:
+- 出力なし → ✅ 完全一致（DEV環境 = STG環境）
+- 差分表示 → ❌ 不一致（どのEdge Functionまたはテーブルが違うかが表示される）
 
-より詳細な比較が必要な場合：
-
+**例（一致している場合）**:
 ```bash
-python3 <<'EOF'
-import subprocess
-
-tables = [
-    'users', 'groups', 'group_members', 'todos', 'todo_assignments',
-    'recurring_todos', 'group_invitations', 'announcements'
-]
-
-dev_conn = "postgresql://postgres@db.<dev-project-ref>.supabase.co:5432/postgres"
-stg_conn = "postgresql://postgres@db.<stg-project-ref>.supabase.co:5432/postgres"
-
-print("=== テーブル構造の比較 ===\n")
-
-all_match = True
-for table in tables:
-    # DEV環境
-    dev_cmd = f'PGPASSWORD="<dev-db-password>" psql "{dev_conn}" -c "\\d {table}" 2>&1'
-    dev_result = subprocess.run(dev_cmd, shell=True, capture_output=True, text=True)
-    dev_output = dev_result.stdout
-
-    # STG環境
-    stg_cmd = f'PGPASSWORD="<stg-db-password>" psql "{stg_conn}" -c "\\d {table}" 2>&1'
-    stg_result = subprocess.run(stg_cmd, shell=True, capture_output=True, text=True)
-    stg_output = stg_result.stdout
-
-    if dev_output == stg_output:
-        print(f"✅ {table}: 完全一致")
-    else:
-        print(f"⚠️  {table}: 差分あり（カラム順序の違いの可能性）")
-        all_match = False
-
-if all_match:
-    print("\n✅ 全テーブルの構造が完全一致しています")
-else:
-    print("\n⚠️  一部のテーブルに差分があります（通常はカラム順序の違いのみ）")
-EOF
+$ diff supabase/deployment_history_dev.json supabase/deployment_history_stg.json
+（出力なし）
+→ ✅ DEV環境とSTG環境が完全に一致
 ```
 
-**注意**: カラムの順序が異なる場合がありますが、以下が一致していれば問題ありません：
-- カラム名
-- カラムの型
-- NOT NULL制約
-- DEFAULT値
-- インデックス
-- 外部キー制約
-- RLSポリシー
-- トリガー
+**例（不一致の場合）**:
+```bash
+$ diff supabase/deployment_history_dev.json supabase/deployment_history_stg.json
+< "invite-user": "07df375e67df004644ae327659543e80a8fbc994cbfda61cfe8c66f5fdd294fa",
+---
+> "invite-user": "abc123def456...",
+
+→ ❌ invite-user関数のコード内容が異なる
+```
+
+#### 1-2. 差分がある場合の対応
+
+**Edge Functionに差分がある場合**:
+
+1. どの関数が異なるかを確認
+2. DEV環境と同じコードをSTG環境にデプロイ
+3. STG環境のJSONファイルを更新
+4. 再度diffコマンドで確認
+
+**Databaseに差分がある場合**:
+
+1. どのテーブルが異なるかを確認
+2. 不足しているマイグレーションをSTG環境に実行
+3. STG環境のJSONファイルを更新
+4. 再度diffコマンドで確認
 
 ---
 
@@ -397,20 +332,20 @@ EOF
 実施者: ________
 対象環境: □ DEV  □ STG  □ PROD
 
-■ Edge Functions検証
-□ ローカルとデプロイ先環境のFunction一覧が完全一致
-□ Function数: ローカル __個、デプロイ先 __個
-□ 差分: なし
+■ デプロイ時の環境状態記録
+□ デプロイしたEdge FunctionsのSHA256ハッシュをJSONファイルに記録済み
+□ 実行したマイグレーションの結果をJSONファイルに反映済み
+□ JSONファイルのコミット完了
 
-■ データベース構成検証
-□ テーブル一覧が一致（__個のテーブル）
-□ 主要テーブルの構造が実質的に一致
-□ カラム名、型、制約が一致
-□ インデックス、外部キー、RLSポリシーが一致
+■ 環境間構成比較（JSON diff）
+□ デプロイ元環境とデプロイ先環境のJSONファイルを比較
+□ Edge Functions構成が一致（Function数: __個）
+□ Database構成が一致（テーブル数: __個）
+□ diffコマンドで差分なしを確認
 
 ■ 総合判定
-□ ✅ 構成が一致している
-□ ❌ 差分あり → 追加デプロイが必要
+□ ✅ 構成が完全一致している
+□ ❌ 差分あり → 追加デプロイまたはマイグレーションが必要
 
 ■ 備考
 _________________________________________________
@@ -421,27 +356,33 @@ _________________________________________________
 
 ## 🔧 トラブルシューティング
 
-### Edge Functions差分がある場合
+### JSON diff で差分が検出された場合
 
-**症状**: ローカルとデプロイ先環境でFunction一覧が一致しない
-
-**原因と対処**:
-1. **デプロイ漏れ**: 不足しているFunctionを個別デプロイ
-   ```bash
-   supabase functions deploy <function-name> --project-ref <project-ref>
-   ```
-
-2. **古いFunctionが残っている**: Supabaseダッシュボードから削除を検討
-   - 注意: 削除前に本当に不要か確認してください
-
-### データベース構造差分がある場合
-
-**症状**: テーブル構造に差分がある
+**症状**: `diff` コマンドで環境間のJSONファイルに差分が表示される
 
 **原因と対処**:
-1. **マイグレーション未実行**: `supabase db push` を実行
-2. **カラム順序の違い**: 機能に影響しないため、そのままでOK
-3. **実際の差異**: 不足しているカラムや制約を追加するマイグレーションを作成
+
+1. **Edge Functions の差分**
+   - **原因**: デプロイ漏れ、または古いFunctionが残っている
+   - **対処**:
+     - 不足しているFunctionを個別デプロイ:
+       ```bash
+       cd supabase/functions/<function-name>
+       sha256sum index.ts | awk '{print $1}'
+       supabase functions deploy <function-name> --project-ref <project-ref>
+       ```
+     - デプロイ後、JSONファイルを更新して再度確認
+
+2. **Database の差分**
+   - **原因**: マイグレーション未実行、または構造の不一致
+   - **対処**:
+     - マイグレーション実行: `supabase db push --project-ref <project-ref>`
+     - 実行後、Pythonスクリプトで環境のDB構造を取得してJSONファイルを更新
+     - 再度diffコマンドで確認
+
+3. **JSONファイル更新漏れ**
+   - **原因**: デプロイ/マイグレーション後にJSONファイルを更新していない
+   - **対処**: 本ガイドの「デプロイ時の環境状態記録」手順に従ってJSONファイルを更新
 
 ### 接続エラー
 
@@ -462,4 +403,4 @@ _________________________________________________
 
 ---
 
-**最終更新日**: 2025-11-08
+**最終更新日**: 2025-11-10

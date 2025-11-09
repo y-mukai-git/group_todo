@@ -33,6 +33,7 @@
 □ **git操作は絶対禁止です**
 □ **テストデータの利用は絶対禁止です**
 
+□ **デプロイ対象の洗い出しは、deployment_verification_guide.mdの手順で正しく対象を洗い出すこと**
 □ **デプロイは指示があった場合にのみ行います。~/.supabase/group_todo_credentials.jsonに情報はあります**
 □ **デプロイ指示の場合、デプロイした環境とその前の環境(STGデプロイであれば、DEV環境)とDB、Edge Functionの構成比較を行うこと。構成比較はdocs/guide/deployment_verification_guide.mdを確認すること**
 

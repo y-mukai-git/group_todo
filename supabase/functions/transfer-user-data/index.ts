@@ -87,7 +87,7 @@ serve(async (req) => {
     }
 
     // パスワード検証（bcrypt）
-    const bcrypt = await import('https://deno.land/x/bcrypt@v0.4.1/mod.ts')
+    const bcrypt = await import('https://deno.land/x/bcrypt@v0.2.4/mod.ts')
     const isPasswordValid = await bcrypt.compare(password, user.transfer_password_hash)
 
     if (!isPasswordValid) {

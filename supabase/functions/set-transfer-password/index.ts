@@ -81,7 +81,7 @@ serve(async (req) => {
     }
 
     // パスワードハッシュ化（bcrypt）
-    const bcrypt = await import('https://deno.land/x/bcrypt@v0.4.1/mod.ts')
+    const bcrypt = await import('https://deno.land/x/bcrypt@v0.2.4/mod.ts')
     const passwordHash = await bcrypt.hash(password)
 
     // パスワードハッシュをDBに保存

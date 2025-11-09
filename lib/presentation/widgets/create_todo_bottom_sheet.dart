@@ -44,6 +44,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
 
   DateTime? _selectedDeadline;
   Set<String> _selectedAssigneeIds = {}; // 選択された担当者IDのセット
+  List<Map<String, String>> _availableAssignees = []; // 担当者候補リスト（動的）
 
   // グループ選択用（fixedGroupIdがnullの場合に使用）
   String? _selectedGroupId;
@@ -54,6 +55,9 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
   @override
   void initState() {
     super.initState();
+
+    // 担当者候補リストを初期化
+    _availableAssignees = widget.availableAssignees ?? [];
 
     // 編集モード時：既存TODOデータを初期値として設定
     if (widget.existingTodo != null) {
@@ -87,6 +91,30 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
     _groupNameController.dispose();
     _groupDescriptionController.dispose();
     super.dispose();
+  }
+
+  /// グループ変更時に担当者候補リストを更新
+  void _updateAvailableAssignees(String groupId) {
+    final cacheService = DataCacheService();
+    final membersData = cacheService.getGroupMembers(groupId);
+
+    if (membersData != null && membersData['success'] == true) {
+      final membersList = membersData['members'] as List<dynamic>;
+      setState(() {
+        _availableAssignees = membersList.map((m) {
+          final memberId = m['id'] as String;
+          final memberName = memberId == widget.currentUserId
+              ? cacheService.currentUser!.displayName
+              : m['display_name'] as String;
+          return {'id': memberId, 'name': memberName};
+        }).toList();
+      });
+    } else {
+      // メンバー情報取得失敗時は空リスト
+      setState(() {
+        _availableAssignees = [];
+      });
+    }
   }
 
   /// グループ画像選択
@@ -221,12 +249,11 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
 
   /// 担当者選択ピッカー表示
   void _showAssigneePicker() {
-    if (widget.availableAssignees == null ||
-        widget.availableAssignees!.isEmpty) {
+    if (_availableAssignees.isEmpty) {
       return;
     }
 
-    final assignees = widget.availableAssignees!;
+    final assignees = _availableAssignees;
     final currentAssigneeId = _selectedAssigneeIds.isEmpty
         ? null
         : _selectedAssigneeIds.first;
@@ -537,8 +564,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                       const SizedBox(height: 16),
 
                       // 担当者選択
-                      if (widget.availableAssignees != null &&
-                          widget.availableAssignees!.isNotEmpty) ...[
+                      if (_availableAssignees.isNotEmpty) ...[
                         Text(
                           '担当者',
                           style: Theme.of(context).textTheme.titleSmall
@@ -546,7 +572,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                         ),
                         const SizedBox(height: 8),
                         // グループに1人のみ：表示のみ（変更不可）
-                        if (widget.availableAssignees!.length == 1)
+                        if (_availableAssignees.length == 1)
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -563,8 +589,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  widget.availableAssignees!.first['name'] ??
-                                      '',
+                                  _availableAssignees.first['name'] ?? '',
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
                                 const Spacer(),
@@ -601,7 +626,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                                   Text(
                                     _selectedAssigneeIds.isEmpty
                                         ? '担当者を選択'
-                                        : widget.availableAssignees!.firstWhere(
+                                        : _availableAssignees.firstWhere(
                                                 (a) =>
                                                     a['id'] ==
                                                     _selectedAssigneeIds.first,
@@ -882,11 +907,16 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                         if (selectedItem['id'] == 'new') {
                           _isCreatingNewGroup = true;
                           _selectedGroupId = null;
+                          _availableAssignees = []; // 新規グループ作成時は担当者リストをクリア
                         } else {
                           _isCreatingNewGroup = false;
                           _selectedGroupId = selectedItem['id'];
                         }
                       });
+                      // グループ変更時に担当者候補リストを更新
+                      if (selectedItem['id'] != 'new') {
+                        _updateAvailableAssignees(selectedItem['id']!);
+                      }
                       Navigator.pop(context);
                     },
                     child: const Text('完了'),

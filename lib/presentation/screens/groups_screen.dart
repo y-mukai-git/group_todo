@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/group_invitation.dart';
@@ -292,89 +293,98 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        title: Text(_isReorderMode ? '並び替え' : 'グループ'),
-        leadingWidth: _isReorderMode ? 100 : null,
-        leading: _isReorderMode
-            ? TextButton(
-                onPressed: _cancelReorder,
-                child: const Text(
-                  'キャンセル',
-                  style: TextStyle(color: Colors.white),
+    return VisibilityDetector(
+      key: const Key('groups-screen'),
+      onVisibilityChanged: (info) {
+        // 画面が非表示になった時（他のタブに切り替わった時）
+        if (info.visibleFraction == 0.0 && _isReorderMode) {
+          _cancelReorder();
+        }
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          title: Text(_isReorderMode ? '並び替え' : 'グループ'),
+          leadingWidth: _isReorderMode ? 100 : null,
+          leading: _isReorderMode
+              ? TextButton(
+                  onPressed: _cancelReorder,
+                  child: const Text(
+                    'キャンセル',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                )
+              : null,
+          actions: [
+            if (_isReorderMode)
+              TextButton(
+                onPressed: _isCompleting ? null : _completeReorder,
+                child: Text(
+                  '完了',
+                  style: TextStyle(
+                    color: _isCompleting
+                        ? Colors.white.withValues(alpha: 0.5)
+                        : Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               )
-            : null,
-        actions: [
-          if (_isReorderMode)
-            TextButton(
-              onPressed: _isCompleting ? null : _completeReorder,
-              child: Text(
-                '完了',
-                style: TextStyle(
-                  color: _isCompleting
-                      ? Colors.white.withValues(alpha: 0.5)
-                      : Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+            else
+              TextButton.icon(
+                onPressed: _groups.isEmpty ? null : _startReorderMode,
+                icon: const Icon(Icons.swap_vert),
+                label: const Text('並び替え'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
               ),
-            )
-          else
-            TextButton.icon(
-              onPressed: _groups.isEmpty ? null : _startReorderMode,
-              icon: const Icon(Icons.swap_vert),
-              label: const Text('並び替え'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-            ),
-        ],
-      ),
-      body: _groups.isEmpty
-          ? RefreshIndicator(
-              onRefresh: _refreshData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height - 200,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.group_outlined,
-                          size: 64,
-                          color: Theme.of(context).colorScheme.secondary,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'グループがありません',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '右下のボタンから新しいグループを作成できます',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+          ],
+        ),
+        body: _groups.isEmpty
+            ? RefreshIndicator(
+                onRefresh: _refreshData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height - 200,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.group_outlined,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'グループがありません',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '右下のボタンから新しいグループを作成できます',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              )
+            : _isReorderMode
+            ? _buildReorderableList()
+            : RefreshIndicator(
+                onRefresh: _refreshData,
+                child: ListView(children: _buildGroupedList()),
               ),
-            )
-          : _isReorderMode
-          ? _buildReorderableList()
-          : RefreshIndicator(
-              onRefresh: _refreshData,
-              child: ListView(children: _buildGroupedList()),
-            ),
-      floatingActionButton: _isReorderMode
-          ? null
-          : FloatingActionButton(
-              heroTag: 'groups_fab',
-              onPressed: _showCreateGroupDialog,
-              child: const Icon(Icons.add),
-            ),
+        floatingActionButton: _isReorderMode
+            ? null
+            : FloatingActionButton(
+                heroTag: 'groups_fab',
+                onPressed: _showCreateGroupDialog,
+                child: const Icon(Icons.add),
+              ),
+      ),
     );
   }
 

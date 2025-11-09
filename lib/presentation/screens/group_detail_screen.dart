@@ -85,8 +85,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 currentUserId: widget.user.id,
                 groupOwnerId: _currentGroup.ownerId,
                 onRemoveMember: _removeMember,
-                onMembersUpdated: () {
-                  _updateGroupData();
+                onMembersUpdated: () async {
+                  await _cacheService.refreshGroupMembers(
+                    groupId: widget.group.id,
+                    requesterId: widget.user.id,
+                  );
                   setModalState(() {});
                 },
                 initialTab: initialTab,

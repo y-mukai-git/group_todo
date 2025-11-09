@@ -151,7 +151,7 @@ serve(async (req) => {
         status: 'pending',
         invited_at: now
       })
-      .select('id, group_id, invited_user_id, invited_role, status, invited_at')
+      .select('id, group_id, inviter_id, invited_user_id, invited_role, status, invited_at')
       .single()
 
     if (invitationError || !newInvitation) {

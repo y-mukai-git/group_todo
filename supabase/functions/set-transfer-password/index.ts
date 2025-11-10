@@ -81,8 +81,8 @@ serve(async (req) => {
     }
 
     // パスワードハッシュ化（bcrypt）
-    const bcrypt = await import('https://deno.land/x/bcrypt@v0.2.4/mod.ts')
-    const passwordHash = await bcrypt.hash(password)
+    const bcrypt = await import('https://deno.land/x/bcrypt@v0.4.1/mod.ts')
+    const passwordHash = bcrypt.hashSync(password)
 
     // パスワードハッシュをDBに保存
     const { error: updateError } = await supabaseClient

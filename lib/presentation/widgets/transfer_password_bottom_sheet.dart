@@ -20,6 +20,7 @@ class _TransferPasswordBottomSheetState
   final UserService _userService = UserService();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
+  bool _isProcessing = false; // 連続タップ防止フラグ
 
   @override
   void dispose() {
@@ -35,6 +36,8 @@ class _TransferPasswordBottomSheetState
 
   /// パスワード設定実行
   Future<void> _setPassword() async {
+    if (_isProcessing) return; // 連続タップ防止
+
     final password = _passwordController.text;
     final confirm = _confirmController.text;
 
@@ -47,6 +50,10 @@ class _TransferPasswordBottomSheetState
       _showErrorSnackBar('パスワードが一致しません');
       return;
     }
+
+    setState(() {
+      _isProcessing = true;
+    });
 
     try {
       final credentials = await _userService.setTransferPassword(
@@ -77,6 +84,12 @@ class _TransferPasswordBottomSheetState
         errorId: errorLog.id,
         errorMessage: 'パスワードの設定に失敗しました',
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 

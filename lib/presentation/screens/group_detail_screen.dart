@@ -398,6 +398,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
 
   /// タスク完了状態切り替え（キャッシュサービス経由）
   Future<void> _toggleTodoCompletion(TodoModel todo) async {
+    // 連続タップ防止
+    if (_updatingTodoIds.contains(todo.id)) return;
+
     // ローディング状態を開始
     setState(() {
       _updatingTodoIds.add(todo.id);

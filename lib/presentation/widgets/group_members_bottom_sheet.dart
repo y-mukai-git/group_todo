@@ -39,6 +39,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
   late List<UserModel> _members;
   String _selectedRole = 'member'; // デフォルト: メンバー
   late int _currentTabIndex; // 現在表示中のタブ（0: メンバー一覧, 1: メンバー追加）
+  bool _isProcessing = false; // 連続タップ防止フラグ
 
   @override
   void initState() {
@@ -94,7 +95,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
   /// ロール変更確認ダイアログ表示
   Future<void> _showChangeRoleDialog(UserModel member) async {
-    final isCurrentlyOwner = member.id == widget.groupOwnerId;
+    final isCurrentlyOwner = member.role == 'owner';
     final newRole = isCurrentlyOwner ? 'member' : 'owner';
     final newRoleLabel = isCurrentlyOwner ? 'メンバー' : 'オーナー';
 
@@ -123,6 +124,12 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
   /// メンバーロール変更実行
   Future<void> _changeMemberRole(UserModel member, String newRole) async {
+    if (_isProcessing) return; // 連続タップ防止
+
+    setState(() {
+      _isProcessing = true;
+    });
+
     try {
       await _groupService.changeMemberRole(
         groupId: widget.groupId,
@@ -157,6 +164,12 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
           errorId: errorLog.id,
           errorMessage: 'ロールの変更に失敗しました',
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
       }
     }
   }
@@ -292,7 +305,8 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       itemBuilder: (context, index) {
         final member = _members[index];
         final isCurrentUser = member.id == widget.currentUserId;
-        final isOwner = member.id == widget.groupOwnerId;
+        final isOwner = member.role == 'owner';
+        final isPending = member.isPending;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
@@ -324,6 +338,29 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                   const SizedBox(width: 8),
                   const Icon(Icons.star, color: Colors.amber, size: 18),
                 ],
+                if (isPending) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '承諾待ち',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             subtitle: InkWell(
@@ -349,7 +386,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
               ),
             ),
             trailing:
-                (widget.currentUserId == widget.groupOwnerId && !isCurrentUser)
+                (widget.currentUserId == widget.groupOwnerId &&
+                    !isCurrentUser &&
+                    !isPending)
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -508,6 +547,8 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
   /// ユーザー招待実行
   Future<void> _inviteUser() async {
+    if (_isProcessing) return; // 連続タップ防止
+
     final displayId = _userIdController.text.trim();
     if (displayId.isEmpty) {
       if (!mounted) return;
@@ -519,6 +560,10 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       );
       return;
     }
+
+    setState(() {
+      _isProcessing = true;
+    });
 
     try {
       // 1. ユーザー情報取得・確認
@@ -585,6 +630,12 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
           errorId: errorLog.id,
           errorMessage: '招待に失敗しました',
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
       }
     }
   }

@@ -11,6 +11,8 @@ class UserModel {
   final bool notificationAssigned;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? role; // 'owner' | 'member' | null(招待中)
+  final bool isPending; // 承諾待ちフラグ
 
   UserModel({
     required this.id,
@@ -24,6 +26,8 @@ class UserModel {
     required this.notificationAssigned,
     required this.createdAt,
     required this.updatedAt,
+    this.role,
+    this.isPending = false,
   });
 
   /// JSONからモデル生成
@@ -40,6 +44,8 @@ class UserModel {
       notificationAssigned: json['notification_assigned'] as bool,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      role: json['role'] as String?,
+      isPending: json['is_pending'] as bool? ?? false,
     );
   }
 
@@ -72,6 +78,8 @@ class UserModel {
     bool? notificationAssigned,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? role,
+    bool? isPending,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -85,6 +93,8 @@ class UserModel {
       notificationAssigned: notificationAssigned ?? this.notificationAssigned,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      role: role ?? this.role,
+      isPending: isPending ?? this.isPending,
     );
   }
 }

@@ -233,16 +233,15 @@ serve(async (req) => {
     // メンバーと承諾待ちユーザーを結合してソート
     // 順序: owner → member → pending
     const allMembers = [...membersList, ...pendingList].sort((a, b) => {
-      // owner優先
-      if (a.role === 'owner') return -1
-      if (b.role === 'owner') return 1
+      // roleの優先順位を数値化
+      const getRolePriority = (member: any) => {
+        if (member.role === 'owner') return 1
+        if (member.role === 'member') return 2
+        if (member.is_pending) return 3
+        return 4
+      }
 
-      // member次
-      if (a.role === 'member' && b.is_pending) return -1
-      if (b.role === 'member' && a.is_pending) return 1
-
-      // その他は元の順序を維持
-      return 0
+      return getRolePriority(a) - getRolePriority(b)
     })
 
     const response: GetGroupMembersResponse = {

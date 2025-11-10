@@ -5,6 +5,7 @@ import '../../data/models/user_model.dart';
 import '../../services/group_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../../core/utils/api_client.dart';
 import '../widgets/error_dialog.dart';
 
 /// グループメンバー一覧ボトムシート
@@ -63,6 +64,30 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
   void dispose() {
     _userIdController.dispose();
     super.dispose();
+  }
+
+  /// 現在のユーザーがオーナーかどうかを判定
+  bool _isOwner() {
+    // グループ作成者の場合
+    if (widget.currentUserId == widget.groupOwnerId) {
+      return true;
+    }
+    // roleが'owner'の場合
+    final currentUser = _members.firstWhere(
+      (m) => m.id == widget.currentUserId,
+      orElse: () => UserModel(
+        id: '',
+        deviceId: '',
+        displayName: '',
+        displayId: '',
+        notificationDeadline: false,
+        notificationNewTodo: false,
+        notificationAssigned: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    return currentUser.role == 'owner';
   }
 
   /// メンバー削除確認ダイアログ
@@ -385,34 +410,53 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                 ),
               ),
             ),
-            trailing:
-                (widget.currentUserId == widget.groupOwnerId &&
-                    !isCurrentUser &&
-                    !isPending)
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ロール変更ボタン
-                      IconButton(
-                        icon: Icon(
-                          Icons.swap_horiz,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        onPressed: () => _showChangeRoleDialog(member),
-                        tooltip: 'ロール変更',
-                      ),
-                      // 削除ボタン
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        onPressed: () => _showRemoveConfirmDialog(member),
-                        tooltip: '削除',
-                      ),
-                    ],
+            trailing: () {
+              // 現在のユーザーのroleを取得
+              final currentUserRole = widget.members
+                  .firstWhere(
+                    (m) => m.id == widget.currentUserId,
+                    orElse: () => UserModel(
+                      id: '',
+                      deviceId: '',
+                      displayName: '',
+                      displayId: '',
+                      notificationDeadline: false,
+                      notificationNewTodo: false,
+                      notificationAssigned: false,
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ),
                   )
-                : null,
+                  .role;
+              final isOwner =
+                  widget.currentUserId == widget.groupOwnerId ||
+                  currentUserRole == 'owner';
+              return (isOwner && !isCurrentUser && !isPending)
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ロール変更ボタン
+                        IconButton(
+                          icon: Icon(
+                            Icons.swap_horiz,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          onPressed: () => _showChangeRoleDialog(member),
+                          tooltip: 'ロール変更',
+                        ),
+                        // 削除ボタン
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          onPressed: () => _showRemoveConfirmDialog(member),
+                          tooltip: '削除',
+                        ),
+                      ],
+                    )
+                  : null;
+            }(),
           ),
         );
       },
@@ -440,7 +484,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
             ),
             const SizedBox(height: 8),
             // 非オーナー時のメッセージ
-            if (widget.currentUserId != widget.groupOwnerId) ...[
+            if (!_isOwner()) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -628,19 +672,34 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       widget.onMembersUpdated?.call();
     } catch (e, stackTrace) {
       debugPrint('[GroupMembersBottomSheet] ❌ 招待エラー: $e');
-      final errorLog = await ErrorLogService().logError(
-        userId: widget.currentUserId,
-        errorType: '招待エラー',
-        errorMessage: '招待に失敗しました',
-        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-        screenName: 'グループメンバー一覧',
-      );
-      if (mounted) {
-        await ErrorDialog.show(
-          context: context,
-          errorId: errorLog.id,
+
+      // ApiExceptionの場合、ビジネスエラーとして扱う
+      if (e is ApiException) {
+        final errorMessage = _getErrorMessage(e.message);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        // システムエラーの場合、エラーダイアログを表示
+        final errorLog = await ErrorLogService().logError(
+          userId: widget.currentUserId,
+          errorType: '招待エラー',
           errorMessage: '招待に失敗しました',
+          stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+          screenName: 'グループメンバー一覧',
         );
+        if (mounted) {
+          await ErrorDialog.show(
+            context: context,
+            errorId: errorLog.id,
+            errorMessage: '招待に失敗しました',
+          );
+        }
       }
     } finally {
       if (mounted) {

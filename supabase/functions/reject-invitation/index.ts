@@ -91,20 +91,15 @@ serve(async (req) => {
       )
     }
 
-    const now = new Date().toISOString()
-
-    // 招待ステータスを更新
-    const { error: updateError } = await supabaseClient
+    // 招待レコードを削除
+    const { error: deleteError } = await supabaseClient
       .from('group_invitations')
-      .update({
-        status: 'rejected',
-        responded_at: now
-      })
+      .delete()
       .eq('id', invitation_id)
 
-    if (updateError) {
+    if (deleteError) {
       return new Response(
-        JSON.stringify({ success: false, error: `Failed to reject invitation: ${updateError.message}` }),
+        JSON.stringify({ success: false, error: `Failed to delete invitation: ${deleteError.message}` }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

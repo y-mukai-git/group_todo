@@ -55,8 +55,9 @@ interface GroupMembersData {
     display_id: string
     avatar_url: string | null
     signed_avatar_url: string | null
-    role: string
+    role: string | null
     joined_at: string
+    is_pending: boolean
     notification_deadline: boolean
     notification_new_todo: boolean
     notification_assigned: boolean
@@ -309,6 +310,32 @@ serve(async (req) => {
         continue
       }
 
+      // 承諾待ち招待一覧取得
+      const { data: pendingInvitations, error: invitationsError } = await supabaseClient
+        .from('group_invitations')
+        .select(`
+          invited_role,
+          invited_at,
+          users!group_invitations_invited_user_id_fkey (
+            id,
+            device_id,
+            display_name,
+            display_id,
+            avatar_url,
+            notification_deadline,
+            notification_new_todo,
+            notification_assigned,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('group_id', groupId)
+        .eq('status', 'pending')
+
+      if (invitationsError) {
+        console.error(`Failed to fetch invitations for group ${groupId}:`, invitationsError)
+      }
+
       // グループオーナーID取得
       const groupInfo = groupsWithStats.find(g => g.id === groupId)
       const ownerId = groupInfo?.owner_id || ''
@@ -340,6 +367,7 @@ serve(async (req) => {
           signed_avatar_url: signedAvatarUrl,
           role: member.role,
           joined_at: member.joined_at,
+          is_pending: false,
           notification_deadline: member.users.notification_deadline,
           notification_new_todo: member.users.notification_new_todo,
           notification_assigned: member.users.notification_assigned,
@@ -348,9 +376,59 @@ serve(async (req) => {
         }
       }))
 
+      // 承諾待ちユーザーのリスト構築
+      const pendingList = await Promise.all((pendingInvitations || []).map(async (invitation: any) => {
+        let signedAvatarUrl: string | null = null
+        if (invitation.users.avatar_url) {
+          try {
+            const { data: signedUrlData, error: signedUrlError } = await supabaseClient
+              .storage
+              .from('user-avatars')
+              .createSignedUrl(invitation.users.avatar_url, 3600)
+
+            if (!signedUrlError && signedUrlData?.signedUrl) {
+              signedAvatarUrl = signedUrlData.signedUrl
+            }
+          } catch (error) {
+            console.error('Failed to create signed URL for user:', invitation.users.id, error)
+          }
+        }
+
+        return {
+          id: invitation.users.id,
+          device_id: invitation.users.device_id,
+          display_name: invitation.users.display_name,
+          display_id: invitation.users.display_id,
+          avatar_url: invitation.users.avatar_url,
+          signed_avatar_url: signedAvatarUrl,
+          role: null,
+          joined_at: invitation.invited_at,
+          is_pending: true,
+          notification_deadline: invitation.users.notification_deadline,
+          notification_new_todo: invitation.users.notification_new_todo,
+          notification_assigned: invitation.users.notification_assigned,
+          created_at: invitation.users.created_at,
+          updated_at: invitation.users.updated_at
+        }
+      }))
+
+      // メンバーと承諾待ちユーザーを結合してソート
+      // 順序: owner → member → pending
+      const allMembers = [...membersList, ...pendingList].sort((a, b) => {
+        // roleの優先順位を数値化
+        const getRolePriority = (member: any) => {
+          if (member.role === 'owner') return 1
+          if (member.role === 'member') return 2
+          if (member.is_pending) return 3
+          return 4
+        }
+
+        return getRolePriority(a) - getRolePriority(b)
+      })
+
       groupMembersData[groupId] = {
         success: true,
-        members: membersList,
+        members: allMembers,
         owner_id: ownerId
       }
     }

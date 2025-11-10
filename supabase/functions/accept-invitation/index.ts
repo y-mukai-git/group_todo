@@ -152,19 +152,16 @@ serve(async (req) => {
       )
     }
 
-    // 2. 招待ステータスを更新
-    const { error: updateError } = await supabaseClient
+    // 2. 招待レコードを削除
+    const { error: deleteError } = await supabaseClient
       .from('group_invitations')
-      .update({
-        status: 'accepted',
-        responded_at: now
-      })
+      .delete()
       .eq('id', invitation_id)
 
-    if (updateError) {
-      // メンバー追加は成功したが、招待ステータス更新に失敗
+    if (deleteError) {
+      // メンバー追加は成功したが、招待レコード削除に失敗
       // この場合でも成功として扱う（メンバー追加が主目的のため）
-      console.error('Failed to update invitation status:', updateError)
+      console.error('Failed to delete invitation record:', deleteError)
     }
 
     const response: AcceptInvitationResponse = {

@@ -22,6 +22,7 @@ interface InviteUserResponse {
   invitation?: {
     id: string
     group_id: string
+    inviter_id: string
     invited_user_id: string
     invited_role: string
     status: string
@@ -169,6 +170,7 @@ serve(async (req) => {
       invitation: {
         id: newInvitation.id,
         group_id: newInvitation.group_id,
+        inviter_id: newInvitation.inviter_id,
         invited_user_id: newInvitation.invited_user_id,
         invited_role: newInvitation.invited_role,
         status: newInvitation.status,

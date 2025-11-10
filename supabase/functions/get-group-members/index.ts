@@ -129,7 +129,7 @@ serve(async (req) => {
     }
 
     // 承諾待ち招待一覧取得（usersテーブルとJOIN）
-    const { data: pendingInvitations, error: invitationsError } = await supabaseClient
+    const { data: pendingInvitations, error: invitationsError} = await supabaseClient
       .from('group_invitations')
       .select(`
         invited_role,
@@ -151,6 +151,7 @@ serve(async (req) => {
       .eq('status', 'pending')
 
     if (invitationsError) {
+      console.error(`[ERROR] Failed to fetch invitations: ${invitationsError.message}`, invitationsError)
       return new Response(
         JSON.stringify({ success: false, error: `Failed to fetch invitations: ${invitationsError.message}` }),
         {

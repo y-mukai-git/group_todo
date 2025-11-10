@@ -310,7 +310,10 @@ class DataCacheService extends ChangeNotifier {
       // 2. DB更新成功 → キャッシュ更新
       final index = _groups.indexWhere((g) => g.id == groupId);
       if (index != -1) {
-        _groups[index] = updatedGroup;
+        // 既存のdisplayOrderを保持する（Edge Functionはdisplay_orderを取得しないため）
+        _groups[index] = updatedGroup.copyWith(
+          displayOrder: _groups[index].displayOrder,
+        );
         notifyListeners();
       }
 

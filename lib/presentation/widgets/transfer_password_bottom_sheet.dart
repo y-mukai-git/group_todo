@@ -233,14 +233,25 @@ class _TransferPasswordBottomSheetState
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _setPassword,
+                            onPressed: _isProcessing ? null : _setPassword,
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text('設定'),
+                            child: _isProcessing
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Text('設定'),
                           ),
                         ),
                       ],

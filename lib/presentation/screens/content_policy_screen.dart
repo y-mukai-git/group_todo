@@ -7,15 +7,7 @@ class ContentPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.warning_rounded, color: Colors.amber[700], size: 24),
-            const SizedBox(width: 8),
-            const Text('入力における注意事項'),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: const Text('入力における注意事項')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

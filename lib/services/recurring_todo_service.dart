@@ -56,7 +56,7 @@ class RecurringTodoService {
     try {
       final response = await _apiClient.callFunction(
         functionName: 'get-recurring-todos',
-        body: {'group_id': groupId},
+        body: {'group_id': groupId, 'user_id': userId},
       );
 
       if (response['success'] != true) {

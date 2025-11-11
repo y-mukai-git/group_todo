@@ -1,5 +1,5 @@
+import 'dart:io' show exit;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 /// メンテナンスダイアログ
 class MaintenanceDialog {
@@ -26,7 +26,7 @@ class MaintenanceDialog {
             actions: [
               TextButton(
                 onPressed: () {
-                  SystemNavigator.pop(); // アプリ終了
+                  exit(0); // アプリを完全終了
                 },
                 child: const Text('OK'),
               ),

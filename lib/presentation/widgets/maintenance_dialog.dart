@@ -1,4 +1,3 @@
-import 'dart:io' show exit;
 import 'package:flutter/material.dart';
 
 /// メンテナンスダイアログ
@@ -23,14 +22,6 @@ class MaintenanceDialog {
               ],
             ),
             content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  exit(0); // アプリを完全終了
-                },
-                child: const Text('OK'),
-              ),
-            ],
           ),
         );
       },

@@ -95,7 +95,39 @@ serve(async (req) => {
       )
     }
 
-    // 各グループの統計情報を取得
+    // N+1問題を解決: 全グループIDを抽出
+    const groupIds = (groupMembers || [])
+      .map(member => (member.groups as any)?.id)
+      .filter((id): id is string => id != null)
+
+    // 全グループのメンバー数を一括取得
+    const { data: memberCounts } = await supabaseClient
+      .from('group_members')
+      .select('group_id')
+      .in('group_id', groupIds)
+
+    // グループIDごとのメンバー数を集計
+    const memberCountMap = new Map<string, number>()
+    for (const member of memberCounts || []) {
+      const count = memberCountMap.get(member.group_id) || 0
+      memberCountMap.set(member.group_id, count + 1)
+    }
+
+    // 全グループの未完了TODO数を一括取得
+    const { data: todoCounts } = await supabaseClient
+      .from('todos')
+      .select('group_id')
+      .in('group_id', groupIds)
+      .eq('is_completed', false)
+
+    // グループIDごとのTODO数を集計
+    const todoCountMap = new Map<string, number>()
+    for (const todo of todoCounts || []) {
+      const count = todoCountMap.get(todo.group_id) || 0
+      todoCountMap.set(todo.group_id, count + 1)
+    }
+
+    // 各グループの情報を組み立て
     const groupsWithStats: GroupWithStats[] = []
 
     for (const member of groupMembers || []) {
@@ -103,18 +135,9 @@ serve(async (req) => {
 
       if (!group) continue
 
-      // メンバー数取得
-      const { count: memberCount } = await supabaseClient
-        .from('group_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('group_id', group.id)
-
-      // 未完了TODO数取得
-      const { count: todoCount } = await supabaseClient
-        .from('todos')
-        .select('*', { count: 'exact', head: true })
-        .eq('group_id', group.id)
-        .eq('is_completed', false)
+      // Mapから統計情報を取得
+      const memberCount = memberCountMap.get(group.id) || 0
+      const todoCount = todoCountMap.get(group.id) || 0
 
       // 署名付きURL生成（icon_urlが存在する場合）
       let signedIconUrl: string | null = null
@@ -139,8 +162,8 @@ serve(async (req) => {
         icon_url: group.icon_url,
         signed_icon_url: signedIconUrl,
         owner_id: group.owner_id,
-        member_count: memberCount || 0,
-        incomplete_todo_count: todoCount || 0,
+        member_count: memberCount,
+        incomplete_todo_count: todoCount,
         role: member.role,
         joined_at: member.joined_at,
         display_order: member.display_order || 0

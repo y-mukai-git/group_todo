@@ -240,26 +240,39 @@ serve(async (req) => {
       allTodos = groupTodos || []
     }
 
+    // N+1問題を解決: 全TODO IDを抽出して担当者情報を一括取得
+    const todoIds = allTodos.map(todo => todo.id)
+
+    // 全TODOの担当者情報を一括取得
+    const { data: allAssignments } = await supabaseClient
+      .from('todo_assignments')
+      .select(`
+        todo_id,
+        user_id,
+        users:user_id (
+          display_name,
+          avatar_url
+        )
+      `)
+      .in('todo_id', todoIds)
+
+    // TODO IDごとに担当者情報をグループ化
+    const assignmentsMap = new Map<string, any[]>()
+    for (const assignment of allAssignments || []) {
+      const existing = assignmentsMap.get(assignment.todo_id) || []
+      existing.push({
+        user_id: assignment.user_id,
+        display_name: assignment.users?.display_name || '',
+        avatar_url: assignment.users?.avatar_url || null
+      })
+      assignmentsMap.set(assignment.todo_id, existing)
+    }
+
     // 各TODOに担当者情報とグループ名を追加
     const todoItems: TodoItem[] = []
     for (const todo of allTodos) {
-      // 担当者情報取得
-      const { data: todoAssignments } = await supabaseClient
-        .from('todo_assignments')
-        .select(`
-          user_id,
-          users:user_id (
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq('todo_id', todo.id)
-
-      const assignees = (todoAssignments || []).map((a: any) => ({
-        user_id: a.user_id,
-        display_name: a.users?.display_name || '',
-        avatar_url: a.users?.avatar_url || null
-      }))
+      // Mapから担当者情報を取得
+      const assignees = assignmentsMap.get(todo.id) || []
 
       // グループ名を取得
       const groupInfo = groupsWithStats.find(g => g.id === todo.group_id)
@@ -279,69 +292,98 @@ serve(async (req) => {
     }
 
     // ========================================
-    // 3. 全グループのメンバー情報を一括取得
+    // 3. 全グループのメンバー情報を一括取得（N+1問題を解決）
     // ========================================
+
+    // 全グループのメンバー情報を一括取得
+    const { data: allMembers, error: allMembersError } = await supabaseClient
+      .from('group_members')
+      .select(`
+        group_id,
+        role,
+        joined_at,
+        users (
+          id,
+          device_id,
+          display_name,
+          display_id,
+          avatar_url,
+          notification_deadline,
+          notification_new_todo,
+          notification_assigned,
+          created_at,
+          updated_at
+        )
+      `)
+      .in('group_id', groupIds)
+
+    if (allMembersError) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to get members: ${allMembersError.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // 全グループの承諾待ち招待を一括取得
+    const { data: allInvitations, error: allInvitationsError } = await supabaseClient
+      .from('group_invitations')
+      .select(`
+        group_id,
+        invited_role,
+        invited_at,
+        users!group_invitations_invited_user_id_fkey (
+          id,
+          device_id,
+          display_name,
+          display_id,
+          avatar_url,
+          notification_deadline,
+          notification_new_todo,
+          notification_assigned,
+          created_at,
+          updated_at
+        )
+      `)
+      .in('group_id', groupIds)
+      .eq('status', 'pending')
+
+    if (allInvitationsError) {
+      console.error('Failed to fetch invitations:', allInvitationsError)
+    }
+
+    // グループIDごとにメンバーをグループ化
+    const membersMap = new Map<string, any[]>()
+    for (const member of allMembers || []) {
+      const existing = membersMap.get(member.group_id) || []
+      existing.push(member)
+      membersMap.set(member.group_id, existing)
+    }
+
+    // グループIDごとに招待をグループ化
+    const invitationsMap = new Map<string, any[]>()
+    for (const invitation of allInvitations || []) {
+      const existing = invitationsMap.get(invitation.group_id) || []
+      existing.push(invitation)
+      invitationsMap.set(invitation.group_id, existing)
+    }
+
+    // 各グループのメンバー情報を組み立て
     const groupMembersData: { [groupId: string]: GroupMembersData } = {}
 
     for (const groupId of groupIds) {
-      // グループメンバー一覧取得
-      const { data: members, error: membersError } = await supabaseClient
-        .from('group_members')
-        .select(`
-          role,
-          joined_at,
-          users (
-            id,
-            device_id,
-            display_name,
-            display_id,
-            avatar_url,
-            notification_deadline,
-            notification_new_todo,
-            notification_assigned,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('group_id', groupId)
-
-      if (membersError) {
-        console.error(`Failed to fetch members for group ${groupId}:`, membersError)
-        continue
-      }
-
-      // 承諾待ち招待一覧取得
-      const { data: pendingInvitations, error: invitationsError } = await supabaseClient
-        .from('group_invitations')
-        .select(`
-          invited_role,
-          invited_at,
-          users!group_invitations_invited_user_id_fkey (
-            id,
-            device_id,
-            display_name,
-            display_id,
-            avatar_url,
-            notification_deadline,
-            notification_new_todo,
-            notification_assigned,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('group_id', groupId)
-        .eq('status', 'pending')
-
-      if (invitationsError) {
-        console.error(`Failed to fetch invitations for group ${groupId}:`, invitationsError)
-      }
+      // Mapからメンバーと招待を取得
+      const members = membersMap.get(groupId) || []
+      const pendingInvitations = invitationsMap.get(groupId) || []
 
       // グループオーナーID取得
       const groupInfo = groupsWithStats.find(g => g.id === groupId)
       const ownerId = groupInfo?.owner_id || ''
 
       // 各メンバーの署名付きURL生成
-      const membersList = await Promise.all((members || []).map(async (member: any) => {
+      const membersList = await Promise.all(members.map(async (member: any) => {
         let signedAvatarUrl: string | null = null
         if (member.users.avatar_url) {
           try {
@@ -377,7 +419,7 @@ serve(async (req) => {
       }))
 
       // 承諾待ちユーザーのリスト構築
-      const pendingList = await Promise.all((pendingInvitations || []).map(async (invitation: any) => {
+      const pendingList = await Promise.all(pendingInvitations.map(async (invitation: any) => {
         let signedAvatarUrl: string | null = null
         if (invitation.users.avatar_url) {
           try {
@@ -414,7 +456,7 @@ serve(async (req) => {
 
       // メンバーと承諾待ちユーザーを結合してソート
       // 順序: owner → member → pending
-      const allMembers = [...membersList, ...pendingList].sort((a, b) => {
+      const allMembersForGroup = [...membersList, ...pendingList].sort((a, b) => {
         // roleの優先順位を数値化
         const getRolePriority = (member: any) => {
           if (member.role === 'owner') return 1
@@ -428,7 +470,7 @@ serve(async (req) => {
 
       groupMembersData[groupId] = {
         success: true,
-        members: allMembers,
+        members: allMembersForGroup,
         owner_id: ownerId
       }
     }

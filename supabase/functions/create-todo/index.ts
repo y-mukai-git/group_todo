@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership, checkAssigneesAreMembers } from '../_shared/permission.ts'
 
 declare var Deno: any;
 
@@ -60,6 +61,30 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: 'group_id, title, assigned_user_ids, and created_by are required' }),
         {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, group_id, created_by)
+    if (!membershipCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: membershipCheck.error }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // 担当者メンバーチェック
+    const assigneeCheck = await checkAssigneesAreMembers(supabaseClient, group_id, assigned_user_ids)
+    if (!assigneeCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: assigneeCheck.error }),
+        {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

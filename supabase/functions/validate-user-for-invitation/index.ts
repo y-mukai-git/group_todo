@@ -5,6 +5,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership } from '../_shared/permission.ts'
 
 declare var Deno: any;
 
@@ -13,6 +14,7 @@ declare var Deno: any;
 interface ValidateUserRequest {
   display_id: string // 招待するユーザーのdisplay_id（8桁英数字）
   group_id: string // 招待先のグループID（既存メンバーチェック用）
+  user_id: string // リクエスト者のユーザーID（メンバーシップチェック用）
 }
 
 interface ValidateUserResponse {
@@ -46,13 +48,25 @@ serve(async (req) => {
       )
     }
 
-    const { display_id, group_id }: ValidateUserRequest = await req.json()
+    const { display_id, group_id, user_id }: ValidateUserRequest = await req.json()
 
-    if (!display_id || !group_id) {
+    if (!display_id || !group_id || !user_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'display_id and group_id are required' }),
+        JSON.stringify({ success: false, error: 'display_id, group_id, and user_id are required' }),
         {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, group_id, user_id)
+    if (!membershipCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: membershipCheck.error }),
+        {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

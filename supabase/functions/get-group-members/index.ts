@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership } from '../_shared/permission.ts'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -62,17 +63,11 @@ serve(async (req) => {
       )
     }
 
-    // リクエスト者がグループのメンバーかチェック
-    const { data: membership, error: membershipError } = await supabaseClient
-      .from('group_members')
-      .select('id')
-      .eq('group_id', group_id)
-      .eq('user_id', requester_id)
-      .single()
-
-    if (membershipError || !membership) {
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, group_id, requester_id)
+    if (!membershipCheck.success) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Not a member of this group' }),
+        JSON.stringify({ success: false, error: membershipCheck.error }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

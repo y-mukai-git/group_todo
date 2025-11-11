@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership } from '../_shared/permission.ts'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -11,6 +12,7 @@ declare var Deno: any;
 
 interface GetRecurringTodosRequest {
   group_id: string
+  user_id: string // メンバーシップチェック用
 }
 
 interface RecurringTodoWithAssignees {
@@ -54,13 +56,25 @@ serve(async (req) => {
       )
     }
 
-    const { group_id }: GetRecurringTodosRequest = await req.json()
+    const { group_id, user_id }: GetRecurringTodosRequest = await req.json()
 
-    if (!group_id) {
+    if (!group_id || !user_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'group_id is required' }),
+        JSON.stringify({ success: false, error: 'group_id and user_id are required' }),
         {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, group_id, user_id)
+    if (!membershipCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: membershipCheck.error }),
+        {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

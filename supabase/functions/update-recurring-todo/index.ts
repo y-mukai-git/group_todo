@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership, checkAssigneesAreMembers } from '../_shared/permission.ts'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -222,6 +223,32 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
+    }
+
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, recurringTodo.group_id, user_id)
+    if (!membershipCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: membershipCheck.error }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // 担当者メンバーチェック（assigned_user_idsが指定されている場合）
+    if (assigned_user_ids && assigned_user_ids.length > 0) {
+      const assigneeCheck = await checkAssigneesAreMembers(supabaseClient, recurringTodo.group_id, assigned_user_ids)
+      if (!assigneeCheck.success) {
+        return new Response(
+          JSON.stringify({ success: false, error: assigneeCheck.error }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
     }
 
     const { data: group } = await supabaseClient

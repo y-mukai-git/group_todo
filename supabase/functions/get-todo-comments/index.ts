@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership } from '../_shared/permission.ts'
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -11,6 +12,7 @@ declare var Deno: any;
 
 interface GetCommentsRequest {
   todo_id: string
+  user_id: string // メンバーシップチェック用
 }
 
 interface CommentWithUser {
@@ -48,13 +50,42 @@ serve(async (req) => {
       )
     }
 
-    const { todo_id }: GetCommentsRequest = await req.json()
+    const { todo_id, user_id }: GetCommentsRequest = await req.json()
 
-    if (!todo_id) {
+    if (!todo_id || !user_id) {
       return new Response(
-        JSON.stringify({ success: false, error: 'todo_id is required' }),
+        JSON.stringify({ success: false, error: 'todo_id and user_id are required' }),
         {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // TODOからgroup_idを取得
+    const { data: todo, error: todoError } = await supabaseClient
+      .from('todos')
+      .select('group_id')
+      .eq('id', todo_id)
+      .single()
+
+    if (todoError || !todo) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'TODO not found' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, todo.group_id, user_id)
+    if (!membershipCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: membershipCheck.error }),
+        {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

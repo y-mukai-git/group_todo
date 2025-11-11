@@ -5,6 +5,7 @@ import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { checkMaintenanceMode } from '../_shared/maintenance.ts'
+import { checkGroupMembership } from '../_shared/permission.ts'
 
 declare var Deno: any;
 
@@ -62,6 +63,18 @@ serve(async (req) => {
     if (invitationError || !invitation) {
       return new Response(
         JSON.stringify({ success: false, error: 'Invitation not found' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // メンバーシップチェック
+    const membershipCheck = await checkGroupMembership(supabaseClient, invitation.group_id, user_id)
+    if (!membershipCheck.success) {
+      return new Response(
+        JSON.stringify({ success: false, error: membershipCheck.error }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

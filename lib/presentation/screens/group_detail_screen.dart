@@ -1014,68 +1014,73 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               controller: _tabController,
               children: [
                 // タブ1: タスクエリア
-                RefreshIndicator(
-                  onRefresh: _refreshData,
-                  child: ListView(
-                    padding: const EdgeInsets.only(top: 12),
-                    children: [
-                      // タスクフィルター（均等配置）
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _FilterChip(
-                                label: '未完了',
-                                isSelected: _selectedFilter == 'incomplete',
-                                onTap: () => setState(
-                                  () => _selectedFilter = 'incomplete',
-                                ),
+                Column(
+                  children: [
+                    // タスクフィルター（固定表示）
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _FilterChip(
+                              label: '未完了',
+                              isSelected: _selectedFilter == 'incomplete',
+                              onTap: () => setState(
+                                () => _selectedFilter = 'incomplete',
                               ),
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _FilterChip(
+                              label: '直近の完了',
+                              isSelected: _selectedFilter == 'completed',
+                              onTap: () =>
+                                  setState(() => _selectedFilter = 'completed'),
+                            ),
+                          ),
+                          if (widget.group.category != 'personal') ...[
                             const SizedBox(width: 8),
                             Expanded(
                               child: _FilterChip(
-                                label: '直近の完了',
-                                isSelected: _selectedFilter == 'completed',
+                                label: '自タスク',
+                                isSelected: _selectedFilter == 'my_incomplete',
                                 onTap: () => setState(
-                                  () => _selectedFilter = 'completed',
+                                  () => _selectedFilter = 'my_incomplete',
                                 ),
                               ),
                             ),
-                            if (widget.group.category != 'personal') ...[
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _FilterChip(
-                                  label: '自タスク',
-                                  isSelected:
-                                      _selectedFilter == 'my_incomplete',
-                                  onTap: () => setState(
-                                    () => _selectedFilter = 'my_incomplete',
-                                  ),
-                                ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // タスクリスト（スクロール可能）
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refreshData,
+                        child: ListView(
+                          padding: const EdgeInsets.only(top: 4),
+                          children: [
+                            // タスクリスト
+                            ..._filteredTodos.map(
+                              (todo) => _TodoListTile(
+                                todo: todo,
+                                user: widget.user,
+                                onToggle: () => _toggleTodoCompletion(todo),
+                                onTap: () => _showTodoDetail(todo),
+                                onDelete: () => _deleteTodo(todo),
+                                isUpdating: _updatingTodoIds.contains(todo.id),
                               ),
-                            ],
+                            ),
+                            const SizedBox(height: 80),
                           ],
                         ),
                       ),
-                      // タスクリスト
-                      ..._filteredTodos.map(
-                        (todo) => _TodoListTile(
-                          todo: todo,
-                          user: widget.user,
-                          onToggle: () => _toggleTodoCompletion(todo),
-                          onTap: () => _showTodoDetail(todo),
-                          onDelete: () => _deleteTodo(todo),
-                          isUpdating: _updatingTodoIds.contains(todo.id),
-                        ),
-                      ),
-                      const SizedBox(height: 80),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 // タブ2: グループ設定エリア
                 RefreshIndicator(

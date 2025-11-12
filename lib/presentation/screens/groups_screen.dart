@@ -609,7 +609,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
     final membersData = _cacheService.getGroupMembers(group.id);
     if (membersData != null && membersData['success'] == true) {
       final membersList = membersData['members'] as List<dynamic>;
-      memberCount = membersList.length;
+      // 承諾待ちユーザーを除外してカウント
+      memberCount = membersList
+          .where((m) => !(m['is_pending'] as bool? ?? false))
+          .length;
     }
 
     // タスク件数取得（未完了のみ）
@@ -619,216 +622,216 @@ class _GroupsScreenState extends State<GroupsScreen> {
     // オーナー判定
     final isOwner = group.ownerId == widget.user.id;
 
-    return Column(
-      children: [
-        Dismissible(
-          key: Key(group.id),
-          direction: DismissDirection.endToStart,
-          confirmDismiss: (direction) async {
-            if (!isOwner) {
-              // オーナー以外は削除不可
-              SnackBarHelper.showErrorSnackBar(context, 'オーナーしか消せません');
-              return false;
-            }
-
-            // オーナーの場合は削除確認ダイアログ表示
-            return await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('グループ削除'),
-                content: Text('「${group.name}」を削除しますか？'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('キャンセル'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('削除'),
-                  ),
-                ],
-              ),
-            );
-          },
-          onDismissed: (direction) async {
-            try {
-              // グループ削除API呼び出し
-              await _cacheService.deleteGroup(
-                groupId: group.id,
-                userId: widget.user.id,
-              );
-              _showSuccessSnackBar('グループを削除しました');
-            } catch (e, stackTrace) {
-              debugPrint('[GroupsScreen] ❌ グループ削除エラー: $e');
-
-              // エラーログ記録
-              final errorLog = await ErrorLogService().logError(
-                userId: widget.user.id,
-                errorType: 'グループ削除エラー',
-                errorMessage: 'グループの削除に失敗しました',
-                stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-                screenName: 'グループ一覧画面',
-              );
-
-              // エラーダイアログ表示
-              if (!mounted) return;
-              await ErrorDialog.show(
-                context: context,
-                errorId: errorLog.id,
-                errorMessage: 'グループの削除に失敗しました',
-              );
-            }
-          },
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            color: Colors.red,
-            child: const Icon(Icons.delete, color: Colors.white),
+    // グループカードWidget
+    final groupCardWidget = InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                GroupDetailScreen(user: widget.user, group: group),
           ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      GroupDetailScreen(user: widget.user, group: group),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Row(
-                children: [
-                  // アイコン
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            // アイコン
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isPersonalGroup
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(12),
+                image: group.signedIconUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(group.signedIconUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: group.signedIconUrl == null
+                  ? Icon(
+                      isPersonalGroup ? Icons.person : Icons.group,
                       color: isPersonalGroup
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                      image: group.signedIconUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(group.signedIconUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: group.signedIconUrl == null
-                        ? Icon(
-                            isPersonalGroup ? Icons.person : Icons.group,
-                            color: isPersonalGroup
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.secondary,
-                            size: 24,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  // グループ情報
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                group.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.secondary,
+                      size: 24,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            // グループ情報
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      // カテゴリ表示
+                      if (group.category != null && categoryInfo != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                categoryInfo['icon'] as IconData,
+                                size: 14,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onTertiaryContainer,
                               ),
-                            ),
-                            // カテゴリ表示
-                            if (group.category != null &&
-                                categoryInfo != null) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
+                              const SizedBox(width: 4),
+                              Text(
+                                categoryInfo['name'] as String,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
                                   color: Theme.of(
                                     context,
-                                  ).colorScheme.tertiaryContainer,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      categoryInfo['icon'] as IconData,
-                                      size: 14,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onTertiaryContainer,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      categoryInfo['name'] as String,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onTertiaryContainer,
-                                      ),
-                                    ),
-                                  ],
+                                  ).colorScheme.onTertiaryContainer,
                                 ),
                               ),
                             ],
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.people_outline,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$memberCount人',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Icon(
-                              Icons.check_circle_outline,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$incompleteTodoCount件のTODO',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: Theme.of(context).colorScheme.outline,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people_outline,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$memberCount人',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$incompleteTodoCount件のTODO',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
+            Icon(
+              Icons.chevron_right,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ],
         ),
+      ),
+    );
+
+    // オーナーの場合のみスワイプ削除可能
+    return Column(
+      children: [
+        if (isOwner)
+          Dismissible(
+            key: Key(group.id),
+            direction: DismissDirection.endToStart,
+            confirmDismiss: (direction) async {
+              // オーナーの場合は削除確認ダイアログ表示
+              return await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('グループ削除'),
+                  content: Text('「${group.name}」を削除しますか？'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('キャンセル'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('削除'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            onDismissed: (direction) async {
+              try {
+                // グループ削除API呼び出し
+                await _cacheService.deleteGroup(
+                  groupId: group.id,
+                  userId: widget.user.id,
+                );
+                _showSuccessSnackBar('グループを削除しました');
+              } catch (e, stackTrace) {
+                debugPrint('[GroupsScreen] ❌ グループ削除エラー: $e');
+
+                // エラーログ記録
+                final errorLog = await ErrorLogService().logError(
+                  userId: widget.user.id,
+                  errorType: 'グループ削除エラー',
+                  errorMessage: 'グループの削除に失敗しました',
+                  stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+                  screenName: 'グループ一覧画面',
+                );
+
+                // エラーダイアログ表示
+                if (!mounted) return;
+                await ErrorDialog.show(
+                  context: context,
+                  errorId: errorLog.id,
+                  errorMessage: 'グループの削除に失敗しました',
+                );
+              }
+            },
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              color: Colors.red,
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            child: groupCardWidget,
+          )
+        else
+          groupCardWidget,
         Divider(
           height: 1,
           thickness: 1,
@@ -852,7 +855,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
     final membersData = _cacheService.getGroupMembers(group.id);
     if (membersData != null && membersData['success'] == true) {
       final membersList = membersData['members'] as List<dynamic>;
-      memberCount = membersList.length;
+      // 承諾待ちユーザーを除外してカウント
+      memberCount = membersList
+          .where((m) => !(m['is_pending'] as bool? ?? false))
+          .length;
     }
 
     // タスク件数取得（未完了のみ）

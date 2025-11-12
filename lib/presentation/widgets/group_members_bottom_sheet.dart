@@ -90,34 +90,6 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
     return currentUser.role == 'owner';
   }
 
-  /// メンバー削除確認ダイアログ
-  Future<void> _showRemoveConfirmDialog(UserModel member) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('メンバー削除'),
-        content: Text('${member.displayName}をグループから削除しますか？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('削除'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      widget.onRemoveMember(member.id);
-    }
-  }
-
   /// ロール変更確認ダイアログ表示
   Future<void> _showChangeRoleDialog(UserModel member) async {
     final isCurrentlyOwner = member.role == 'owner';
@@ -165,11 +137,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${member.displayName}のロールを変更しました'),
-          backgroundColor: Colors.green,
-        ),
+      SnackBarHelper.showSuccessSnackBar(
+        context,
+        '${member.displayName}のロールを変更しました',
       );
 
       // メンバー更新通知
@@ -333,7 +303,29 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         final isOwner = member.role == 'owner';
         final isPending = member.isPending;
 
-        return Card(
+        // 現在のユーザーのroleを取得
+        final currentUserRole = widget.members
+            .firstWhere(
+              (m) => m.id == widget.currentUserId,
+              orElse: () => UserModel(
+                id: '',
+                deviceId: '',
+                displayName: '',
+                displayId: '',
+                notificationDeadline: false,
+                notificationNewTodo: false,
+                notificationAssigned: false,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            )
+            .role;
+        final isCurrentUserOwner =
+            widget.currentUserId == widget.groupOwnerId ||
+            currentUserRole == 'owner';
+        final canModify = isCurrentUserOwner && !isCurrentUser;
+
+        final cardWidget = Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
             leading: CircleAvatar(
@@ -353,37 +345,49 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                     )
                   : null,
             ),
-            title: Row(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   member.displayName,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
-                if (isOwner) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.star, color: Colors.amber, size: 18),
-                ],
-                if (isPending) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '承諾待ち',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSecondaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                if (isOwner || isPending) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (isOwner) ...[
+                        const Icon(Icons.star, color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        const Text('オーナー', style: TextStyle(fontSize: 12)),
+                      ],
+                      if (isPending) ...[
+                        if (isOwner) const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '承諾待ち',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ],
@@ -410,55 +414,64 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
                 ),
               ),
             ),
-            trailing: () {
-              // 現在のユーザーのroleを取得
-              final currentUserRole = widget.members
-                  .firstWhere(
-                    (m) => m.id == widget.currentUserId,
-                    orElse: () => UserModel(
-                      id: '',
-                      deviceId: '',
-                      displayName: '',
-                      displayId: '',
-                      notificationDeadline: false,
-                      notificationNewTodo: false,
-                      notificationAssigned: false,
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
+            trailing: canModify
+                ? IconButton(
+                    icon: Icon(
+                      Icons.swap_horiz,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    onPressed: () => _showChangeRoleDialog(member),
+                    tooltip: 'ロール変更',
                   )
-                  .role;
-              final isOwner =
-                  widget.currentUserId == widget.groupOwnerId ||
-                  currentUserRole == 'owner';
-              return (isOwner && !isCurrentUser && !isPending)
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ロール変更ボタン
-                        IconButton(
-                          icon: Icon(
-                            Icons.swap_horiz,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          onPressed: () => _showChangeRoleDialog(member),
-                          tooltip: 'ロール変更',
-                        ),
-                        // 削除ボタン
-                        IconButton(
-                          icon: Icon(
-                            Icons.delete,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          onPressed: () => _showRemoveConfirmDialog(member),
-                          tooltip: '削除',
-                        ),
-                      ],
-                    )
-                  : null;
-            }(),
+                : null,
           ),
         );
+
+        // オーナーかつ自分自身でない場合のみスワイプ削除可能
+        if (canModify) {
+          return Dismissible(
+            key: Key(member.id),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              margin: const EdgeInsets.only(bottom: 8),
+              color: Theme.of(context).colorScheme.error,
+              child: Icon(
+                Icons.delete,
+                color: Theme.of(context).colorScheme.onError,
+              ),
+            ),
+            confirmDismiss: (direction) async {
+              return await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('メンバー削除'),
+                  content: Text('${member.displayName}をグループから削除しますか？'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('キャンセル'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      child: const Text('削除'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            onDismissed: (direction) {
+              widget.onRemoveMember(member.id);
+            },
+            child: cardWidget,
+          );
+        } else {
+          return cardWidget;
+        }
       },
     );
   }
@@ -607,12 +620,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
     final displayId = _userIdController.text.trim();
     if (displayId.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('ユーザーIDを入力してください'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      SnackBarHelper.showErrorSnackBar(context, 'ユーザーIDを入力してください');
       return;
     }
 
@@ -661,12 +669,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       _userIdController.clear();
 
       // 成功メッセージ
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('招待を送信しました'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      SnackBarHelper.showSuccessSnackBar(context, '招待を送信しました');
 
       // メンバー更新通知
       widget.onMembersUpdated?.call();
@@ -677,12 +680,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       if (e is ApiException) {
         final errorMessage = _getErrorMessage(e.message);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          SnackBarHelper.showErrorSnackBar(context, errorMessage);
         }
       } else {
         // システムエラーの場合、エラーダイアログを表示

@@ -448,12 +448,15 @@ CREATE POLICY recurring_todo_assignments_delete_member ON recurring_todo_assignm
 
 -- updated_at自動更新関数
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 各テーブルにupdated_at自動更新トリガーを設定
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
@@ -617,6 +620,7 @@ END $$;
 CREATE OR REPLACE FUNCTION execute_recurring_todos()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   recurring_todo_record RECORD;
@@ -662,11 +666,72 @@ BEGIN
       )
       RETURNING id INTO new_todo_id;
 
-      -- 2. 担当者を割り当て
+      -- 2. 担当者を割り当て（グループ離脱者は自動割り振り）
       INSERT INTO todo_assignments (todo_id, user_id, assigned_at)
-      SELECT new_todo_id, user_id, now_time
-      FROM recurring_todo_assignments
-      WHERE recurring_todo_id = recurring_todo_record.id;
+      SELECT
+        new_todo_id,
+        CASE
+          -- 担当者がまだグループメンバーの場合はそのまま割り当て
+          WHEN EXISTS (
+            SELECT 1 FROM group_members
+            WHERE group_members.group_id = recurring_todo_record.group_id
+            AND group_members.user_id = rta.user_id
+          ) THEN rta.user_id
+          -- グループから離脱している場合、フォールバック
+          ELSE COALESCE(
+            -- 優先順位1: 定期TODO作成者（グループメンバーの場合）
+            (SELECT recurring_todo_record.created_by
+             WHERE EXISTS (
+               SELECT 1 FROM group_members
+               WHERE group_members.group_id = recurring_todo_record.group_id
+               AND group_members.user_id = recurring_todo_record.created_by
+             )),
+            -- 優先順位2: グループ作成者（グループメンバーの場合）
+            (SELECT g.created_by FROM groups g
+             WHERE g.id = recurring_todo_record.group_id
+             AND EXISTS (
+               SELECT 1 FROM group_members
+               WHERE group_members.group_id = g.id
+               AND group_members.user_id = g.created_by
+             )),
+            -- 優先順位3: グループオーナー
+            (SELECT gm.user_id FROM group_members gm
+             WHERE gm.group_id = recurring_todo_record.group_id
+             AND gm.role = 'owner'
+             LIMIT 1)
+          )
+        END as assigned_user_id,
+        now_time
+      FROM recurring_todo_assignments rta
+      WHERE rta.recurring_todo_id = recurring_todo_record.id
+      -- 割り当て先ユーザーが確定した場合のみINSERT
+      AND CASE
+        WHEN EXISTS (
+          SELECT 1 FROM group_members
+          WHERE group_members.group_id = recurring_todo_record.group_id
+          AND group_members.user_id = rta.user_id
+        ) THEN TRUE
+        ELSE COALESCE(
+          (SELECT recurring_todo_record.created_by
+           WHERE EXISTS (
+             SELECT 1 FROM group_members
+             WHERE group_members.group_id = recurring_todo_record.group_id
+             AND group_members.user_id = recurring_todo_record.created_by
+           )) IS NOT NULL,
+          (SELECT g.created_by FROM groups g
+           WHERE g.id = recurring_todo_record.group_id
+           AND EXISTS (
+             SELECT 1 FROM group_members
+             WHERE group_members.group_id = g.id
+             AND group_members.user_id = g.created_by
+           )) IS NOT NULL,
+          (SELECT gm.user_id FROM group_members gm
+           WHERE gm.group_id = recurring_todo_record.group_id
+           AND gm.role = 'owner'
+           LIMIT 1) IS NOT NULL,
+          FALSE
+        )
+      END;
 
       -- 3. 次回生成日時を計算
       next_generation := calculate_next_generation(
@@ -719,6 +784,7 @@ CREATE OR REPLACE FUNCTION calculate_next_generation(
 )
 RETURNS TIMESTAMPTZ
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   next_time TIMESTAMPTZ;
@@ -877,6 +943,18 @@ COMMENT ON COLUMN app_versions.force_update_message IS '強制アップデート
 COMMENT ON COLUMN app_versions.store_url_ios IS 'App StoreのURL';
 COMMENT ON COLUMN app_versions.store_url_android IS 'Google PlayのURL';
 
+-- RLS有効化（app_versions, maintenance_mode）
+ALTER TABLE app_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_mode ENABLE ROW LEVEL SECURITY;
+
+-- App Versions: 全ユーザーが読み取り可能（アプリ起動時のバージョンチェック用）
+CREATE POLICY app_versions_select_all ON app_versions FOR SELECT
+  USING (true);
+
+-- Maintenance Mode: 全ユーザーが読み取り可能（メンテナンスモードチェック用）
+CREATE POLICY maintenance_mode_select_all ON maintenance_mode FOR SELECT
+  USING (true);
+
 -- ===================================
 -- 14. Group Invitations (グループ招待)
 -- ===================================
@@ -908,5 +986,129 @@ COMMENT ON COLUMN group_invitations.invited_role IS '招待時に指定したロ
 COMMENT ON COLUMN group_invitations.status IS '招待ステータス（pending: 保留中, accepted: 承認済み, rejected: 却下済み）';
 COMMENT ON COLUMN group_invitations.invited_at IS '招待日時';
 COMMENT ON COLUMN group_invitations.responded_at IS '承認/却下日時';
+
+-- ===================================
+-- 15. Quick Actions (クイックアクション)
+-- ===================================
+CREATE TABLE quick_actions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  created_by UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE,
+  display_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_quick_actions_group_id ON quick_actions(group_id);
+CREATE INDEX idx_quick_actions_display_order ON quick_actions(group_id, display_order);
+
+COMMENT ON TABLE quick_actions IS 'クイックアクション管理テーブル';
+COMMENT ON COLUMN quick_actions.group_id IS '所属グループID';
+COMMENT ON COLUMN quick_actions.name IS 'クイックアクション名（例: カレー）';
+COMMENT ON COLUMN quick_actions.description IS '説明';
+COMMENT ON COLUMN quick_actions.created_by IS '作成者';
+COMMENT ON COLUMN quick_actions.display_order IS '表示順序';
+
+-- ===================================
+-- 16. Quick Action Templates (クイックアクションテンプレート)
+-- ===================================
+CREATE TABLE quick_action_templates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  quick_action_id UUID NOT NULL REFERENCES quick_actions(id) ON DELETE CASCADE,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  deadline_days_after INTEGER,
+  assigned_user_ids UUID[],
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_quick_action_templates_quick_action_id ON quick_action_templates(quick_action_id);
+CREATE INDEX idx_quick_action_templates_display_order ON quick_action_templates(quick_action_id, display_order);
+
+COMMENT ON TABLE quick_action_templates IS 'クイックアクションテンプレート（TODO生成用）';
+COMMENT ON COLUMN quick_action_templates.quick_action_id IS '所属するクイックアクションID';
+COMMENT ON COLUMN quick_action_templates.title IS 'TODO名（例: 玉ねぎを買う）';
+COMMENT ON COLUMN quick_action_templates.description IS '説明';
+COMMENT ON COLUMN quick_action_templates.deadline_days_after IS '生成から何日後に期限設定（NULL=期限なし）';
+COMMENT ON COLUMN quick_action_templates.assigned_user_ids IS '担当者UUID配列';
+COMMENT ON COLUMN quick_action_templates.display_order IS 'テンプレート内の表示順序';
+
+-- クイックアクションのRLS
+ALTER TABLE quick_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quick_action_templates ENABLE ROW LEVEL SECURITY;
+
+-- Quick Actions: 所属グループメンバーのみアクセス
+CREATE POLICY quick_actions_select_member ON quick_actions FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM group_members
+    WHERE group_members.group_id = quick_actions.group_id
+    AND group_members.user_id = auth.uid()
+  ));
+
+CREATE POLICY quick_actions_insert_member ON quick_actions FOR INSERT
+  WITH CHECK (
+    created_by = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = quick_actions.group_id
+      AND group_members.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY quick_actions_update_creator_or_owner ON quick_actions FOR UPDATE
+  USING (
+    created_by = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM groups
+      WHERE groups.id = quick_actions.group_id
+      AND groups.owner_id = auth.uid()
+    )
+  );
+
+CREATE POLICY quick_actions_delete_creator_or_owner ON quick_actions FOR DELETE
+  USING (
+    created_by = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM groups
+      WHERE groups.id = quick_actions.group_id
+      AND groups.owner_id = auth.uid()
+    )
+  );
+
+-- Quick Action Templates: 所属グループメンバーのみアクセス
+CREATE POLICY quick_action_templates_select_member ON quick_action_templates FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM quick_actions
+    JOIN group_members ON group_members.group_id = quick_actions.group_id
+    WHERE quick_actions.id = quick_action_templates.quick_action_id
+    AND group_members.user_id = auth.uid()
+  ));
+
+CREATE POLICY quick_action_templates_insert_member ON quick_action_templates FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM quick_actions
+    JOIN group_members ON group_members.group_id = quick_actions.group_id
+    WHERE quick_actions.id = quick_action_templates.quick_action_id
+    AND group_members.user_id = auth.uid()
+  ));
+
+CREATE POLICY quick_action_templates_update_member ON quick_action_templates FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM quick_actions
+    JOIN group_members ON group_members.group_id = quick_actions.group_id
+    WHERE quick_actions.id = quick_action_templates.quick_action_id
+    AND group_members.user_id = auth.uid()
+  ));
+
+CREATE POLICY quick_action_templates_delete_member ON quick_action_templates FOR DELETE
+  USING (EXISTS (
+    SELECT 1 FROM quick_actions
+    JOIN group_members ON group_members.group_id = quick_actions.group_id
+    WHERE quick_actions.id = quick_action_templates.quick_action_id
+    AND group_members.user_id = auth.uid()
+  ));
 
 -- ===================================

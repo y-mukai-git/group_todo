@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
+import '../widgets/quick_action_list_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 
 /// ホーム画面（MyTODO - 自分のタスク表示）
@@ -374,173 +376,238 @@ class _HomeScreenState extends State<HomeScreen> {
       resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('My TODO'), actions: []),
       body: _buildGroupPageView(),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'home_fab',
-        onPressed: () async {
-          // 選択中グループの情報を取得
-          final myGroups = _cacheService.groups;
-          final selectedGroup =
-              myGroups.isNotEmpty && _currentGroupIndex < myGroups.length
-              ? myGroups[_currentGroupIndex]
-              : null;
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        overlayColor: Colors.black,
+        overlayOpacity: 0.4,
+        spacing: 12,
+        childPadding: const EdgeInsets.all(5),
+        spaceBetweenChildren: 12,
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.add_task),
+            label: 'TODO作成',
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+            onTap: () async {
+              // 選択中グループの情報を取得
+              final myGroups = _cacheService.groups;
+              final selectedGroup =
+                  myGroups.isNotEmpty && _currentGroupIndex < myGroups.length
+                  ? myGroups[_currentGroupIndex]
+                  : null;
 
-          // デフォルトグループのメンバー情報取得
-          final membersData = selectedGroup != null
-              ? _cacheService.getGroupMembers(selectedGroup.id)
-              : null;
+              // デフォルトグループのメンバー情報取得
+              final membersData = selectedGroup != null
+                  ? _cacheService.getGroupMembers(selectedGroup.id)
+                  : null;
 
-          // asyncギャップの前にmountedチェックとcontextを保存
-          if (!mounted) return;
-          final localContext = context;
+              // asyncギャップの前にmountedチェックとcontextを保存
+              if (!mounted) return;
+              final localContext = context;
 
-          final result = await showModalBottomSheet<Map<String, dynamic>>(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            enableDrag: true,
-            isDismissible: true,
-            useRootNavigator: false,
-            builder: (context) {
-              // コンテンツエリアの80%を固定値として計算
-              final mediaQuery = MediaQuery.of(context);
-              final contentHeight =
-                  mediaQuery.size.height -
-                  mediaQuery.padding.top -
-                  mediaQuery.padding.bottom;
+              final result = await showModalBottomSheet<Map<String, dynamic>>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                enableDrag: true,
+                isDismissible: true,
+                useRootNavigator: false,
+                builder: (context) {
+                  // コンテンツエリアの80%を固定値として計算
+                  final mediaQuery = MediaQuery.of(context);
+                  final contentHeight =
+                      mediaQuery.size.height -
+                      mediaQuery.padding.top -
+                      mediaQuery.padding.bottom;
 
-              return Container(
-                height: contentHeight * 0.8,
-                margin: EdgeInsets.only(top: contentHeight * 0.2),
-                child: CreateTodoBottomSheet(
-                  fixedGroupId: null, // グループ選択UI表示
-                  defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
-                  availableAssignees:
-                      membersData != null && membersData['success'] == true
-                      ? (membersData['members'] as List<dynamic>).map((m) {
-                          final memberId = m['id'] as String;
-                          final memberName =
-                              memberId == _cacheService.currentUser!.id
-                              ? _cacheService.currentUser!.displayName
-                              : m['display_name'] as String;
-                          return {'id': memberId, 'name': memberName};
-                        }).toList()
+                  return Container(
+                    height: contentHeight * 0.8,
+                    margin: EdgeInsets.only(top: contentHeight * 0.2),
+                    child: CreateTodoBottomSheet(
+                      fixedGroupId: null, // グループ選択UI表示
+                      defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
+                      availableAssignees:
+                          membersData != null && membersData['success'] == true
+                          ? (membersData['members'] as List<dynamic>).map((m) {
+                              final memberId = m['id'] as String;
+                              final memberName =
+                                  memberId == _cacheService.currentUser!.id
+                                  ? _cacheService.currentUser!.displayName
+                                  : m['display_name'] as String;
+                              return {'id': memberId, 'name': memberName};
+                            }).toList()
+                          : null,
+                      currentUserId: widget.user.id,
+                      currentUserName: _cacheService.currentUser!.displayName,
+                      existingTodo: null,
+                    ),
+                  );
+                },
+              );
+
+              // asyncギャップの後にmountedチェック
+              if (!mounted) return;
+              if (result == null) return;
+
+              final isCreatingNewGroup =
+                  result['is_creating_new_group'] as bool?;
+              final title = result['title'] as String;
+              final description = result['description'] as String?;
+              final deadline = result['deadline'] as DateTime?;
+              final assigneeIds =
+                  (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
+                  [widget.user.id];
+
+              // ローディング表示
+              if (mounted) {
+                showDialog(
+                  // ignore: use_build_context_synchronously
+                  context: localContext,
+                  barrierDismissible: false,
+                  builder: (context) =>
+                      const Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              try {
+                String groupId;
+
+                // 新規グループ作成の場合
+                if (isCreatingNewGroup == true) {
+                  final groupName = result['group_name'] as String;
+                  final groupDescription =
+                      result['group_description'] as String?;
+                  final groupCategory = result['group_category'] as String?;
+                  final groupImageData = result['group_image_data'] as String?;
+
+                  // グループ作成
+                  final newGroup = await _cacheService.createGroup(
+                    userId: widget.user.id,
+                    groupName: groupName,
+                    description: groupDescription,
+                    category: groupCategory,
+                    imageData: groupImageData,
+                  );
+                  groupId = newGroup.id;
+                  _showSuccessSnackBar('グループを作成しました');
+                } else {
+                  // 既存グループ選択の場合
+                  groupId = result['group_id'] as String;
+                }
+
+                // タスク作成
+                await _cacheService.createTodo(
+                  userId: widget.user.id,
+                  groupId: groupId,
+                  title: title,
+                  description: description?.isNotEmpty == true
+                      ? description
                       : null,
-                  currentUserId: widget.user.id,
-                  currentUserName: _cacheService.currentUser!.displayName,
-                  existingTodo: null,
-                ),
+                  dueDate: deadline,
+                  assignedUserIds: assigneeIds,
+                );
+
+                _showSuccessSnackBar('タスクを作成しました');
+
+                // ローディング非表示（フレーム完了後に実行）
+                if (mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // ignore: use_build_context_synchronously
+                    if (mounted) {
+                      Navigator.of(localContext, rootNavigator: true).pop();
+                    }
+                  });
+                }
+              } catch (e, stackTrace) {
+                debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
+
+                // ローディング非表示
+                if (mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    // ignore: use_build_context_synchronously
+                    if (mounted) {
+                      Navigator.of(localContext, rootNavigator: true).pop();
+                    }
+                  });
+                }
+
+                // エラーログ記録
+                final errorLog = await ErrorLogService().logError(
+                  userId: widget.user.id,
+                  errorType: 'タスク作成エラー',
+                  errorMessage: 'タスクの作成に失敗しました',
+                  stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+                  screenName: 'ホーム画面',
+                );
+
+                // エラーメッセージ表示（フレーム完了後に安全に表示）
+                if (mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      // ignore: use_build_context_synchronously
+                      SnackBarHelper.showErrorSnackBar(
+                        localContext,
+                        'タスク/グループの作成に失敗しました（ID: ${errorLog.id}）',
+                        duration: const Duration(seconds: 5),
+                      );
+                    }
+                  });
+                }
+              }
+            },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.flash_on),
+            label: 'クイックアクション',
+            backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+            foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+            onTap: () {
+              // 選択中グループの情報を取得
+              final myGroups = _cacheService.groups;
+              final selectedGroup =
+                  myGroups.isNotEmpty && _currentGroupIndex < myGroups.length
+                  ? myGroups[_currentGroupIndex]
+                  : null;
+
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                enableDrag: true,
+                isDismissible: true,
+                useRootNavigator: false,
+                builder: (context) {
+                  // コンテンツエリアの80%を固定値として計算
+                  final mediaQuery = MediaQuery.of(context);
+                  final contentHeight =
+                      mediaQuery.size.height -
+                      mediaQuery.padding.top -
+                      mediaQuery.padding.bottom;
+
+                  return Container(
+                    height: contentHeight * 0.8,
+                    margin: EdgeInsets.only(top: contentHeight * 0.2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    child: QuickActionListBottomSheet(
+                      fixedGroupId: null, // グループ選択UI表示
+                      defaultGroupId: selectedGroup?.id, // 選択中のグループをデフォルト値に設定
+                      userId: widget.user.id,
+                    ),
+                  );
+                },
               );
             },
-          );
-
-          // asyncギャップの後にmountedチェック
-          if (!mounted) return;
-          if (result == null) return;
-
-          final isCreatingNewGroup = result['is_creating_new_group'] as bool?;
-          final title = result['title'] as String;
-          final description = result['description'] as String?;
-          final deadline = result['deadline'] as DateTime?;
-          final assigneeIds =
-              (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
-              [widget.user.id];
-
-          // ローディング表示
-          if (mounted) {
-            showDialog(
-              // ignore: use_build_context_synchronously
-              context: localContext,
-              barrierDismissible: false,
-              builder: (context) =>
-                  const Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          try {
-            String groupId;
-
-            // 新規グループ作成の場合
-            if (isCreatingNewGroup == true) {
-              final groupName = result['group_name'] as String;
-              final groupDescription = result['group_description'] as String?;
-              final groupCategory = result['group_category'] as String?;
-              final groupImageData = result['group_image_data'] as String?;
-
-              // グループ作成
-              final newGroup = await _cacheService.createGroup(
-                userId: widget.user.id,
-                groupName: groupName,
-                description: groupDescription,
-                category: groupCategory,
-                imageData: groupImageData,
-              );
-              groupId = newGroup.id;
-              _showSuccessSnackBar('グループを作成しました');
-            } else {
-              // 既存グループ選択の場合
-              groupId = result['group_id'] as String;
-            }
-
-            // タスク作成
-            await _cacheService.createTodo(
-              userId: widget.user.id,
-              groupId: groupId,
-              title: title,
-              description: description?.isNotEmpty == true ? description : null,
-              dueDate: deadline,
-              assignedUserIds: assigneeIds,
-            );
-
-            _showSuccessSnackBar('タスクを作成しました');
-
-            // ローディング非表示（フレーム完了後に実行）
-            if (mounted) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                // ignore: use_build_context_synchronously
-                if (mounted) {
-                  Navigator.of(localContext, rootNavigator: true).pop();
-                }
-              });
-            }
-          } catch (e, stackTrace) {
-            debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
-
-            // ローディング非表示
-            if (mounted) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                // ignore: use_build_context_synchronously
-                if (mounted) {
-                  Navigator.of(localContext, rootNavigator: true).pop();
-                }
-              });
-            }
-
-            // エラーログ記録
-            final errorLog = await ErrorLogService().logError(
-              userId: widget.user.id,
-              errorType: 'タスク作成エラー',
-              errorMessage: 'タスクの作成に失敗しました',
-              stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-              screenName: 'ホーム画面',
-            );
-
-            // エラーメッセージ表示（フレーム完了後に安全に表示）
-            if (mounted) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  // ignore: use_build_context_synchronously
-                  SnackBarHelper.showErrorSnackBar(
-                    localContext,
-                    'タスク/グループの作成に失敗しました（ID: ${errorLog.id}）',
-                    duration: const Duration(seconds: 5),
-                  );
-                }
-              });
-            }
-          }
-        },
-        tooltip: 'タスク作成',
-        child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
@@ -855,98 +922,103 @@ class _TodoListTile extends StatelessWidget {
         todo.dueDate!.isBefore(now) &&
         !todo.isCompleted;
 
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                // チェックボックスまたはローディングインジケーター
-                SizedBox(
-                  width: 42,
-                  height: 42,
-                  child: isUpdating
-                      ? const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : Transform.scale(
-                          scale: 1.1,
-                          child: Checkbox(
-                            value: todo.isCompleted,
-                            onChanged: (_) => onToggle(),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  // チェックボックスまたはローディングインジケーター
+                  SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: isUpdating
+                        ? const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : Transform.scale(
+                            scale: 1.1,
+                            child: Checkbox(
+                              value: todo.isCompleted,
+                              onChanged: (_) => onToggle(),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                           ),
-                        ),
-                ),
-                const SizedBox(width: 12),
-                // タスク内容
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        todo.title,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          decoration: todo.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: todo.isCompleted
-                              ? Theme.of(context).colorScheme.outline
-                              : Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
+                  ),
+                  const SizedBox(width: 12),
+                  // タスク内容
+                  Expanded(
+                    child: Text(
+                      todo.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        decoration: todo.isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: todo.isCompleted
+                            ? Theme.of(context).colorScheme.outline
+                            : Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
                       ),
-                      if (todo.dueDate != null) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: isOverdue
-                                  ? Theme.of(context).colorScheme.error
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDate(todo.dueDate!),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: isOverdue
-                                        ? Theme.of(context).colorScheme.error
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
+                    ),
+                  ),
+                  // 期限（右側配置）
+                  if (todo.dueDate != null) ...[
+                    const SizedBox(width: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: isOverdue
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatDate(todo.dueDate!),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: isOverdue
+                                    ? Theme.of(context).colorScheme.error
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-        ),
-        Divider(
-          height: 1,
-          thickness: 1,
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

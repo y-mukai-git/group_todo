@@ -72,6 +72,9 @@ dependencies:
   # Widget可視状態検知（並び替えモード解除用）
   visibility_detector: ^0.4.0+2
 
+  # スピードダイヤルFAB
+  flutter_speed_dial: ^7.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

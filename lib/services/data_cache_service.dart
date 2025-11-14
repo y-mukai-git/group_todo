@@ -3,11 +3,14 @@ import '../data/models/todo_model.dart';
 import '../data/models/group_model.dart';
 import '../data/models/user_model.dart';
 import '../data/models/announcement_model.dart';
+import '../data/models/quick_action_model.dart';
+import '../data/models/recurring_todo_model.dart';
 import '../core/utils/api_client.dart';
 import 'todo_service.dart';
 import 'group_service.dart';
 import 'user_service.dart';
 import 'announcement_service.dart';
+import 'quick_action_service.dart';
 
 /// データキャッシュサービス（シングルトン + ChangeNotifier）
 ///
@@ -24,6 +27,7 @@ class DataCacheService extends ChangeNotifier {
   final GroupService _groupService = GroupService();
   final UserService _userService = UserService();
   final AnnouncementService _announcementService = AnnouncementService();
+  final QuickActionService _quickActionService = QuickActionService();
 
   // キャッシュデータ
   List<TodoModel> _todos = [];
@@ -33,6 +37,10 @@ class DataCacheService extends ChangeNotifier {
   String? _signedAvatarUrl;
   // グループID -> メンバー一覧 + オーナーID
   final Map<String, Map<String, dynamic>> _groupMembers = {};
+  // グループID -> クイックアクション一覧
+  final Map<String, List<QuickActionModel>> _groupQuickActions = {};
+  // グループID -> 定期TODO一覧
+  final Map<String, List<RecurringTodoModel>> _groupRecurringTodos = {};
 
   // ゲッター
   List<TodoModel> get todos => _todos;
@@ -46,6 +54,16 @@ class DataCacheService extends ChangeNotifier {
   List<AnnouncementModel> get announcements => _announcements;
   UserModel? get currentUser => _currentUser;
   String? get signedAvatarUrl => _signedAvatarUrl;
+
+  /// グループIDからクイックアクション一覧を取得
+  List<QuickActionModel> getQuickActionsByGroupId(String groupId) {
+    return _groupQuickActions[groupId] ?? [];
+  }
+
+  /// グループIDから定期TODO一覧を取得
+  List<RecurringTodoModel> getRecurringTodosByGroupId(String groupId) {
+    return _groupRecurringTodos[groupId] ?? [];
+  }
 
   /// 初期データ取得（スプラッシュ画面で実行）
   Future<void> initializeCache(
@@ -88,8 +106,38 @@ class DataCacheService extends ChangeNotifier {
         groupMembersMap.cast<String, Map<String, dynamic>>(),
       );
 
+      // 定期TODOデータ整形
+      final recurringTodosList =
+          response['recurring_todos'] as List<dynamic>? ?? [];
+      _groupRecurringTodos.clear();
+      for (final json in recurringTodosList) {
+        final recurringTodo = RecurringTodoModel.fromJson(
+          json as Map<String, dynamic>,
+        );
+        final groupId = recurringTodo.groupId;
+        if (!_groupRecurringTodos.containsKey(groupId)) {
+          _groupRecurringTodos[groupId] = [];
+        }
+        _groupRecurringTodos[groupId]!.add(recurringTodo);
+      }
+
+      // クイックアクションデータ整形
+      final quickActionsList =
+          response['quick_actions'] as List<dynamic>? ?? [];
+      _groupQuickActions.clear();
+      for (final json in quickActionsList) {
+        final quickAction = QuickActionModel.fromJson(
+          json as Map<String, dynamic>,
+        );
+        final groupId = quickAction.groupId;
+        if (!_groupQuickActions.containsKey(groupId)) {
+          _groupQuickActions[groupId] = [];
+        }
+        _groupQuickActions[groupId]!.add(quickAction);
+      }
+
       debugPrint(
-        '[DataCacheService] ✅ 初期データ取得完了: TODOs=${_todos.length}, Groups=${_groups.length}',
+        '[DataCacheService] ✅ 初期データ取得完了: TODOs=${_todos.length}, Groups=${_groups.length}, RecurringTodos=${recurringTodosList.length}, QuickActions=${quickActionsList.length}',
       );
       notifyListeners();
     } catch (e) {
@@ -488,6 +536,145 @@ class DataCacheService extends ChangeNotifier {
       debugPrint('[DataCacheService] ✅ お知らせ取得完了: ${_announcements.length}件');
     } catch (e) {
       debugPrint('[DataCacheService] ❌ お知らせ取得エラー: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== クイックアクション関連 ====================
+
+  /// クイックアクション一覧読み込み（グループごと）
+  Future<void> loadQuickActions({
+    required String userId,
+    required String groupId,
+  }) async {
+    try {
+      debugPrint('[DataCacheService] クイックアクション一覧取得開始: groupId=$groupId');
+
+      final quickActions = await _quickActionService.getQuickActions(
+        userId: userId,
+        groupId: groupId,
+      );
+
+      // 取得成功 → キャッシュ更新
+      _groupQuickActions[groupId] = quickActions;
+      notifyListeners();
+
+      debugPrint(
+        '[DataCacheService] ✅ クイックアクション一覧取得完了: ${quickActions.length}件',
+      );
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ クイックアクション一覧取得エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// クイックアクション作成（DB + キャッシュ）
+  Future<QuickActionModel> createQuickAction({
+    required String userId,
+    required String groupId,
+    required String name,
+    String? description,
+    required List<QuickActionTemplateModel> templates,
+  }) async {
+    try {
+      // 1. DB作成
+      final newQuickAction = await _quickActionService.createQuickAction(
+        userId: userId,
+        groupId: groupId,
+        name: name,
+        description: description,
+        templates: templates,
+      );
+
+      // 2. DB作成成功 → キャッシュに追加
+      final currentList = _groupQuickActions[groupId] ?? [];
+      currentList.add(newQuickAction);
+      _groupQuickActions[groupId] = currentList;
+      notifyListeners();
+
+      return newQuickAction;
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ クイックアクション作成エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// クイックアクション更新（DB + キャッシュ）
+  Future<QuickActionModel> updateQuickAction({
+    required String userId,
+    required String groupId,
+    required String quickActionId,
+    String? name,
+    String? description,
+    List<QuickActionTemplateModel>? templates,
+  }) async {
+    try {
+      // 1. DB更新
+      final updatedQuickAction = await _quickActionService.updateQuickAction(
+        userId: userId,
+        quickActionId: quickActionId,
+        name: name,
+        description: description,
+        templates: templates,
+      );
+
+      // 2. DB更新成功 → キャッシュ更新
+      final currentList = _groupQuickActions[groupId] ?? [];
+      final index = currentList.indexWhere((qa) => qa.id == quickActionId);
+      if (index != -1) {
+        currentList[index] = updatedQuickAction;
+        _groupQuickActions[groupId] = currentList;
+        notifyListeners();
+      }
+
+      return updatedQuickAction;
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ クイックアクション更新エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// クイックアクション削除（DB + キャッシュ）
+  Future<void> deleteQuickAction({
+    required String userId,
+    required String groupId,
+    required String quickActionId,
+  }) async {
+    try {
+      // 1. DB削除
+      await _quickActionService.deleteQuickAction(
+        userId: userId,
+        quickActionId: quickActionId,
+      );
+
+      // 2. DB削除成功 → キャッシュから削除
+      final currentList = _groupQuickActions[groupId] ?? [];
+      currentList.removeWhere((qa) => qa.id == quickActionId);
+      _groupQuickActions[groupId] = currentList;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ クイックアクション削除エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// クイックアクション実行（複数TODO一括生成）
+  Future<void> executeQuickAction({
+    required String userId,
+    required String quickActionId,
+  }) async {
+    try {
+      // クイックアクション実行（TODO一括生成）
+      await _quickActionService.executeQuickAction(
+        userId: userId,
+        quickActionId: quickActionId,
+      );
+
+      // TODO一覧を再取得してキャッシュ更新
+      // （ここでは手動リフレッシュをユーザーに促す想定）
+      debugPrint('[DataCacheService] ✅ クイックアクション実行完了');
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ クイックアクション実行エラー: $e');
       rethrow;
     }
   }

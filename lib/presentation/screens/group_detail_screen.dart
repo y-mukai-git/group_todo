@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../data/models/recurring_todo_model.dart';
+import '../../data/models/quick_action_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
@@ -12,6 +14,8 @@ import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
 import '../widgets/create_recurring_todo_bottom_sheet.dart';
+import '../widgets/create_quick_action_bottom_sheet.dart';
+import '../widgets/quick_action_list_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 
 /// グループ詳細画面
@@ -25,35 +29,23 @@ class GroupDetailScreen extends StatefulWidget {
   State<GroupDetailScreen> createState() => _GroupDetailScreenState();
 }
 
-class _GroupDetailScreenState extends State<GroupDetailScreen>
-    with SingleTickerProviderStateMixin {
+class _GroupDetailScreenState extends State<GroupDetailScreen> {
   final DataCacheService _cacheService = DataCacheService();
   final RecurringTodoService _recurringTodoService = RecurringTodoService();
   List<TodoModel> _todos = [];
   late GroupModel _currentGroup;
   String _selectedFilter =
       'incomplete'; // 'incomplete', 'completed', 'my_incomplete'
-  late TabController _tabController;
-  int _currentTabIndex = 0;
+  int _selectedViewIndex = 0; // 0: TODO, 1: 定期TODO, 2: クイックアクション
   List<UserModel> _groupMembers = []; // グループメンバーリスト
   List<RecurringTodoModel> _recurringTodos = []; // 定期TODOリスト
-  bool _isLoadingRecurringTodos = false;
+  List<QuickActionModel> _quickActions = []; // クイックアクションリスト
   final Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
 
   @override
   void initState() {
     super.initState();
     _currentGroup = widget.group;
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-      });
-      // グループ設定タブに切り替えた時に定期タスクを読み込む
-      if (_currentTabIndex == 1) {
-        _loadRecurringTodos();
-      }
-    });
     // キャッシュリスナー登録
     _cacheService.addListener(_updateGroupData);
     // 初回データ取得
@@ -137,48 +129,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
-  /// 定期タスク一覧読み込み
-  Future<void> _loadRecurringTodos() async {
-    if (_isLoadingRecurringTodos) return;
-
-    setState(() {
-      _isLoadingRecurringTodos = true;
-    });
-
-    try {
-      final recurringTodos = await _recurringTodoService.getRecurringTodos(
-        userId: widget.user.id,
-        groupId: widget.group.id,
-      );
-
-      if (mounted) {
-        setState(() {
-          _recurringTodos = recurringTodos;
-          _isLoadingRecurringTodos = false;
-        });
-      }
-    } catch (e, stackTrace) {
-      debugPrint('[GroupDetailScreen] ❌ 定期タスク一覧取得エラー: $e');
-      final errorLog = await ErrorLogService().logError(
-        userId: widget.user.id,
-        errorType: '定期タスク一覧取得エラー',
-        errorMessage: '定期タスク一覧の取得に失敗しました',
-        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-        screenName: 'グループ詳細画面',
-      );
-      if (mounted) {
-        setState(() {
-          _isLoadingRecurringTodos = false;
-        });
-        await ErrorDialog.show(
-          context: context,
-          errorId: errorLog.id,
-          errorMessage: '定期タスク一覧の取得に失敗しました',
-        );
-      }
-    }
-  }
-
   /// 定期タスク作成ボトムシート表示
   Future<void> _showCreateRecurringTodoDialog() async {
     final result = await showModalBottomSheet<bool>(
@@ -219,7 +169,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
 
     if (result == true && mounted) {
-      _loadRecurringTodos(); // 一覧を再取得
       _showSuccessSnackBar('定期タスクを作成しました');
     }
   }
@@ -267,7 +216,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     );
 
     if (result == true && mounted) {
-      _loadRecurringTodos(); // 一覧を再取得
       _showSuccessSnackBar('定期タスクを更新しました');
     }
   }
@@ -281,7 +229,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       );
 
       if (mounted) {
-        _loadRecurringTodos(); // 一覧を再取得
         _showSuccessSnackBar('定期タスクを削除しました');
       }
     } catch (e, stackTrace) {
@@ -303,6 +250,143 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
     }
   }
 
+  /// クイックアクション作成ボトムシート表示
+  Future<void> _showCreateQuickActionDialog() async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useRootNavigator: false,
+      builder: (context) {
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
+          child: CreateQuickActionBottomSheet(
+            groupId: widget.group.id,
+            groupName: widget.group.name,
+            userId: widget.user.id,
+            availableAssignees: _groupMembers
+                .map(
+                  (member) => {
+                    'id': member.id,
+                    'name': member.id == widget.user.id
+                        ? _cacheService.currentUser!.displayName
+                        : member.displayName,
+                  },
+                )
+                .toList(),
+          ),
+        );
+      },
+    );
+
+    // キャッシュサービスがnotifyListeners()を呼ぶので自動的に更新される
+  }
+
+  /// クイックアクション編集ボトムシート表示
+  Future<void> _showEditQuickActionDialog(QuickActionModel quickAction) async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      isDismissible: true,
+      useRootNavigator: false,
+      builder: (context) {
+        final mediaQuery = MediaQuery.of(context);
+        final contentHeight =
+            mediaQuery.size.height -
+            mediaQuery.padding.top -
+            mediaQuery.padding.bottom;
+
+        return Container(
+          height: contentHeight * 0.8,
+          margin: EdgeInsets.only(top: contentHeight * 0.2),
+          child: CreateQuickActionBottomSheet(
+            groupId: widget.group.id,
+            groupName: widget.group.name,
+            userId: widget.user.id,
+            availableAssignees: _groupMembers
+                .map(
+                  (member) => {
+                    'id': member.id,
+                    'name': member.id == widget.user.id
+                        ? _cacheService.currentUser!.displayName
+                        : member.displayName,
+                  },
+                )
+                .toList(),
+            existingQuickAction: quickAction,
+          ),
+        );
+      },
+    );
+
+    // キャッシュサービスがnotifyListeners()を呼ぶので自動的に更新される
+  }
+
+  /// クイックアクション削除
+  Future<void> _deleteQuickAction(QuickActionModel quickAction) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('削除確認'),
+        content: Text('クイックアクション「${quickAction.name}」を削除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _cacheService.deleteQuickAction(
+        userId: widget.user.id,
+        groupId: widget.group.id,
+        quickActionId: quickAction.id,
+      );
+
+      if (mounted) {
+        _showSuccessSnackBar('クイックアクションを削除しました');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ クイックアクション削除エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'クイックアクション削除エラー',
+        errorMessage: 'クイックアクションの削除に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: 'クイックアクションの削除に失敗しました',
+        );
+      }
+    }
+  }
+
   /// 定期TODO ON/OFF切り替え
   Future<void> _toggleRecurringTodoActive(
     RecurringTodoModel recurringTodo,
@@ -314,7 +398,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       );
 
       if (mounted) {
-        _loadRecurringTodos(); // 一覧を再取得
         final message = recurringTodo.isActive
             ? '定期タスクを無効にしました'
             : '定期タスクを有効にしました';
@@ -343,7 +426,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
   void dispose() {
     // リスナー解除
     _cacheService.removeListener(_updateGroupData);
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -385,6 +467,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
       return; // 処理停止
     }
 
+    // キャッシュから定期TODO取得
+    final recurringTodos = _cacheService.getRecurringTodosByGroupId(
+      widget.group.id,
+    );
+
+    // キャッシュからクイックアクション取得
+    final quickActions = _cacheService.getQuickActionsByGroupId(
+      widget.group.id,
+    );
+
     if (mounted) {
       setState(() {
         if (group != null) {
@@ -392,6 +484,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
         }
         _todos = todos;
         _groupMembers = members;
+        _recurringTodos = recurringTodos;
+        _quickActions = quickActions;
       });
     }
   }
@@ -912,7 +1006,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               ],
             ),
           ),
-          // セグメントコントロール風タブ
+          // 3つのボタン切り替え
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Container(
@@ -924,32 +1018,32 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => _tabController.animateTo(0),
+                      onTap: () => setState(() => _selectedViewIndex = 0),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: _currentTabIndex == 0
+                          color: _selectedViewIndex == 0
                               ? Theme.of(context).colorScheme.primary
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.check_box,
                               size: 20,
-                              color: _currentTabIndex == 0
+                              color: _selectedViewIndex == 0
                                   ? Theme.of(context).colorScheme.onPrimary
                                   : Theme.of(context).colorScheme.onSurface,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(height: 4),
                             Text(
                               'TODO',
-                              style: Theme.of(context).textTheme.bodyMedium
+                              style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: _currentTabIndex == 0
+                                    color: _selectedViewIndex == 0
                                         ? Theme.of(
                                             context,
                                           ).colorScheme.onPrimary
@@ -965,32 +1059,76 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => _tabController.animateTo(1),
+                      onTap: () => setState(() => _selectedViewIndex = 1),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: _currentTabIndex == 1
+                          color: _selectedViewIndex == 1
                               ? Theme.of(context).colorScheme.primary
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.settings,
+                              Icons.repeat,
                               size: 20,
-                              color: _currentTabIndex == 1
+                              color: _selectedViewIndex == 1
                                   ? Theme.of(context).colorScheme.onPrimary
                                   : Theme.of(context).colorScheme.onSurface,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(height: 4),
                             Text(
-                              '定期TODO設定',
-                              style: Theme.of(context).textTheme.bodyMedium
+                              '定期TODO',
+                              style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: _currentTabIndex == 1
+                                    color: _selectedViewIndex == 1
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedViewIndex = 2),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _selectedViewIndex == 2
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.flash_on,
+                              size: 20,
+                              color: _selectedViewIndex == 2
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Theme.of(context).colorScheme.onSurface,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'クイック\nアクション',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10,
+                                    height: 1.2,
+                                    color: _selectedViewIndex == 2
                                         ? Theme.of(
                                             context,
                                           ).colorScheme.onPrimary
@@ -1008,270 +1146,582 @@ class _GroupDetailScreenState extends State<GroupDetailScreen>
               ),
             ),
           ),
-          // タブコンテンツ
+          // 表示コンテンツ（選択されたインデックスに応じて切り替え）
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // タブ1: タスクエリア
-                Column(
-                  children: [
-                    // タスクフィルター（固定表示）
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _FilterChip(
-                              label: '未完了',
-                              isSelected: _selectedFilter == 'incomplete',
-                              onTap: () => setState(
-                                () => _selectedFilter = 'incomplete',
+            child: _selectedViewIndex == 0
+                ? // ビュー0: TODOエリア
+                  Column(
+                    children: [
+                      // タスクフィルター（固定表示）
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _FilterChip(
+                                label: '未完了',
+                                isSelected: _selectedFilter == 'incomplete',
+                                onTap: () => setState(
+                                  () => _selectedFilter = 'incomplete',
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _FilterChip(
-                              label: '直近の完了',
-                              isSelected: _selectedFilter == 'completed',
-                              onTap: () =>
-                                  setState(() => _selectedFilter = 'completed'),
-                            ),
-                          ),
-                          if (widget.group.category != 'personal') ...[
                             const SizedBox(width: 8),
                             Expanded(
                               child: _FilterChip(
-                                label: '自タスク',
-                                isSelected: _selectedFilter == 'my_incomplete',
+                                label: '直近の完了',
+                                isSelected: _selectedFilter == 'completed',
                                 onTap: () => setState(
-                                  () => _selectedFilter = 'my_incomplete',
+                                  () => _selectedFilter = 'completed',
                                 ),
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    // タスクリスト（スクロール可能）
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _refreshData,
-                        child: ListView(
-                          padding: const EdgeInsets.only(top: 4),
-                          children: [
-                            // タスクリスト
-                            ..._filteredTodos.map(
-                              (todo) => _TodoListTile(
-                                todo: todo,
-                                user: widget.user,
-                                onToggle: () => _toggleTodoCompletion(todo),
-                                onTap: () => _showTodoDetail(todo),
-                                onDelete: () => _deleteTodo(todo),
-                                isUpdating: _updatingTodoIds.contains(todo.id),
+                            if (widget.group.category != 'personal') ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _FilterChip(
+                                  label: '自タスク',
+                                  isSelected:
+                                      _selectedFilter == 'my_incomplete',
+                                  onTap: () => setState(
+                                    () => _selectedFilter = 'my_incomplete',
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 80),
+                            ],
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                // タブ2: グループ設定エリア
-                RefreshIndicator(
-                  onRefresh: _refreshData,
-                  child: ListView(
-                    padding: const EdgeInsets.only(top: 12),
-                    children: [
-                      // 定期タスク一覧
-                      if (_isLoadingRecurringTodos)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (_recurringTodos.isEmpty)
-                        Container(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.shadow.withValues(alpha: 0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                      // タスクリスト（スクロール可能）
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: _refreshData,
+                          child: ListView(
+                            padding: const EdgeInsets.only(top: 4),
+                            children: [
+                              // タスクリスト
+                              ..._filteredTodos.map(
+                                (todo) => _TodoListTile(
+                                  todo: todo,
+                                  user: widget.user,
+                                  onToggle: () => _toggleTodoCompletion(todo),
+                                  onTap: () => _showTodoDetail(todo),
+                                  onDelete: () => _deleteTodo(todo),
+                                  isUpdating: _updatingTodoIds.contains(
+                                    todo.id,
+                                  ),
+                                ),
                               ),
+                              const SizedBox(height: 80),
                             ],
                           ),
-                          child: Text(
-                            '定期タスクがありません',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
+                        ),
+                      ),
+                    ],
+                  )
+                : _selectedViewIndex == 1
+                ? // ビュー1: 定期TODOエリア
+                  RefreshIndicator(
+                    onRefresh: _refreshData,
+                    child: ListView(
+                      padding: const EdgeInsets.only(top: 12),
+                      children: [
+                        // 定期タスク一覧
+                        if (_recurringTodos.isEmpty)
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
                                   color: Theme.of(
                                     context,
-                                  ).colorScheme.onSurfaceVariant,
+                                  ).colorScheme.shadow.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
-                          ),
-                        )
-                      else
-                        ..._recurringTodos.map(
-                          (recurringTodo) => Dismissible(
-                            key: Key(recurringTodo.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.error,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.delete,
-                                color: Theme.of(context).colorScheme.onError,
-                              ),
+                              ],
                             ),
-                            confirmDismiss: (direction) async {
-                              return await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('削除確認'),
-                                  content: Text(
-                                    '「${recurringTodo.title}」を削除しますか？',
+                            child: Text(
+                              '定期タスクがありません',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('キャンセル'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      child: Text(
-                                        '削除',
-                                        style: TextStyle(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.error,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                            ),
+                          )
+                        else
+                          ..._recurringTodos.map(
+                            (recurringTodo) => Dismissible(
+                              key: Key(recurringTodo.id),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
                                 ),
-                              );
-                            },
-                            onDismissed: (direction) =>
-                                _deleteRecurringTodo(recurringTodo),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Theme.of(context).colorScheme.onError,
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Theme.of(context).colorScheme.shadow
-                                        .withValues(alpha: 0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: InkWell(
-                                onTap: () =>
-                                    _showEditRecurringTodoDialog(recurringTodo),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              recurringTodo.title,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              _formatRecurrencePattern(
-                                                recurringTodo,
-                                              ),
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
+                              confirmDismiss: (direction) async {
+                                return await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('削除確認'),
+                                    content: Text(
+                                      '「${recurringTodo.title}」を削除しますか？',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('キャンセル'),
                                       ),
-                                      // ON/OFFスイッチ
-                                      Switch(
-                                        value: recurringTodo.isActive,
-                                        onChanged: (_) =>
-                                            _toggleRecurringTodoActive(
-                                              recurringTodo,
-                                            ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        child: Text(
+                                          '削除',
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.error,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
+                                );
+                              },
+                              onDismissed: (direction) =>
+                                  _deleteRecurringTodo(recurringTodo),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .shadow
+                                          .withValues(alpha: 0.08),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: InkWell(
+                                  onTap: () => _showEditRecurringTodoDialog(
+                                    recurringTodo,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                recurringTodo.title,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                _formatRecurrencePattern(
+                                                  recurringTodo,
+                                                ),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // ON/OFFスイッチ
+                                        Switch(
+                                          value: recurringTodo.isActive,
+                                          onChanged: (_) =>
+                                              _toggleRecurringTodoActive(
+                                                recurringTodo,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      const SizedBox(height: 80),
-                    ],
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+                  )
+                : // ビュー2: クイックアクションエリア
+                  RefreshIndicator(
+                    onRefresh: _refreshData,
+                    child: ListView(
+                      padding: const EdgeInsets.only(top: 12),
+                      children: [
+                        // クイックアクション一覧
+                        if (_quickActions.isEmpty)
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.shadow.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              'クイックアクションがありません',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          )
+                        else
+                          ..._quickActions.map(
+                            (quickAction) => Dismissible(
+                              key: Key(quickAction.id),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Theme.of(context).colorScheme.onError,
+                                ),
+                              ),
+                              confirmDismiss: (direction) async {
+                                return await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('削除確認'),
+                                    content: Text(
+                                      '「${quickAction.name}」を削除しますか？',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('キャンセル'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        child: Text(
+                                          '削除',
+                                          style: TextStyle(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              onDismissed: (direction) =>
+                                  _deleteQuickAction(quickAction),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .shadow
+                                          .withValues(alpha: 0.08),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: InkWell(
+                                  onTap: () =>
+                                      _showEditQuickActionDialog(quickAction),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                quickAction.name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 80),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
-      floatingActionButton: _currentTabIndex == 0
-          ? FloatingActionButton(
-              heroTag: 'group_detail_fab_todo',
-              onPressed: _showCreateTodoDialog,
-              tooltip: 'TODO追加',
-              child: const Icon(Icons.add_task),
-            )
-          : FloatingActionButton(
-              heroTag: 'group_detail_fab_recurring',
-              onPressed: _showCreateRecurringTodoDialog,
-              tooltip: '定期TODO追加',
-              child: const Icon(Icons.repeat),
-            ),
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        overlayColor: Colors.black,
+        overlayOpacity: 0.4,
+        spacing: 12,
+        childPadding: const EdgeInsets.all(5),
+        spaceBetweenChildren: 12,
+        children: _selectedViewIndex == 0
+            ? [
+                // TODOタブ: TODO作成 + クイックアクション実行
+                SpeedDialChild(
+                  child: const Icon(Icons.add_task),
+                  label: 'TODO作成',
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onPrimaryContainer,
+                  onTap: _showCreateTodoDialog,
+                ),
+                SpeedDialChild(
+                  child: const Icon(Icons.flash_on),
+                  label: 'クイックアクション',
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.tertiaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onTertiaryContainer,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      enableDrag: true,
+                      isDismissible: true,
+                      useRootNavigator: false,
+                      builder: (context) {
+                        final mediaQuery = MediaQuery.of(context);
+                        final contentHeight =
+                            mediaQuery.size.height -
+                            mediaQuery.padding.top -
+                            mediaQuery.padding.bottom;
+
+                        return Container(
+                          height: contentHeight * 0.8,
+                          margin: EdgeInsets.only(top: contentHeight * 0.2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          child: QuickActionListBottomSheet(
+                            fixedGroupId: widget.group.id,
+                            userId: widget.user.id,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ]
+            : _selectedViewIndex == 1
+            ? [
+                // 定期TODOタブ: 定期TODO作成 + クイックアクション実行
+                SpeedDialChild(
+                  child: const Icon(Icons.repeat),
+                  label: '定期TODO作成',
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onPrimaryContainer,
+                  onTap: _showCreateRecurringTodoDialog,
+                ),
+                SpeedDialChild(
+                  child: const Icon(Icons.flash_on),
+                  label: 'クイックアクション',
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.tertiaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onTertiaryContainer,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      enableDrag: true,
+                      isDismissible: true,
+                      useRootNavigator: false,
+                      builder: (context) {
+                        final mediaQuery = MediaQuery.of(context);
+                        final contentHeight =
+                            mediaQuery.size.height -
+                            mediaQuery.padding.top -
+                            mediaQuery.padding.bottom;
+
+                        return Container(
+                          height: contentHeight * 0.8,
+                          margin: EdgeInsets.only(top: contentHeight * 0.2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          child: QuickActionListBottomSheet(
+                            fixedGroupId: widget.group.id,
+                            userId: widget.user.id,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ]
+            : [
+                // クイックアクションタブ: クイックアクション作成 + クイックアクション実行
+                SpeedDialChild(
+                  child: const Icon(Icons.flash_on),
+                  label: 'クイックアクション作成',
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onPrimaryContainer,
+                  onTap: _showCreateQuickActionDialog,
+                ),
+                SpeedDialChild(
+                  child: const Icon(Icons.play_arrow),
+                  label: 'クイックアクション実行',
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.tertiaryContainer,
+                  foregroundColor: Theme.of(
+                    context,
+                  ).colorScheme.onTertiaryContainer,
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      enableDrag: true,
+                      isDismissible: true,
+                      useRootNavigator: false,
+                      builder: (context) {
+                        final mediaQuery = MediaQuery.of(context);
+                        final contentHeight =
+                            mediaQuery.size.height -
+                            mediaQuery.padding.top -
+                            mediaQuery.padding.bottom;
+
+                        return Container(
+                          height: contentHeight * 0.8,
+                          margin: EdgeInsets.only(top: contentHeight * 0.2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          child: QuickActionListBottomSheet(
+                            fixedGroupId: widget.group.id,
+                            userId: widget.user.id,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+      ),
     );
   }
 }

@@ -67,11 +67,50 @@ interface GroupMembersData {
   owner_id: string
 }
 
+interface RecurringTodoItem {
+  id: string
+  group_id: string
+  title: string
+  description: string | null
+  recurrence_pattern: string
+  recurrence_days: number[] | null
+  generation_time: string
+  next_generation_at: string
+  deadline_days_after: number | null
+  is_active: boolean
+  created_by: string
+  created_at: string
+  assignees: {
+    user_id: string
+    display_name: string
+    avatar_url: string | null
+  }[]
+}
+
+interface QuickActionItem {
+  id: string
+  group_id: string
+  name: string
+  description: string | null
+  templates: Array<{
+    id: string
+    title: string
+    description: string | null
+    deadline_days_after: number | null
+    assigned_user_id: string | null
+    display_order: number
+  }>
+  created_by: string
+  created_at: string
+}
+
 interface InitializeUserCacheResponse {
   success: boolean
   todos?: TodoItem[]
   groups?: GroupWithStats[]
   group_members?: { [groupId: string]: GroupMembersData }
+  recurring_todos?: RecurringTodoItem[]
+  quick_actions?: QuickActionItem[]
   error?: string
 }
 
@@ -476,13 +515,166 @@ serve(async (req) => {
     }
 
     // ========================================
+    // 4. 全グループの定期TODO取得
+    // ========================================
+    let allRecurringTodos: RecurringTodoItem[] = []
+
+    if (groupIds.length > 0) {
+      const { data: recurringTodos, error: recurringTodosError } = await supabaseClient
+        .from('recurring_todos')
+        .select(`
+          id,
+          group_id,
+          title,
+          description,
+          recurrence_pattern,
+          recurrence_days,
+          generation_time,
+          next_generation_at,
+          deadline_days_after,
+          is_active,
+          created_by,
+          created_at
+        `)
+        .in('group_id', groupIds)
+        .order('created_at', { ascending: false })
+
+      if (recurringTodosError) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to get recurring todos: ${recurringTodosError.message}` }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      // 定期TODOの担当者情報を一括取得
+      const recurringTodoIds = (recurringTodos || []).map(rt => rt.id)
+      const { data: recurringAssignments } = await supabaseClient
+        .from('recurring_todo_assignments')
+        .select(`
+          recurring_todo_id,
+          user_id,
+          users:user_id (
+            display_name,
+            avatar_url
+          )
+        `)
+        .in('recurring_todo_id', recurringTodoIds)
+
+      // 定期TODO IDごとに担当者情報をグループ化
+      const recurringAssignmentsMap = new Map<string, any[]>()
+      for (const assignment of recurringAssignments || []) {
+        const existing = recurringAssignmentsMap.get(assignment.recurring_todo_id) || []
+        existing.push({
+          user_id: assignment.user_id,
+          display_name: assignment.users?.display_name || '',
+          avatar_url: assignment.users?.avatar_url || null
+        })
+        recurringAssignmentsMap.set(assignment.recurring_todo_id, existing)
+      }
+
+      // 各定期TODOに担当者情報を追加
+      allRecurringTodos = (recurringTodos || []).map(rt => ({
+        id: rt.id,
+        group_id: rt.group_id,
+        title: rt.title,
+        description: rt.description,
+        recurrence_pattern: rt.recurrence_pattern,
+        recurrence_days: rt.recurrence_days,
+        generation_time: rt.generation_time,
+        next_generation_at: rt.next_generation_at,
+        deadline_days_after: rt.deadline_days_after,
+        is_active: rt.is_active,
+        created_by: rt.created_by,
+        created_at: rt.created_at,
+        assignees: recurringAssignmentsMap.get(rt.id) || []
+      }))
+    }
+
+    // ========================================
+    // 5. 全グループのクイックアクション取得
+    // ========================================
+    let allQuickActions: QuickActionItem[] = []
+
+    if (groupIds.length > 0) {
+      const { data: quickActions, error: quickActionsError } = await supabaseClient
+        .from('quick_actions')
+        .select(`
+          id,
+          group_id,
+          name,
+          description,
+          created_by,
+          created_at
+        `)
+        .in('group_id', groupIds)
+        .order('created_at', { ascending: false })
+
+      if (quickActionsError) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to get quick actions: ${quickActionsError.message}` }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      // クイックアクションのテンプレート情報を一括取得
+      const quickActionIds = (quickActions || []).map(qa => qa.id)
+      const { data: templates } = await supabaseClient
+        .from('quick_action_templates')
+        .select(`
+          id,
+          quick_action_id,
+          title,
+          description,
+          deadline_days_after,
+          assigned_user_id,
+          display_order
+        `)
+        .in('quick_action_id', quickActionIds)
+        .order('display_order', { ascending: true })
+
+      // クイックアクション IDごとにテンプレートをグループ化
+      const templatesMap = new Map<string, any[]>()
+      for (const template of templates || []) {
+        const existing = templatesMap.get(template.quick_action_id) || []
+        existing.push({
+          id: template.id,
+          title: template.title,
+          description: template.description,
+          deadline_days_after: template.deadline_days_after,
+          assigned_user_id: template.assigned_user_id,
+          display_order: template.display_order
+        })
+        templatesMap.set(template.quick_action_id, existing)
+      }
+
+      // 各クイックアクションにテンプレート情報を追加
+      allQuickActions = (quickActions || []).map(qa => ({
+        id: qa.id,
+        group_id: qa.group_id,
+        name: qa.name,
+        description: qa.description,
+        templates: templatesMap.get(qa.id) || [],
+        created_by: qa.created_by,
+        created_at: qa.created_at
+      }))
+    }
+
+    // ========================================
     // レスポンス返却
     // ========================================
     const response: InitializeUserCacheResponse = {
       success: true,
       todos: todoItems,
       groups: groupsWithStats,
-      group_members: groupMembersData
+      group_members: groupMembersData,
+      recurring_todos: allRecurringTodos,
+      quick_actions: allQuickActions
     }
 
     return new Response(

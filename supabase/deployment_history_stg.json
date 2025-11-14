@@ -214,7 +214,7 @@
       "group_members": {
         "columns": {
           "display_order": {
-            "default": null,
+            "default": "0",
             "nullable": false,
             "type": "integer"
           },
@@ -323,6 +323,94 @@
           },
           "updated_at": {
             "default": "now()",
+            "nullable": true,
+            "type": "timestamp with time zone"
+          }
+        }
+      },
+      "quick_action_templates": {
+        "columns": {
+          "assigned_user_ids": {
+            "default": null,
+            "nullable": true,
+            "type": "ARRAY"
+          },
+          "created_at": {
+            "default": "CURRENT_TIMESTAMP",
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "deadline_days_after": {
+            "default": null,
+            "nullable": true,
+            "type": "integer"
+          },
+          "description": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "display_order": {
+            "default": "0",
+            "nullable": false,
+            "type": "integer"
+          },
+          "id": {
+            "default": "uuid_generate_v4()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "quick_action_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "title": {
+            "default": null,
+            "nullable": false,
+            "type": "character varying"
+          }
+        }
+      },
+      "quick_actions": {
+        "columns": {
+          "created_at": {
+            "default": "CURRENT_TIMESTAMP",
+            "nullable": true,
+            "type": "timestamp with time zone"
+          },
+          "created_by": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "description": {
+            "default": null,
+            "nullable": true,
+            "type": "text"
+          },
+          "display_order": {
+            "default": "0",
+            "nullable": false,
+            "type": "integer"
+          },
+          "group_id": {
+            "default": null,
+            "nullable": false,
+            "type": "uuid"
+          },
+          "id": {
+            "default": "uuid_generate_v4()",
+            "nullable": false,
+            "type": "uuid"
+          },
+          "name": {
+            "default": null,
+            "nullable": false,
+            "type": "character varying"
+          },
+          "updated_at": {
+            "default": null,
             "nullable": true,
             "type": "timestamp with time zone"
           }
@@ -607,11 +695,13 @@
     "check-app-status": "554595a985c7ab93ed9c48d878ec6314ffbdab72613fb7df0a969c923a74d1ec",
     "check-maintenance-mode": "28da1e9bd930786d0c8ed627aec86dbee2d6a3b96e3e64a54751d0340cb4da7c",
     "create-group": "fd5f544e2fac8c34209521bb4970bf94a5be7f573ce26e9b649945c9ef40850c",
+    "create-quick-action": "0c5c0a855d94d237536827375981254ef95d2e14392975a4cda272cc280c7c2d",
     "create-recurring-todo": "95e9dfa95ec00a3d4853e042d0d1cf769e0156f4daf249fffd11819758f659f5",
     "create-todo": "f588b928ea8cefdcbeb62d0e359e6670d9305db2d6d2d53638307fe3eeb027d0",
     "create-todo-comment": "71ab14761d846c3c1b1e9fdbe0c5eaba3e7d45a27f810a21b7d2e5551d4b885f",
     "create-user": "98e3b31728e327aa55a18748ad02a1a5d409dcf645f6d679c2ba72d0a0a062ee",
     "delete-group": "94d1a3f5a7f14551b8ca0ccf39cb286d1d4970e5d061ba013e8c6b851ddff204",
+    "delete-quick-action": "36a82b3f3f70732aba5ac2f42cf62c507d75d592ce09649d2b8b4920883d85e3",
     "delete-recurring-todo": "4d8521e8820ca219292355484f46e3a238ac8a2b9d8335d6a9dfe72d979b087d",
     "delete-todo": "9025d7f44903a4c32454a4e55ad330504e5a3128ee28e725be12a2b37f8ca31c",
     "get-announcements": "2df90029bb19926ae3044228008c3a271ed4125484c7aca4143aa47b2f506b1a",
@@ -620,12 +710,13 @@
     "get-group-todos": "c1c15b9852228edf6111d07f2691b5d746bcf0d785821fdd880963d4dd091f82",
     "get-my-todos": "6cc52b3c74273c7e128ad61c4d50995476cae9f6851bab1cece4dc58f084ae8a",
     "get-pending-invitations": "c970c14ed192cac218e383621b1dc03d4aafd30b9587fdba48a32a30f55dc567",
+    "get-quick-actions": "644fefda4ae41a798e9049a512cb9af619b748e2fcfa65e779047b0b41b19362",
     "get-recurring-todos": "d5ecc736c3c03749c9421c19238cf607ed4b6fe792955598ece41d44f0fd048e",
     "get-todo-comments": "3756abb9c5e4765de7eec5e3ce0d423c4fa478ba0479e24bcb9d9143ea805e11",
     "get-todo-detail": "e517aab4d02bd498251710cae421c95d73cc4ab17453e04d1df34150f0dd673a",
     "get-user-by-device": "5b4b96ea0994c542247003c649b69678e161d09c1f8c28d2331384d7561aafd3",
     "get-user-groups": "5a9630828f9d6d88d9e06ade12a516180241e1d376dc44580ee2620c37d9fbe3",
-    "initialize-user-cache": "6e93ad86ebe5e49f3383b67850fe2216782ffb4bd8dfb014174475fe1f734d84",
+    "initialize-user-cache": "6994433289323a5a267b5414ccae254f9dd581166c75f43449354849623b71c6",
     "invite-user": "a9bc83b827913f25b28ea3d6594edfe24fb862e2304d67f1939ad9921d5da1d8",
     "log-error": "13b614a14b0a580901408e32a390f49a05f779a33657464509432cc23da8e658",
     "reject-invitation": "76ce4a660eefbfca4ec5b213e474b347344b27896bb5ce06995fc7e65b7b77b2",
@@ -637,6 +728,7 @@
     "transfer-user-data": "c3c12ed63242b0e597af26c99cfe875cca0c69b3c0de87700f445989322d556f",
     "update-group": "96b28e32e2b4086435985165712e37d1681f9a8ffbc63916a45aa57b7a49229a",
     "update-group-order": "7c213f5f373561c227a684bf64d70d804e8489ae6abbb451b1a2d6d119fc3054",
+    "update-quick-action": "e32941971b3241137f65f6c19c68cc7bc4e82d7669aece92b26bd6d483a22486",
     "update-recurring-todo": "7694ec5aff7d958870d18d7b075aea6df7d21f2b1132ac31531fd2f17b58507d",
     "update-todo": "795ebe4da019e6264ff1626a5daadb9d22c1557a24641a35e0a7762706d2153c",
     "update-user-profile": "7e6cb97be72bfb7f2724ead66d28c60fc70cc6e124f0be28ff614bbd09494a53",

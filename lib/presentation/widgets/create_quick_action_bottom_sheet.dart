@@ -653,144 +653,116 @@ class _TemplateEditDialogState extends State<_TemplateEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-        vertical: 24.0,
-      ),
-      title: const Text('TODOテンプレート'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // TODOタイトル
-              TextField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'TODOタイトル',
-                  hintText: 'TODOのタイトルを入力',
-                  prefixIcon: const Icon(Icons.title),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                maxLength: 15,
-              ),
-              const SizedBox(height: 12),
-
-              // TODO説明
-              TextField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'TODO説明（任意）',
-                  hintText: 'TODOの詳細を入力',
-                  prefixIcon: const Icon(Icons.description),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                maxLines: 2,
-                maxLength: 200,
-              ),
-              const SizedBox(height: 12),
-
-              // 期限設定
-              Text(
-                '期限設定',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _showDeadlinePicker,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline,
+    return GestureDetector(
+      onTap: () {
+        // ダイアログ外タップでキーボードを閉じる
+        FocusScope.of(context).unfocus();
+      },
+      child: AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 16.0,
+          vertical: 24.0,
+        ),
+        title: const Text('TODOテンプレート'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // TODOタイトル
+                TextField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    labelText: 'TODOタイトル',
+                    hintText: 'TODOのタイトルを入力',
+                    prefixIcon: const Icon(Icons.title),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _deadlineDaysAfter == null
-                            ? '期限なし'
-                            : '$_deadlineDaysAfter日後',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ],
-                  ),
+                  maxLength: 15,
                 ),
-              ),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 16),
+                // TODO説明
+                TextField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(
+                    labelText: 'TODO説明（任意）',
+                    hintText: 'TODOの詳細を入力',
+                    prefixIcon: const Icon(Icons.description),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  maxLines: 2,
+                  maxLength: 200,
+                ),
+                const SizedBox(height: 12),
 
-              // 担当者
-              if (widget.availableAssignees != null &&
-                  widget.availableAssignees!.isNotEmpty) ...[
+                // 期限設定
                 Text(
-                  '担当者',
+                  '期限設定',
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                // グループに1人のみ：表示のみ（変更不可）
-                if (widget.availableAssignees!.length == 1)
-                  Container(
+                InkWell(
+                  onTap: _showDeadlinePicker,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
                         Icon(
-                          Icons.person,
+                          Icons.calendar_today,
                           color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          widget.availableAssignees!.first['name']!,
+                          _deadlineDaysAfter == null
+                              ? '期限なし'
+                              : '$_deadlineDaysAfter日後',
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                         const Spacer(),
                         Icon(
-                          Icons.lock,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.outline,
+                          Icons.arrow_drop_down,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ],
                     ),
                   ),
-                // グループに複数人：選択可能
-                if (widget.availableAssignees!.length > 1)
-                  InkWell(
-                    onTap: _showAssigneePicker,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
+                ),
+
+                const SizedBox(height: 16),
+
+                // 担当者
+                if (widget.availableAssignees != null &&
+                    widget.availableAssignees!.isNotEmpty) ...[
+                  Text(
+                    '担当者',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // グループに1人のみ：表示のみ（変更不可）
+                  if (widget.availableAssignees!.length == 1)
+                    Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -801,48 +773,82 @@ class _TemplateEditDialogState extends State<_TemplateEditDialog> {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            _assignedUserIds.isEmpty
-                                ? '担当者を選択'
-                                : widget.availableAssignees!.firstWhere(
-                                    (a) => a['id'] == _assignedUserIds.first,
-                                    orElse: () => {'id': '', 'name': '未設定'},
-                                  )['name']!,
+                            widget.availableAssignees!.first['name']!,
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                           const Spacer(),
                           Icon(
-                            Icons.arrow_drop_down,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            Icons.lock,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.outline,
                           ),
                         ],
                       ),
                     ),
-                  ),
+                  // グループに複数人：選択可能
+                  if (widget.availableAssignees!.length > 1)
+                    InkWell(
+                      onTap: _showAssigneePicker,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.person,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              _assignedUserIds.isEmpty
+                                  ? '担当者を選択'
+                                  : widget.availableAssignees!.firstWhere(
+                                      (a) => a['id'] == _assignedUserIds.first,
+                                      orElse: () => {'id': '', 'name': '未設定'},
+                                    )['name']!,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () {
+              // OKがタップされた場合、独自のcontrollerの値を元のcontrollerにコピー
+              widget.template.titleController.text = _titleController.text;
+              widget.template.descriptionController.text =
+                  _descriptionController.text;
+              widget.template.deadlineDaysAfter = _deadlineDaysAfter;
+              widget.template.assignedUserIds = _assignedUserIds;
+              Navigator.pop(context, true);
+            },
+            child: const Text('OK'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('キャンセル'),
-        ),
-        FilledButton(
-          onPressed: () {
-            // OKがタップされた場合、独自のcontrollerの値を元のcontrollerにコピー
-            widget.template.titleController.text = _titleController.text;
-            widget.template.descriptionController.text =
-                _descriptionController.text;
-            widget.template.deadlineDaysAfter = _deadlineDaysAfter;
-            widget.template.assignedUserIds = _assignedUserIds;
-            Navigator.pop(context, true);
-          },
-          child: const Text('OK'),
-        ),
-      ],
     );
   }
 

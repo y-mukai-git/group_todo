@@ -318,16 +318,25 @@ class _GroupsScreenState extends State<GroupsScreen> {
           actions: [
             if (_isReorderMode)
               TextButton(
-                onPressed: _isCompleting ? null : _completeReorder,
-                child: Text(
-                  '完了',
-                  style: TextStyle(
-                    color: _isCompleting
-                        ? Colors.white.withValues(alpha: 0.5)
-                        : Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                onPressed: _isCompleting ? () {} : _completeReorder,
+                child: _isCompleting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        '完了',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               )
             else
               TextButton.icon(

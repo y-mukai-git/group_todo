@@ -78,8 +78,8 @@ class _QuickActionListBottomSheetState
         'クイックアクション「${quickAction.name}」を実行しました',
       );
 
-      // ボトムシートを閉じる
-      Navigator.pop(context);
+      // ボトムシートを閉じる（成功を通知）
+      Navigator.pop(context, true);
     } catch (e, stackTrace) {
       debugPrint('[QuickActionListBottomSheet] ❌ クイックアクション実行エラー: $e');
 

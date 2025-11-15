@@ -7,6 +7,7 @@ class TodoModel {
   final String? description;
   final DateTime? dueDate;
   final bool isCompleted;
+  final DateTime? completedAt;
   final String createdBy;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -20,6 +21,7 @@ class TodoModel {
     this.description,
     this.dueDate,
     required this.isCompleted,
+    this.completedAt,
     required this.createdBy,
     required this.createdAt,
     this.updatedAt,
@@ -56,6 +58,9 @@ class TodoModel {
       description: json['description'] as String?,
       dueDate: dueDateStr != null ? DateTime.parse(dueDateStr as String) : null,
       isCompleted: json['is_completed'] as bool,
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'] as String)
+          : null,
       createdBy: json['created_by'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
@@ -74,6 +79,7 @@ class TodoModel {
       'description': description,
       'due_date': dueDate?.toIso8601String(),
       'is_completed': isCompleted,
+      'completed_at': completedAt?.toIso8601String(),
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -89,6 +95,7 @@ class TodoModel {
     String? description,
     DateTime? dueDate,
     bool? isCompleted,
+    DateTime? completedAt,
     String? createdBy,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -101,6 +108,7 @@ class TodoModel {
       description: description ?? this.description,
       dueDate: dueDate ?? this.dueDate,
       isCompleted: isCompleted ?? this.isCompleted,
+      completedAt: completedAt ?? this.completedAt,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

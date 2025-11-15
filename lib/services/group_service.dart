@@ -68,11 +68,14 @@ class GroupService {
   }
 
   /// グループ詳細取得
-  Future<GroupModel> getGroupDetail({required String groupId}) async {
+  Future<GroupModel> getGroupDetail({
+    required String groupId,
+    required String userId,
+  }) async {
     try {
       final response = await _apiClient.callFunction(
         functionName: 'get-group-detail',
-        body: {'group_id': groupId},
+        body: {'group_id': groupId, 'user_id': userId},
       );
 
       if (response['success'] != true) {
@@ -248,11 +251,12 @@ class GroupService {
   Future<Map<String, dynamic>> validateUserForInvitation({
     required String groupId,
     required String displayId,
+    required String userId,
   }) async {
     try {
       final response = await _apiClient.callFunction(
         functionName: 'validate-user-for-invitation',
-        body: {'group_id': groupId, 'display_id': displayId},
+        body: {'group_id': groupId, 'display_id': displayId, 'user_id': userId},
       );
 
       if (response['success'] != true) {

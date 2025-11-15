@@ -45,7 +45,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _members = widget.members;
+    _members = _sortMembers(widget.members);
     _currentTabIndex = widget.initialTab; // 初期タブを設定
   }
 
@@ -55,7 +55,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
     // 親から渡されるmembersが更新されたら反映
     if (widget.members != oldWidget.members) {
       setState(() {
-        _members = widget.members;
+        _members = _sortMembers(widget.members);
       });
     }
   }
@@ -64,6 +64,33 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
   void dispose() {
     _userIdController.dispose();
     super.dispose();
+  }
+
+  /// メンバーリストをソート
+  /// 優先度: 1.管理者(オーナー) 2.オーナー 3.管理者(メンバー) 4.メンバー
+  /// 同優先度内では加入日時(createdAt)の古い順
+  List<UserModel> _sortMembers(List<UserModel> members) {
+    return List.from(members)..sort((a, b) {
+      // 優先度を取得する関数
+      int getPriority(UserModel user) {
+        final isGroupOwner = user.id == widget.groupOwnerId;
+        final isOwnerRole = user.role == 'owner';
+
+        if (isGroupOwner && isOwnerRole) return 1; // 管理者(オーナー)
+        if (!isGroupOwner && isOwnerRole) return 2; // オーナー
+        if (isGroupOwner && !isOwnerRole) return 3; // 管理者(メンバー)
+        return 4; // メンバー
+      }
+
+      final priorityA = getPriority(a);
+      final priorityB = getPriority(b);
+
+      // 優先度で比較
+      if (priorityA != priorityB) return priorityA.compareTo(priorityB);
+
+      // 同優先度の場合は加入日時で比較（古い順）
+      return a.createdAt.compareTo(b.createdAt);
+    });
   }
 
   /// 現在のユーザーがオーナーかどうかを判定
@@ -323,7 +350,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         final isCurrentUserOwner =
             widget.currentUserId == widget.groupOwnerId ||
             currentUserRole == 'owner';
-        final canModify = isCurrentUserOwner && !isCurrentUser;
+        final canModify = isCurrentUserOwner && !isCurrentUser && !isPending;
 
         final cardWidget = Card(
           margin: const EdgeInsets.only(bottom: 8),
@@ -633,6 +660,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       final validateResponse = await _groupService.validateUserForInvitation(
         groupId: widget.groupId,
         displayId: displayId,
+        userId: widget.currentUserId,
       );
 
       if (!mounted) return;

@@ -107,6 +107,71 @@ serve(async (req) => {
       )
     }
 
+    // タスク再割り当て処理（メンバー削除前に実行）
+    // 1. 削除対象メンバーの担当タスクを取得
+    const { data: assignments } = await supabaseClient
+      .from('todo_assignments')
+      .select('todo_id')
+      .eq('user_id', target_user_id)
+
+    if (assignments && assignments.length > 0) {
+      // 2. 残りのグループメンバーを取得（削除対象を除く）
+      const { data: remainingMembers } = await supabaseClient
+        .from('group_members')
+        .select(`
+          user_id,
+          users:user_id (
+            id,
+            role,
+            created_at
+          )
+        `)
+        .eq('group_id', group_id)
+        .neq('user_id', target_user_id)
+
+      if (remainingMembers && remainingMembers.length > 0) {
+        // 3. メンバーを優先度順にソート
+        const sortedMembers = remainingMembers
+          .map((m: any) => ({
+            user_id: m.user_id,
+            role: m.users?.role,
+            created_at: m.users?.created_at
+          }))
+          .sort((a: any, b: any) => {
+            // 優先度計算関数
+            const getPriority = (member: any) => {
+              const isGroupOwner = member.user_id === group.owner_id
+              const isOwnerRole = member.role === 'owner'
+
+              if (isGroupOwner && isOwnerRole) return 1 // 管理者(オーナー)
+              if (!isGroupOwner && isOwnerRole) return 2 // オーナー
+              if (isGroupOwner && !isOwnerRole) return 3 // 管理者(メンバー)
+              return 4 // メンバー
+            }
+
+            const priorityA = getPriority(a)
+            const priorityB = getPriority(b)
+
+            // 優先度で比較
+            if (priorityA !== priorityB) return priorityA - priorityB
+
+            // 同優先度の場合は加入日時で比較（古い順）
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          })
+
+        // 4. 最優先メンバーにタスクを再割り当て
+        const newAssigneeId = sortedMembers[0].user_id
+        const todoIds = assignments.map((a: any) => a.todo_id)
+
+        await supabaseClient
+          .from('todo_assignments')
+          .update({ user_id: newAssigneeId })
+          .in('todo_id', todoIds)
+          .eq('user_id', target_user_id)
+      }
+      // 残りメンバーが0人の場合は再割り当てせず、タスクの担当者は削除される
+    }
+
     // メンバー削除
     const { error: deleteError } = await supabaseClient
       .from('group_members')

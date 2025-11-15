@@ -170,6 +170,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     if (result == true && mounted) {
       _showSuccessSnackBar('定期タスクを作成しました');
+      await _updateGroupData();
     }
   }
 
@@ -217,6 +218,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     if (result == true && mounted) {
       _showSuccessSnackBar('定期タスクを更新しました');
+      await _updateGroupData();
     }
   }
 
@@ -770,7 +772,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   List<TodoModel> get _filteredTodos {
     switch (_selectedFilter) {
       case 'completed':
-        return _todos.where((todo) => todo.isCompleted).toList();
+        // 過去30日以内に完了したタスクのみを表示
+        final now = DateTime.now();
+        final oneMonthAgo = now.subtract(const Duration(days: 30));
+        return _todos
+            .where(
+              (todo) =>
+                  todo.isCompleted &&
+                  todo.completedAt != null &&
+                  todo.completedAt!.isAfter(oneMonthAgo),
+            )
+            .toList();
       case 'my_incomplete':
         return _todos
             .where(
@@ -1574,8 +1586,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   foregroundColor: Theme.of(
                     context,
                   ).colorScheme.onTertiaryContainer,
-                  onTap: () {
-                    showModalBottomSheet(
+                  onTap: () async {
+                    final result = await showModalBottomSheet<bool>(
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
@@ -1605,12 +1617,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         );
                       },
                     );
+
+                    // クイックアクション実行成功時にグループデータを更新
+                    if (result == true && mounted) {
+                      await _updateGroupData();
+                    }
                   },
                 ),
               ]
             : _selectedViewIndex == 1
             ? [
-                // 定期TODOタブ: 定期TODO作成 + クイックアクション実行
+                // 定期TODOタブ: 定期TODO作成
                 SpeedDialChild(
                   child: const Icon(Icons.repeat),
                   label: '定期TODO作成',
@@ -1622,51 +1639,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   ).colorScheme.onPrimaryContainer,
                   onTap: _showCreateRecurringTodoDialog,
                 ),
-                SpeedDialChild(
-                  child: const Icon(Icons.flash_on),
-                  label: 'クイックアクション',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.tertiaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onTertiaryContainer,
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      enableDrag: true,
-                      isDismissible: true,
-                      useRootNavigator: false,
-                      builder: (context) {
-                        final mediaQuery = MediaQuery.of(context);
-                        final contentHeight =
-                            mediaQuery.size.height -
-                            mediaQuery.padding.top -
-                            mediaQuery.padding.bottom;
-
-                        return Container(
-                          height: contentHeight * 0.8,
-                          margin: EdgeInsets.only(top: contentHeight * 0.2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                          child: QuickActionListBottomSheet(
-                            fixedGroupId: widget.group.id,
-                            userId: widget.user.id,
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
               ]
             : [
-                // クイックアクションタブ: クイックアクション作成 + クイックアクション実行
+                // クイックアクションタブ: クイックアクション作成
                 SpeedDialChild(
                   child: const Icon(Icons.flash_on),
                   label: 'クイックアクション作成',
@@ -1677,48 +1652,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     context,
                   ).colorScheme.onPrimaryContainer,
                   onTap: _showCreateQuickActionDialog,
-                ),
-                SpeedDialChild(
-                  child: const Icon(Icons.play_arrow),
-                  label: 'クイックアクション実行',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.tertiaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onTertiaryContainer,
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      enableDrag: true,
-                      isDismissible: true,
-                      useRootNavigator: false,
-                      builder: (context) {
-                        final mediaQuery = MediaQuery.of(context);
-                        final contentHeight =
-                            mediaQuery.size.height -
-                            mediaQuery.padding.top -
-                            mediaQuery.padding.bottom;
-
-                        return Container(
-                          height: contentHeight * 0.8,
-                          margin: EdgeInsets.only(top: contentHeight * 0.2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                          child: QuickActionListBottomSheet(
-                            fixedGroupId: widget.group.id,
-                            userId: widget.user.id,
-                          ),
-                        );
-                      },
-                    );
-                  },
                 ),
               ],
       ),

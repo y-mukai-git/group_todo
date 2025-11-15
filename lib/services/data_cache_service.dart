@@ -243,41 +243,6 @@ class DataCacheService extends ChangeNotifier {
     }
   }
 
-  /// タスク更新（DB + キャッシュ）※旧updateTodoOptimistic
-  Future<TodoModel> updateTodoOptimistic({
-    required String userId,
-    required String todoId,
-    required String title,
-    String? description,
-    DateTime? dueDate,
-    List<String>? assignedUserIds,
-  }) async {
-    try {
-      // 1. DB更新
-      final updatedTodo = await _todoService.updateTodo(
-        userId: userId,
-        todoId: todoId,
-        title: title,
-        description: description,
-        dueDate: dueDate,
-        assignedUserIds: assignedUserIds,
-      );
-
-      // 2. DB更新成功 → キャッシュ更新
-      final index = _todos.indexWhere((t) => t.id == todoId);
-      if (index != -1) {
-        _todos[index] = updatedTodo;
-        notifyListeners();
-      }
-
-      return updatedTodo;
-    } catch (e) {
-      debugPrint('[DataCacheService] ❌ タスク更新エラー: $e');
-      // DB更新失敗 → キャッシュ更新しない
-      rethrow;
-    }
-  }
-
   /// タスク削除（DB + キャッシュ）
   Future<void> deleteTodo({
     required String userId,

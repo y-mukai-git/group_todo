@@ -328,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) async {
     try {
       // 楽観的更新：キャッシュ即座更新 + 非同期DB更新
-      await _cacheService.updateTodoOptimistic(
+      await _cacheService.updateTodo(
         userId: widget.user.id,
         todoId: todoId,
         title: title,

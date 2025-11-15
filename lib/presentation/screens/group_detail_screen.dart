@@ -129,6 +129,128 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     }
   }
 
+  /// グループ脱退
+  Future<void> _leaveGroup() async {
+    try {
+      // メンバー数をカウント
+      final memberCount = _groupMembers.length;
+
+      // メンバーが1人しかいない場合（自分だけ）は脱退不可
+      if (memberCount == 1) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('グループを脱退できません'),
+            content: const Text('グループにメンバーが1人しかいないため脱退できません。グループを削除してください。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // オーナー数をカウント
+      final ownerCount = _groupMembers
+          .where((member) => member.role == 'owner')
+          .length;
+
+      // 現在のユーザーがオーナーか確認
+      final currentUserMember = _groupMembers.firstWhere(
+        (member) => member.id == widget.user.id,
+        orElse: () => UserModel(
+          id: '',
+          deviceId: '',
+          displayName: '',
+          displayId: '',
+          notificationDeadline: false,
+          notificationNewTodo: false,
+          notificationAssigned: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      final isCurrentUserOwner = currentUserMember.role == 'owner';
+
+      // オーナーが1人しかいない場合はエラー
+      if (isCurrentUserOwner && ownerCount == 1) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('グループを脱退できません'),
+            content: const Text(
+              'グループにはオーナーが1人以上必要です。他のメンバーをオーナーに昇格させてから脱退してください。',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // 確認ダイアログ
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('グループを脱退'),
+          content: Text('「${_currentGroup.name}」から脱退しますか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('キャンセル'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('脱退する'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      // API呼び出し：グループ脱退（自分自身を削除）
+      await GroupService().removeGroupMember(
+        groupId: widget.group.id,
+        userId: widget.user.id,
+        targetUserId: widget.user.id,
+      );
+
+      if (!mounted) return;
+      // グループ詳細画面を閉じてグループ一覧に戻る
+      Navigator.pop(context);
+      _showSuccessSnackBar('グループから脱退しました');
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ グループ脱退エラー: $e');
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'グループ脱退エラー',
+        errorMessage: 'グループの脱退に失敗しました',
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: 'グループの脱退に失敗しました',
+        );
+      }
+    }
+  }
+
   /// 定期タスク作成ボトムシート表示
   Future<void> _showCreateRecurringTodoDialog() async {
     final result = await showModalBottomSheet<bool>(
@@ -936,10 +1058,46 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       appBar: AppBar(
         title: Text(_currentGroup.name),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: _showEditGroupDialog,
-            tooltip: 'グループ編集',
+          PopupMenuButton<String>(
+            tooltip: 'グループメニュー',
+            onSelected: (value) {
+              switch (value) {
+                case 'edit':
+                  _showEditGroupDialog();
+                  break;
+                case 'leave':
+                  _leaveGroup();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('グループ編集'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'leave',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.exit_to_app,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('グループを脱退'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -107,39 +107,47 @@ serve(async (req) => {
       )
     }
 
-    // 各TODOの担当者情報を取得
-    const todosWithAssignees: TodoWithAssignees[] = []
+    // N+1問題を解決: 全TODO IDを抽出
+    const todoIds = (todos || []).map(t => t.id)
 
-    for (const todo of todos || []) {
-      const { data: assignments } = await supabaseClient
-        .from('todo_assignments')
-        .select(`
-          user_id,
-          users:user_id (
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq('todo_id', todo.id)
+    // 全担当者を一括取得
+    const { data: allAssignments } = await supabaseClient
+      .from('todo_assignments')
+      .select(`
+        todo_id,
+        user_id,
+        users:user_id (
+          display_name,
+          avatar_url
+        )
+      `)
+      .in('todo_id', todoIds)
 
-      const assignees = (assignments || []).map((a: any) => ({
-        user_id: a.user_id,
-        display_name: a.users?.display_name || '',
-        avatar_url: a.users?.avatar_url || null
-      }))
-
-      todosWithAssignees.push({
-        id: todo.id,
-        group_id: todo.group_id,
-        title: todo.title,
-        description: todo.description,
-        deadline: todo.deadline,
-        is_completed: todo.is_completed,
-        created_by: todo.created_by,
-        created_at: todo.created_at,
-        assignees: assignees
+    // Mapで集計
+    const assignmentMap = new Map<string, any[]>()
+    for (const assignment of allAssignments || []) {
+      if (!assignmentMap.has(assignment.todo_id)) {
+        assignmentMap.set(assignment.todo_id, [])
+      }
+      assignmentMap.get(assignment.todo_id)!.push({
+        user_id: assignment.user_id,
+        display_name: (assignment.users as any)?.display_name || '',
+        avatar_url: (assignment.users as any)?.avatar_url || null
       })
     }
+
+    // 各TODOに担当者を割り当て
+    const todosWithAssignees: TodoWithAssignees[] = (todos || []).map(todo => ({
+      id: todo.id,
+      group_id: todo.group_id,
+      title: todo.title,
+      description: todo.description,
+      deadline: todo.deadline,
+      is_completed: todo.is_completed,
+      created_by: todo.created_by,
+      created_at: todo.created_at,
+      assignees: assignmentMap.get(todo.id) || []
+    }))
 
     const response: GetGroupTodosResponse = {
       success: true,

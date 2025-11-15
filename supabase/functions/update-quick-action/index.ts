@@ -79,7 +79,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: 'Quick action not found' }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
@@ -91,7 +91,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: membershipCheck.error }),
         {
-          status: 403,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

@@ -97,30 +97,38 @@ serve(async (req) => {
       )
     }
 
-    // 各定期TODOの担当者取得
-    const todosWithAssignees: RecurringTodoWithAssignees[] = []
+    // N+1問題を解決: 全定期TODO IDを抽出
+    const todoIds = (recurringTodos || []).map(t => t.id)
 
-    for (const todo of recurringTodos || []) {
-      const { data: assignments } = await supabaseClient
-        .from('recurring_todo_assignments')
-        .select(`
-          user_id,
-          users:user_id (
-            display_name
-          )
-        `)
-        .eq('recurring_todo_id', todo.id)
+    // 全担当者を一括取得
+    const { data: allAssignments } = await supabaseClient
+      .from('recurring_todo_assignments')
+      .select(`
+        recurring_todo_id,
+        user_id,
+        users:user_id (
+          display_name
+        )
+      `)
+      .in('recurring_todo_id', todoIds)
 
-      const assignees = (assignments || []).map((a: any) => ({
-        user_id: a.user_id,
-        display_name: a.users?.display_name || ''
-      }))
-
-      todosWithAssignees.push({
-        ...todo,
-        assignees: assignees
+    // Mapで集計
+    const assignmentMap = new Map<string, any[]>()
+    for (const assignment of allAssignments || []) {
+      if (!assignmentMap.has(assignment.recurring_todo_id)) {
+        assignmentMap.set(assignment.recurring_todo_id, [])
+      }
+      assignmentMap.get(assignment.recurring_todo_id)!.push({
+        user_id: assignment.user_id,
+        display_name: (assignment.users as any)?.display_name || ''
       })
     }
+
+    // 各定期TODOに担当者を割り当て
+    const todosWithAssignees: RecurringTodoWithAssignees[] = (recurringTodos || []).map(todo => ({
+      ...todo,
+      assignees: assignmentMap.get(todo.id) || []
+    }))
 
     const response: GetRecurringTodosResponse = {
       success: true,

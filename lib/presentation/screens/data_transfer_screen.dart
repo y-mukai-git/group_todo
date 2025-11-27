@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../services/user_service.dart';
-import '../../services/error_log_service.dart';
-import '../../services/data_cache_service.dart';
+import '../../core/constants/error_messages.dart';
+import '../../core/utils/api_client.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/storage_helper.dart';
+import '../../services/data_cache_service.dart';
+import '../../services/error_log_service.dart';
+import '../../services/user_service.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 import 'main_tab_screen.dart';
 
 /// データ引き継ぎ画面（初回起動時のみ表示）
@@ -40,8 +43,43 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       await StorageHelper.saveUserId(newUser.id);
       await StorageHelper.saveDisplayName(newUser.displayName);
 
-      // キャッシュ初期化
-      await DataCacheService().initializeCache(newUser);
+      // キャッシュ初期化（API #6）
+      try {
+        await DataCacheService().initializeCache(newUser);
+      } catch (e, stackTrace) {
+        debugPrint('[DataTransferScreen] ❌ キャッシュ初期化エラー: $e');
+
+        // メンテナンスモード時は MaintenanceDialog を表示
+        if (e is MaintenanceException) {
+          if (!mounted) return;
+          await MaintenanceDialog.show(
+            context: context,
+            message: e.message, // api_client.dartで固定メッセージを生成済み
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // エラーログ記録
+        final errorLog = await ErrorLogService().logError(
+          userId: newUser.id, // ユーザーは作成済み
+          errorType: 'キャッシュ初期化エラー',
+          errorMessage: ErrorMessages.appInitializationFailed,
+          stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+          screenName: 'データ引き継ぎ画面',
+        );
+
+        // エラーダイアログ表示
+        if (!mounted) return;
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+          canDismiss: false,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -51,11 +89,22 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
     } catch (e, stackTrace) {
       debugPrint('[DataTransferScreen] ❌ 新規ユーザー作成エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: null, // 新規ユーザー作成失敗時はユーザーIDなし
         errorType: '新規ユーザー作成エラー',
-        errorMessage: '新規ユーザーの作成に失敗しました',
+        errorMessage: ErrorMessages.userCreationFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'データ引き継ぎ画面',
       );
@@ -65,7 +114,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'ユーザー作成に失敗しました',
+        errorMessage: '${ErrorMessages.userCreationFailed}\n${ErrorMessages.retryLater}',
+        canDismiss: false,
       );
       setState(() => _isLoading = false);
     }
@@ -94,7 +144,7 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         if (!mounted) return;
         SnackBarHelper.showErrorSnackBar(
           context,
-          '入力のユーザID、パスワードのユーザ情報は見つかりませんでした',
+          ErrorMessages.transferDataInputError,
         );
         setState(() => _isLoading = false);
         return;
@@ -104,8 +154,54 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       await StorageHelper.saveUserId(user.id);
       await StorageHelper.saveDisplayName(user.displayName);
 
-      // キャッシュ初期化
-      await DataCacheService().initializeCache(user);
+      // 成功メッセージ表示
+      if (!mounted) return;
+      SnackBarHelper.showSuccessSnackBar(context, 'データ引き継ぎが完了しました');
+
+      // キャッシュ初期化（API #8）
+      try {
+        await DataCacheService().initializeCache(user);
+      } catch (e, stackTrace) {
+        debugPrint('[DataTransferScreen] ❌ キャッシュ初期化エラー: $e');
+
+        // 成功スナックバーを表示する時間を確保（1秒待機）
+        await Future.delayed(const Duration(seconds: 1));
+
+        // スナックバーを閉じる
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).clearSnackBars();
+
+        // メンテナンスモード時は MaintenanceDialog を表示
+        if (e is MaintenanceException) {
+          if (!mounted) return;
+          await MaintenanceDialog.show(
+            context: context,
+            message: e.message, // api_client.dartで固定メッセージを生成済み
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
+        // エラーログ記録
+        final errorLog = await ErrorLogService().logError(
+          userId: user.id, // ユーザーは引き継ぎ済み
+          errorType: 'キャッシュ初期化エラー',
+          errorMessage: ErrorMessages.appInitializationFailed,
+          stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+          screenName: 'データ引き継ぎ画面',
+        );
+
+        // エラーダイアログ表示
+        if (!mounted) return;
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+          canDismiss: false,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -115,20 +211,33 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
     } catch (e, stackTrace) {
       debugPrint('[DataTransferScreen] ❌ データ引き継ぎエラー: $e');
 
-      // システムエラーの場合のみエラーログ記録 + ErrorDialog表示
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: null, // データ引き継ぎ失敗時はユーザーIDなし
         errorType: 'データ引き継ぎエラー',
-        errorMessage: 'データの引き継ぎに失敗しました',
+        errorMessage: ErrorMessages.transferDataSystemError,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'データ引き継ぎ画面',
       );
 
+      // エラーダイアログ表示
       if (!mounted) return;
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'データ引き継ぎに失敗しました',
+        errorMessage: '${ErrorMessages.transferDataSystemError}\n${ErrorMessages.retryLater}',
+        canDismiss: false,
       );
       setState(() => _isLoading = false);
     }

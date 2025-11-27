@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../services/user_service.dart';
-import '../../services/error_log_service.dart';
+import '../../core/constants/error_messages.dart';
+import '../../core/utils/api_client.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../../services/error_log_service.dart';
+import '../../services/user_service.dart';
 import 'error_dialog.dart';
+import 'maintenance_dialog.dart';
 
 /// データ引き継ぎ用パスワード設定ボトムシート
 class TransferPasswordBottomSheet extends StatefulWidget {
@@ -63,16 +66,29 @@ class _TransferPasswordBottomSheetState
 
       if (!mounted) return;
 
+      // 成功メッセージ表示
+      SnackBarHelper.showSuccessSnackBar(context, 'パスワードを設定しました');
+
       // 成功時は認証情報を返す
       Navigator.pop(context, credentials);
     } catch (e, stackTrace) {
       debugPrint('[TransferPasswordBottomSheet] ❌ 引き継ぎ用パスワード設定エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.userId,
         errorType: 'データ引き継ぎ設定エラー',
-        errorMessage: 'データ引き継ぎの設定に失敗しました',
+        errorMessage: ErrorMessages.transferPasswordSetFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'データ引き継ぎ設定',
       );
@@ -82,7 +98,7 @@ class _TransferPasswordBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'パスワードの設定に失敗しました',
+        errorMessage: '${ErrorMessages.transferPasswordSetFailed}\n${ErrorMessages.retryLater}',
       );
     } finally {
       if (mounted) {

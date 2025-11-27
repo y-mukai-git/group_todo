@@ -10,6 +10,8 @@ import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
@@ -17,6 +19,7 @@ import '../widgets/create_recurring_todo_bottom_sheet.dart';
 import '../widgets/create_quick_action_bottom_sheet.dart';
 import '../widgets/quick_action_list_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 
 /// グループ詳細画面
 class GroupDetailScreen extends StatefulWidget {
@@ -77,11 +80,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 currentUserId: widget.user.id,
                 groupOwnerId: _currentGroup.ownerId,
                 onRemoveMember: _removeMember,
-                onMembersUpdated: () async {
-                  await _cacheService.refreshGroupMembers(
-                    groupId: widget.group.id,
-                    requesterId: widget.user.id,
-                  );
+                onMembersUpdated: (updatedMembers) {
+                  // API #19から返されたメンバー一覧でローカルデータを更新
+                  setState(() {
+                    _groupMembers = updatedMembers;
+                  });
                   setModalState(() {});
                 },
                 initialTab: initialTab,
@@ -112,10 +115,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       _showSuccessSnackBar('メンバーを削除しました');
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ メンバー削除エラー: $e');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'メンバー削除エラー',
-        errorMessage: 'メンバーの削除に失敗しました',
+        errorMessage: ErrorMessages.memberRemoveFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
@@ -123,8 +135,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: 'メンバーの削除に失敗しました',
+          errorMessage:
+              '${ErrorMessages.memberRemoveFailed}\n${ErrorMessages.retryLater}',
         );
+        // エラー後にデータをリフレッシュ（データ更新系）
+        await _cacheService.refreshCache();
       }
     }
   }
@@ -234,10 +249,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       _showSuccessSnackBar('グループから脱退しました');
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ グループ脱退エラー: $e');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'グループ脱退エラー',
-        errorMessage: 'グループの脱退に失敗しました',
+        errorMessage: ErrorMessages.groupLeaveFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
@@ -245,8 +269,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: 'グループの脱退に失敗しました',
+          errorMessage:
+              '${ErrorMessages.groupLeaveFailed}\n${ErrorMessages.retryLater}',
         );
+        // エラー後にデータをリフレッシュ（データ更新系）
+        await _cacheService.refreshCache();
       }
     }
   }
@@ -357,10 +384,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ 定期タスク削除エラー: $e');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '定期タスク削除エラー',
-        errorMessage: '定期タスクの削除に失敗しました',
+        errorMessage: ErrorMessages.recurringTodoDeleteFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
@@ -368,8 +404,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '定期タスクの削除に失敗しました',
+          errorMessage:
+              '${ErrorMessages.recurringTodoDeleteFailed}\n${ErrorMessages.retryLater}',
         );
+        // エラー後にデータをリフレッシュ（データ更新系）
+        await _cacheService.refreshCache();
       }
     }
   }
@@ -494,10 +533,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ クイックアクション削除エラー: $e');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'クイックアクション削除エラー',
-        errorMessage: 'クイックアクションの削除に失敗しました',
+        errorMessage: ErrorMessages.quickActionDeleteFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
@@ -505,8 +553,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: 'クイックアクションの削除に失敗しました',
+          errorMessage:
+              '${ErrorMessages.quickActionDeleteFailed}\n${ErrorMessages.retryLater}',
         );
+        // エラー後にデータをリフレッシュ（データ更新系）
+        await _cacheService.refreshCache();
       }
     }
   }
@@ -529,10 +580,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ 定期TODO切り替えエラー: $e');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '定期TODO切り替えエラー',
-        errorMessage: '定期タスクの切り替えに失敗しました',
+        errorMessage: ErrorMessages.recurringTodoToggleFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ詳細画面',
       );
@@ -540,8 +600,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '定期タスクの切り替えに失敗しました',
+          errorMessage:
+              '${ErrorMessages.recurringTodoToggleFailed}\n${ErrorMessages.retryLater}',
         );
+        // エラー後にデータをリフレッシュ（データ更新系）
+        await _cacheService.refreshCache();
       }
     }
   }
@@ -648,7 +711,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           _showSuccessSnackBar('タスクを完了しました');
         }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ タスク完了切り替えエラー: $e');
 
       // ローディング状態を終了
@@ -658,8 +721,30 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         });
       }
 
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'タスク完了切り替えエラー',
+        errorMessage: ErrorMessages.todoCompletionToggleFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
       if (mounted) {
-        _showErrorSnackBar('完了状態の更新に失敗しました');
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage:
+              '${ErrorMessages.todoCompletionToggleFailed}\n${ErrorMessages.retryLater}',
+        );
+        // エラー後にデータをリフレッシュ（データ更新系）
+        await _cacheService.refreshCache();
       }
     }
   }
@@ -756,9 +841,32 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
       if (!mounted) return;
       _showSuccessSnackBar('タスクを作成しました');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ タスク作成エラー: $e');
-      _showErrorSnackBar('タスクの作成に失敗しました');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'タスク作成エラー',
+        errorMessage: ErrorMessages.todoCreationFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.todoCreationFailed}\n${ErrorMessages.retryLater}',
+        );
+        await _cacheService.refreshCache();
+      }
     }
   }
 
@@ -782,16 +890,34 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
 
       if (!mounted) return;
-      _showSuccessSnackBar('タスクを更新しました');
-    } catch (e) {
-      debugPrint('[GroupDetailScreen] ❌ タスク更新エラー: $e');
-      _showErrorSnackBar('タスクの更新に失敗しました');
-    }
-  }
+      _showSuccessSnackBar('TODOを更新しました');
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ TODO更新エラー: $e');
 
-  /// エラーメッセージ表示
-  void _showErrorSnackBar(String message) {
-    SnackBarHelper.showErrorSnackBar(context, message);
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'TODO更新エラー',
+        errorMessage: ErrorMessages.todoUpdateFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.todoUpdateFailed}\n${ErrorMessages.retryLater}',
+        );
+        await _cacheService.refreshCache();
+      }
+    }
   }
 
   /// 成功メッセージ表示
@@ -884,9 +1010,32 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         '[GroupDetailScreen] ✅ グループ更新完了: category=${_currentGroup.category}',
       );
       _showSuccessSnackBar('グループ情報を更新しました');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ グループ更新エラー: $e');
-      _showErrorSnackBar('グループ情報の更新に失敗しました');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'グループ更新エラー',
+        errorMessage: ErrorMessages.groupUpdateFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.groupUpdateFailed}\n${ErrorMessages.retryLater}',
+        );
+        await _cacheService.refreshCache();
+      }
     }
   }
 
@@ -958,10 +1107,34 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       // DataCacheService経由でDB削除+キャッシュ削除
       await _cacheService.deleteTodo(userId: widget.user.id, todoId: todo.id);
 
-      _showSuccessSnackBar('タスクを削除しました');
-    } catch (e) {
-      debugPrint('[GroupDetailScreen] ❌ タスク削除エラー: $e');
-      _showErrorSnackBar('タスクの削除に失敗しました');
+      if (!mounted) return;
+      _showSuccessSnackBar('TODOを削除しました');
+    } catch (e, stackTrace) {
+      debugPrint('[GroupDetailScreen] ❌ TODO削除エラー: $e');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'TODO削除エラー',
+        errorMessage: ErrorMessages.todoDeleteFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.todoDeleteFailed}\n${ErrorMessages.retryLater}',
+        );
+        await _cacheService.refreshCache();
+      }
     }
   }
 
@@ -1045,9 +1218,31 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Future<void> _refreshData() async {
     try {
       await _cacheService.refreshCache();
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ データ更新エラー: $e');
-      _showErrorSnackBar('データの更新に失敗しました');
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'データ更新エラー',
+        errorMessage: ErrorMessages.dataRefreshFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ詳細画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage: '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
+        );
+      }
     }
   }
 

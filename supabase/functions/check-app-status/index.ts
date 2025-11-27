@@ -9,6 +9,7 @@ interface CheckAppStatusRequest {
 
 interface CheckAppStatusResponse {
   success: boolean
+  status: 'ok' // 他のAPIと統一: メンテナンス時は別のレスポンス形式で返す
   maintenance: {
     is_maintenance: boolean
     message?: string
@@ -52,11 +53,25 @@ serve(async (req) => {
     // 1. メンテナンスモードチェック
     const { data: maintenanceData, error: maintenanceError } = await supabaseClient
       .from('maintenance_mode')
-      .select('is_maintenance, maintenance_message')
+      .select('is_maintenance, end_time')
       .single()
 
     if (maintenanceError) {
       throw new Error(`メンテナンスモード取得エラー: ${maintenanceError.message}`)
+    }
+
+    // メンテナンス中の場合は即座に返す（他のAPIと同じ形式）
+    if (maintenanceData.is_maintenance) {
+      return new Response(
+        JSON.stringify({
+          status: 'maintenance',
+          end_time: maintenanceData.end_time || undefined, // 終了予定時刻（ISO 8601形式）
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     // 2. アプリバージョン情報取得
@@ -106,9 +121,10 @@ serve(async (req) => {
 
     const response: CheckAppStatusResponse = {
       success: true,
+      status: 'ok',
       maintenance: {
-        is_maintenance: maintenanceData.is_maintenance,
-        message: maintenanceData.is_maintenance ? maintenanceData.maintenance_message : undefined,
+        is_maintenance: false, // メンテナンス中の場合は上記の早期リターンで返すため、ここは常にfalse
+        message: undefined,
       },
       force_update: {
         required: forceUpdateRequired,

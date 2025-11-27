@@ -3,8 +3,11 @@ import 'package:flutter/cupertino.dart';
 import '../../data/models/quick_action_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 
 /// クイックアクション実行ボトムシート
 class QuickActionListBottomSheet extends StatefulWidget {
@@ -60,6 +63,7 @@ class _QuickActionListBottomSheetState
 
     try {
       // クイックアクション実行（execute-quick-action Edge Function呼び出し）
+      // 戻り値のTODOリストは既にキャッシュに追加済み
       await _cacheService.executeQuickAction(
         userId: widget.userId,
         quickActionId: quickAction.id,
@@ -67,15 +71,10 @@ class _QuickActionListBottomSheetState
 
       if (!mounted) return;
 
-      // キャッシュをリフレッシュして新規作成されたTODOを反映
-      await _cacheService.refreshCache();
-
-      if (!mounted) return;
-
       // 成功メッセージ
       SnackBarHelper.showSuccessSnackBar(
         context,
-        'クイックアクション「${quickAction.name}」を実行しました',
+        'TODOを追加しました',
       );
 
       // ボトムシートを閉じる（成功を通知）
@@ -83,21 +82,33 @@ class _QuickActionListBottomSheetState
     } catch (e, stackTrace) {
       debugPrint('[QuickActionListBottomSheet] ❌ クイックアクション実行エラー: $e');
 
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.userId,
         errorType: 'クイックアクション実行エラー',
-        errorMessage: 'クイックアクションの実行に失敗しました',
+        errorMessage: ErrorMessages.quickActionExecutionFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'クイックアクション一覧',
       );
 
-      if (mounted) {
-        await ErrorDialog.show(
-          context: context,
-          errorId: errorLog.id,
-          errorMessage: 'クイックアクションの実行に失敗しました',
-        );
-      }
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage:
+            '${ErrorMessages.quickActionExecutionFailed}\n${ErrorMessages.retryLater}',
+      );
+
+      // データリフレッシュ
+      await _cacheService.refreshCache();
     } finally {
       if (mounted) {
         setState(() {

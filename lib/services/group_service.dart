@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../core/utils/api_client.dart';
 import '../data/models/group_model.dart';
 import '../data/models/group_invitation.dart';
+import '../data/models/user_model.dart';
 
 /// グループ管理サービス
 class GroupService {
@@ -331,7 +332,9 @@ class GroupService {
   }
 
   /// 招待を承認
-  Future<void> acceptInvitation({
+  ///
+  /// 戻り値: グループ情報（group情報がある場合）
+  Future<Map<String, dynamic>?> acceptInvitation({
     required String invitationId,
     required String userId,
   }) async {
@@ -345,6 +348,9 @@ class GroupService {
         final errorMessage = response['error'] as String? ?? '招待の承認に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
+
+      // グループ情報を返す（存在する場合）
+      return response['group'] as Map<String, dynamic>?;
     } catch (e) {
       debugPrint('[GroupService] ❌ 招待承認エラー: $e');
       rethrow;
@@ -394,7 +400,7 @@ class GroupService {
   }
 
   /// メンバーのロールを変更
-  Future<void> changeMemberRole({
+  Future<List<UserModel>> changeMemberRole({
     required String groupId,
     required String targetUserId,
     required String newRole,
@@ -416,6 +422,12 @@ class GroupService {
             response['error'] as String? ?? 'メンバーロールの変更に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
+
+      // 更新後のメンバー一覧を返す
+      final membersList = response['members'] as List<dynamic>;
+      return membersList
+          .map((m) => UserModel.fromJson(m as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       debugPrint('[GroupService] ❌ メンバーロール変更エラー: $e');
       rethrow;

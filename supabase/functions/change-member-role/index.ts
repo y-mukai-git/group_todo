@@ -17,8 +17,16 @@ interface ChangeMemberRoleRequest {
   requester_id: string // ロール変更実行者のユーザーID
 }
 
+interface GroupMember {
+  id: string
+  display_name: string
+  display_id: string
+  role: string
+}
+
 interface ChangeMemberRoleResponse {
   success: boolean
+  members?: GroupMember[]
   error?: string
 }
 
@@ -134,8 +142,41 @@ serve(async (req) => {
       )
     }
 
+    // 更新後のメンバー一覧を取得
+    const { data: membersData, error: membersError } = await supabaseClient
+      .from('group_members')
+      .select(`
+        user_id,
+        role,
+        users (
+          id,
+          display_name,
+          display_id
+        )
+      `)
+      .eq('group_id', group_id)
+
+    if (membersError || !membersData) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to fetch updated members: ${membersError?.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    // メンバー一覧を整形
+    const members: GroupMember[] = membersData.map((m: any) => ({
+      id: m.users.id,
+      display_name: m.users.display_name,
+      display_id: m.users.display_id,
+      role: m.role
+    }))
+
     const response: ChangeMemberRoleResponse = {
-      success: true
+      success: true,
+      members: members
     }
 
     return new Response(

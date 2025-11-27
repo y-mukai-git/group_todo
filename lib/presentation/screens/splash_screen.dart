@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/constants/error_messages.dart';
+import '../../core/utils/api_client.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
@@ -60,16 +62,6 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       // アプリ状態チェック（メンテナンス・強制アップデート）
       final appStatus = await AppStatusService().checkAppStatus();
-
-      // メンテナンス中チェック
-      if (appStatus.maintenance.isMaintenance) {
-        if (!mounted) return;
-        await MaintenanceDialog.show(
-          context: context,
-          message: appStatus.maintenance.message ?? 'システムメンテナンス中です',
-        );
-        return;
-      }
 
       // 強制アップデートチェック
       if (appStatus.forceUpdate.required) {
@@ -132,21 +124,32 @@ class _SplashScreenState extends State<SplashScreen>
     } catch (e, stackTrace) {
       debugPrint('[SplashScreen] ❌ 初期化エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: null, // 初期化失敗時はユーザーIDなし
         errorType: 'アプリ初期化エラー',
-        errorMessage: 'アプリの初期化に失敗しました',
+        errorMessage: ErrorMessages.appInitializationFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'スプラッシュ画面',
       );
 
-      // エラーダイアログ表示
+      // エラーダイアログ表示（処理継続不可能なため、ダイアログを閉じられない）
       if (!mounted) return;
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'アプリの初期化に失敗しました',
+        errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+        canDismiss: false,
       );
     }
   }

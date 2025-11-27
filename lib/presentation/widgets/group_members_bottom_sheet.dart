@@ -6,7 +6,9 @@ import '../../services/group_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 
 /// グループメンバー一覧ボトムシート
 class GroupMembersBottomSheet extends StatefulWidget {
@@ -15,7 +17,7 @@ class GroupMembersBottomSheet extends StatefulWidget {
   final String currentUserId;
   final String groupOwnerId; // グループオーナーID
   final Function(String userId) onRemoveMember;
-  final VoidCallback? onMembersUpdated; // メンバー更新通知
+  final Function(List<UserModel> members)? onMembersUpdated; // メンバー更新通知
   final int initialTab; // 初期表示タブ（0: メンバー一覧, 1: メンバー追加）
 
   const GroupMembersBottomSheet({
@@ -146,7 +148,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
     }
   }
 
-  /// メンバーロール変更実行
+  /// メンバーのロールを変更
   Future<void> _changeMemberRole(UserModel member, String newRole) async {
     if (_isProcessing) return; // 連続タップ防止
 
@@ -154,8 +156,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       _isProcessing = true;
     });
 
+    // API #19: change-member-role
     try {
-      await _groupService.changeMemberRole(
+      final updatedMembers = await _groupService.changeMemberRole(
         groupId: widget.groupId,
         targetUserId: member.id,
         newRole: newRole,
@@ -169,24 +172,39 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         '${member.displayName}のロールを変更しました',
       );
 
-      // メンバー更新通知
-      widget.onMembersUpdated?.call();
+      // メンバー更新通知（更新後のメンバー一覧を渡す）
+      widget.onMembersUpdated?.call(updatedMembers);
     } catch (e, stackTrace) {
       debugPrint('[GroupMembersBottomSheet] ❌ ロール変更エラー: $e');
+
+      // メンテナンスモード対応
+      if (e is MaintenanceException) {
+        if (mounted) {
+          await MaintenanceDialog.show(context: context, message: e.message);
+        }
+        return;
+      }
+
+      // システムエラー対応
       final errorLog = await ErrorLogService().logError(
         userId: widget.currentUserId,
         errorType: 'ロール変更エラー',
-        errorMessage: 'ロールの変更に失敗しました',
+        errorMessage: ErrorMessages.memberRoleChangeFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループメンバー一覧',
       );
+
       if (mounted) {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: 'ロールの変更に失敗しました',
+          errorMessage:
+              '${ErrorMessages.memberRoleChangeFailed}\n${ErrorMessages.retryLater}',
         );
       }
+
+      // データ更新系なのでリフレッシュ（現在のメンバーリストを渡す）
+      widget.onMembersUpdated?.call(_members);
     } finally {
       if (mounted) {
         setState(() {
@@ -655,9 +673,11 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       _isProcessing = true;
     });
 
+    // API #20: validate-user-for-invitation
+    Map<String, dynamic> validateResponse;
     try {
       // 1. ユーザー情報取得・確認
-      final validateResponse = await _groupService.validateUserForInvitation(
+      validateResponse = await _groupService.validateUserForInvitation(
         groupId: widget.groupId,
         displayId: displayId,
         userId: widget.currentUserId,
@@ -665,25 +685,61 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
 
       if (!mounted) return;
 
-      // successチェック
+      // successチェック（ビジネスエラー）
       if (validateResponse['success'] != true) {
         final errorMessage = _getErrorMessage(validateResponse['error']);
         if (!mounted) return;
-        await ErrorDialog.show(
-          context: context,
-          errorId: '',
-          errorMessage: errorMessage,
-        );
+        SnackBarHelper.showErrorSnackBar(context, errorMessage);
+        return;
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[GroupMembersBottomSheet] ❌ ユーザー検証エラー: $e');
+
+      // メンテナンスモード対応
+      if (e is MaintenanceException) {
+        if (mounted) {
+          await MaintenanceDialog.show(context: context, message: e.message);
+        }
         return;
       }
 
-      // 2. 確認ダイアログ表示
-      final confirmed = await _showInviteConfirmDialog(
-        validateResponse['user'],
-        _selectedRole,
+      // システムエラー対応
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.currentUserId,
+        errorType: 'ユーザー検証エラー',
+        errorMessage: ErrorMessages.userValidationFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループメンバー一覧',
       );
-      if (confirmed != true) return; // キャンセル
 
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage:
+              '${ErrorMessages.userValidationFailed}\n${ErrorMessages.retryLater}',
+        );
+      }
+      return;
+    }
+
+    // 2. 確認ダイアログ表示
+    final confirmed = await _showInviteConfirmDialog(
+      validateResponse['user'],
+      _selectedRole,
+    );
+    if (confirmed != true) {
+      // キャンセル時は_isProcessingをリセット
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+      return;
+    }
+
+    // API #21: invite-user-to-group
+    try {
       // 3. 招待実行
       await _groupService.inviteUserToGroup(
         groupId: widget.groupId,
@@ -699,10 +755,17 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       // 成功メッセージ
       SnackBarHelper.showSuccessSnackBar(context, '招待を送信しました');
 
-      // メンバー更新通知
-      widget.onMembersUpdated?.call();
+      // 招待はメンバー追加ではないため、メンバー更新通知は不要
     } catch (e, stackTrace) {
       debugPrint('[GroupMembersBottomSheet] ❌ 招待エラー: $e');
+
+      // メンテナンスモード対応
+      if (e is MaintenanceException) {
+        if (mounted) {
+          await MaintenanceDialog.show(context: context, message: e.message);
+        }
+        return;
+      }
 
       // ApiExceptionの場合、ビジネスエラーとして扱う
       if (e is ApiException) {
@@ -715,7 +778,7 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         final errorLog = await ErrorLogService().logError(
           userId: widget.currentUserId,
           errorType: '招待エラー',
-          errorMessage: '招待に失敗しました',
+          errorMessage: ErrorMessages.invitationFailed,
           stackTrace: '${e.toString()}\n${stackTrace.toString()}',
           screenName: 'グループメンバー一覧',
         );
@@ -723,10 +786,13 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
           await ErrorDialog.show(
             context: context,
             errorId: errorLog.id,
-            errorMessage: '招待に失敗しました',
+            errorMessage:
+                '${ErrorMessages.invitationFailed}\n${ErrorMessages.retryLater}',
           );
         }
       }
+
+      // 招待はメンバー追加ではないため、リフレッシュ不要
     } finally {
       if (mounted) {
         setState(() {

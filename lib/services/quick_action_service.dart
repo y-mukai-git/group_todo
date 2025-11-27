@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../core/utils/api_client.dart';
 import '../data/models/quick_action_model.dart';
+import '../data/models/todo_model.dart';
 
 /// クイックアクション管理サービス
 class QuickActionService {
@@ -157,7 +158,9 @@ class QuickActionService {
   }
 
   /// クイックアクション実行（複数TODO一括生成）
-  Future<void> executeQuickAction({
+  ///
+  /// 戻り値: 作成されたTODOのリスト
+  Future<List<TodoModel>> executeQuickAction({
     required String userId,
     required String quickActionId,
   }) async {
@@ -173,10 +176,16 @@ class QuickActionService {
         throw ApiException(message: errorMessage, statusCode: 200);
       }
 
-      final createdTodos = response['todos'] as List<dynamic>?;
+      final createdTodosJson = response['todos'] as List<dynamic>? ?? [];
+      final createdTodos = createdTodosJson
+          .map((item) => TodoModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+
       debugPrint(
-        '[QuickActionService] ✅ クイックアクション実行成功: ${createdTodos?.length ?? 0}件のTODO作成',
+        '[QuickActionService] ✅ クイックアクション実行成功: ${createdTodos.length}件のTODO作成',
       );
+
+      return createdTodos;
     } catch (e) {
       debugPrint('[QuickActionService] ❌ クイックアクション実行エラー: $e');
       rethrow;

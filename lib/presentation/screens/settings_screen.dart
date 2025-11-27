@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../../core/constants/error_messages.dart';
 import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/app_status_service.dart';
+import '../../services/error_log_service.dart';
 import '../../core/config/environment_config.dart';
+import '../../core/utils/api_client.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../widgets/edit_user_profile_bottom_sheet.dart';
 import '../widgets/contact_inquiry_bottom_sheet.dart';
 import '../widgets/transfer_password_bottom_sheet.dart';
+import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 import 'announcements_screen.dart';
 import 'content_policy_screen.dart';
 
@@ -90,8 +95,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _versionInfo = statusResponse.versionInfo;
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('[SettingsScreen] ❌ バージョン情報取得エラー: $e');
+
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: _currentUser?.id,
+        errorType: 'バージョン情報取得エラー',
+        errorMessage: ErrorMessages.versionInfoFetchFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: '設定画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '${ErrorMessages.versionInfoFetchFailed}\n${ErrorMessages.retryLater}',
+      );
     }
   }
 

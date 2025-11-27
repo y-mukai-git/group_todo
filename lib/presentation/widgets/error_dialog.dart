@@ -6,20 +6,30 @@ import '../../core/utils/snackbar_helper.dart';
 class ErrorDialog extends StatelessWidget {
   final String errorId;
   final String? errorMessage;
+  final bool canDismiss;
 
-  const ErrorDialog({super.key, required this.errorId, this.errorMessage});
+  const ErrorDialog({
+    super.key,
+    required this.errorId,
+    this.errorMessage,
+    this.canDismiss = true,
+  });
 
   /// エラーダイアログ表示
   static Future<void> show({
     required BuildContext context,
     required String errorId,
     String? errorMessage,
+    bool canDismiss = true,
   }) {
     return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) =>
-          ErrorDialog(errorId: errorId, errorMessage: errorMessage),
+      builder: (context) => ErrorDialog(
+        errorId: errorId,
+        errorMessage: errorMessage,
+        canDismiss: canDismiss,
+      ),
     );
   }
 
@@ -101,12 +111,14 @@ class ErrorDialog extends StatelessWidget {
           ],
         ),
       ),
-      actions: [
-        FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('閉じる'),
-        ),
-      ],
+      actions: canDismiss
+          ? [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('閉じる'),
+              ),
+            ]
+          : null,
     );
   }
 }

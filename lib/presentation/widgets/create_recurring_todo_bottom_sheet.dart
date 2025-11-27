@@ -3,8 +3,12 @@ import 'package:flutter/cupertino.dart';
 import '../../data/models/recurring_todo_model.dart';
 import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
+import '../../services/data_cache_service.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import 'error_dialog.dart';
+import 'maintenance_dialog.dart';
 import '../../core/utils/content_validator.dart';
 import '../screens/content_policy_screen.dart';
 
@@ -411,21 +415,38 @@ class _CreateRecurringTodoBottomSheetState
       }
 
       if (!mounted) return;
+
+      // 成功メッセージ表示
+      final isUpdate = widget.existingRecurringTodo != null;
+      SnackBarHelper.showSuccessSnackBar(
+        context,
+        isUpdate ? '定期TODOを更新しました' : '定期TODOを作成しました',
+      );
+
       Navigator.pop(context, true); // 成功フラグを返す
     } catch (e, stackTrace) {
       debugPrint('[CreateRecurringTodoBottomSheet] ❌ エラー: $e');
 
+      final isUpdate = widget.existingRecurringTodo != null;
+      final errorMessage = isUpdate
+          ? ErrorMessages.recurringTodoUpdateFailed
+          : ErrorMessages.recurringTodoCreationFailed;
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        setState(() => _isLoading = false);
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.userId,
-        errorType: widget.existingRecurringTodo != null
-            ? '定期タスク更新エラー'
-            : '定期タスク作成エラー',
-        errorMessage: widget.existingRecurringTodo != null
-            ? '定期タスクの更新に失敗しました'
-            : '定期タスクの作成に失敗しました',
+        errorType: isUpdate ? '定期TODO更新エラー' : '定期TODO作成エラー',
+        errorMessage: errorMessage,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-        screenName: '定期タスク作成・編集',
+        screenName: '定期TODO作成・編集',
       );
 
       // エラーダイアログ表示
@@ -433,8 +454,11 @@ class _CreateRecurringTodoBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '定期タスクの保存に失敗しました',
+        errorMessage: '$errorMessage\n${ErrorMessages.retryLater}',
       );
+
+      // データリフレッシュ
+      await DataCacheService().refreshCache();
 
       setState(() => _isLoading = false);
     }

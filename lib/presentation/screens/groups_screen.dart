@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import '../../data/models/user_model.dart';
-import '../../data/models/group_model.dart';
-import '../../data/models/group_invitation.dart';
-import '../../services/data_cache_service.dart';
-import '../../services/group_service.dart';
-import '../../services/error_log_service.dart';
+import '../../core/constants/error_messages.dart';
+import '../../core/utils/api_client.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../../data/models/group_invitation.dart';
+import '../../data/models/group_model.dart';
+import '../../data/models/user_model.dart';
+import '../../services/data_cache_service.dart';
+import '../../services/error_log_service.dart';
+import '../../services/group_service.dart';
 import '../widgets/create_group_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 import 'group_detail_screen.dart';
 
 /// グループ一覧画面
@@ -77,9 +80,35 @@ class _GroupsScreenState extends State<GroupsScreen> {
           _pendingInvitations = invitations;
         });
       }
-    } catch (e) {
-      debugPrint('[GroupsScreen] 承認待ち招待一覧取得エラー: $e');
-      // エラーは無視（承認待ちがない場合も含む）
+    } catch (e, stackTrace) {
+      debugPrint('[GroupsScreen] ❌ 承認待ち招待一覧取得エラー: $e');
+
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '招待情報取得エラー',
+        errorMessage: ErrorMessages.invitationsFetchFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ一覧画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '${ErrorMessages.invitationsFetchFailed}\n${ErrorMessages.retryLater}',
+      );
     }
   }
 
@@ -163,11 +192,21 @@ class _GroupsScreenState extends State<GroupsScreen> {
     } catch (e, stackTrace) {
       debugPrint('[GroupsScreen] ❌ グループ作成エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'グループ作成エラー',
-        errorMessage: 'グループの作成に失敗しました',
+        errorMessage: ErrorMessages.groupCreationFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ一覧画面',
       );
@@ -177,8 +216,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'グループの作成に失敗しました',
+        errorMessage: '${ErrorMessages.groupCreationFailed}\n${ErrorMessages.retryLater}',
       );
+
+      // ダイアログを閉じた後、全データをリフレッシュ
+      if (!mounted) return;
+      await _cacheService.refreshCache();
     }
   }
 
@@ -189,11 +232,21 @@ class _GroupsScreenState extends State<GroupsScreen> {
     } catch (e, stackTrace) {
       debugPrint('[GroupsScreen] ❌ データ更新エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'データ更新エラー',
-        errorMessage: 'データの更新に失敗しました',
+        errorMessage: ErrorMessages.dataRefreshFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ一覧画面',
       );
@@ -203,8 +256,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'データの更新に失敗しました',
+        errorMessage: '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
       );
+
+      // リフレッシュ不要
+      // 理由: リフレッシュ操作自体が失敗しているため、既存のキャッシュデータで操作可能
     }
   }
 
@@ -255,11 +311,25 @@ class _GroupsScreenState extends State<GroupsScreen> {
     } catch (e, stackTrace) {
       debugPrint('[GroupsScreen] ❌ 並び順保存エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        setState(() {
+          _isCompleting = false;
+        });
+        _cancelReorder();
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: '並び順保存エラー',
-        errorMessage: '並び順の保存に失敗しました',
+        errorMessage: ErrorMessages.groupOrderSaveFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'グループ一覧画面',
       );
@@ -269,7 +339,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '並び順の保存に失敗しました',
+        errorMessage: '${ErrorMessages.groupOrderSaveFailed}\n${ErrorMessages.retryLater}',
       );
 
       // エラー時は変更をキャンセル
@@ -277,6 +347,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
         _isCompleting = false;
       });
       _cancelReorder();
+
+      // ダイアログを閉じた後、全データをリフレッシュ
+      if (!mounted) return;
+      await _cacheService.refreshCache();
     }
   }
 
@@ -516,31 +590,97 @@ class _GroupsScreenState extends State<GroupsScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
+    // API #15: accept-invitation
+    Map<String, dynamic>? groupData;
     try {
-      await _groupService.acceptInvitation(
+      groupData = await _groupService.acceptInvitation(
         invitationId: invitationId,
         userId: widget.user.id,
       );
+    } catch (e, stackTrace) {
+      debugPrint('[GroupsScreen] ❌ 招待承認エラー: $e');
 
-      // キャッシュを再読み込み（承認したグループが追加される）
+      // ローディング非表示
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
+      // 招待が見つからない場合は、SnackBarで通知して終了
+      if (e.toString().contains('Invitation not found')) {
+        await _loadPendingInvitations();
+        if (mounted) {
+          SnackBarHelper.showErrorSnackBar(
+            context,
+            ErrorMessages.invitationNotFound,
+          );
+        }
+        return;
+      }
+
+      // エラーの種類を判定
+      final String errorType;
+      final String errorMessage;
+
+      if (e.toString().contains('Failed to fetch group info')) {
+        // グループ情報取得失敗
+        errorType = 'グループ情報取得エラー';
+        errorMessage = ErrorMessages.invitationAcceptedButGroupFetchFailed;
+      } else {
+        // その他の招待承認エラー
+        errorType = '招待承認エラー';
+        errorMessage = ErrorMessages.invitationAcceptFailed;
+      }
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: errorType,
+        errorMessage: errorMessage,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ一覧画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '$errorMessage\n${ErrorMessages.retryLater}',
+      );
+
+      // ダイアログを閉じた後、全データをリフレッシュ
+      if (!mounted) return;
       await _cacheService.refreshCache();
+      return;
+    }
 
-      // 招待一覧を再取得
-      await _loadPendingInvitations();
+    // グループ情報をキャッシュに追加（APIレスポンスに含まれている場合）
+    if (groupData != null) {
+      // DataCacheService内部のグループリストに直接追加する
+      // _cacheService._groups.add()は直接アクセスできないため、refreshCacheを呼ぶ
+      // ただし、API設計上グループ情報が返ってきているので、それを利用すべき
+      // 現時点では暫定的にrefreshCacheを呼ぶが、本来はDataCacheServiceに
+      // addGroupToCache()のようなメソッドを追加すべき
+      await _cacheService.refreshCache();
+    }
 
-      // ローディング非表示
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        _showSuccessSnackBar('招待を承認しました');
-      }
-    } catch (e) {
-      debugPrint('[GroupsScreen] 招待承認エラー: $e');
+    // 招待一覧を再取得
+    await _loadPendingInvitations();
 
-      // ローディング非表示
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        SnackBarHelper.showErrorSnackBar(context, '招待の承認に失敗しました');
-      }
+    // ローディング非表示
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _showSuccessSnackBar('招待を承認しました');
     }
   }
 
@@ -553,6 +693,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
+    // API #17: reject-invitation
     try {
       await _groupService.rejectInvitation(
         invitationId: invitationId,
@@ -567,14 +708,52 @@ class _GroupsScreenState extends State<GroupsScreen> {
         Navigator.of(context, rootNavigator: true).pop();
         _showSuccessSnackBar('招待を却下しました');
       }
-    } catch (e) {
-      debugPrint('[GroupsScreen] 招待却下エラー: $e');
-
+    } catch (e, stackTrace) {
       // ローディング非表示
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        SnackBarHelper.showErrorSnackBar(context, '招待の却下に失敗しました');
       }
+
+      // メンテナンスモード対応
+      if (e is MaintenanceException) {
+        if (mounted) {
+          await MaintenanceDialog.show(context: context, message: e.message);
+        }
+        return;
+      }
+
+      // 招待が見つからない場合は、SnackBarで通知して終了
+      if (e.toString().contains('Invitation not found')) {
+        await _loadPendingInvitations();
+        if (mounted) {
+          SnackBarHelper.showErrorSnackBar(
+            context,
+            ErrorMessages.invitationNotFound,
+          );
+        }
+        return;
+      }
+
+      // システムエラー対応（招待却下エラー）
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: '招待却下エラー',
+        errorMessage: ErrorMessages.invitationRejectFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'グループ一覧画面',
+      );
+
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage:
+              '${ErrorMessages.invitationRejectFailed}\n${ErrorMessages.retryLater}',
+        );
+      }
+
+      // データ更新系なのでリフレッシュ
+      await _cacheService.refreshCache();
     }
   }
 
@@ -803,6 +982,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               );
             },
             onDismissed: (direction) async {
+              // API #18: delete-group
               try {
                 // グループ削除API呼び出し
                 await _cacheService.deleteGroup(
@@ -813,22 +993,36 @@ class _GroupsScreenState extends State<GroupsScreen> {
               } catch (e, stackTrace) {
                 debugPrint('[GroupsScreen] ❌ グループ削除エラー: $e');
 
+                // メンテナンスモード対応
+                if (e is MaintenanceException) {
+                  if (mounted) {
+                    await MaintenanceDialog.show(
+                        context: context, message: e.message);
+                  }
+                  return;
+                }
+
                 // エラーログ記録
                 final errorLog = await ErrorLogService().logError(
                   userId: widget.user.id,
                   errorType: 'グループ削除エラー',
-                  errorMessage: 'グループの削除に失敗しました',
+                  errorMessage: ErrorMessages.groupDeleteFailed,
                   stackTrace: '${e.toString()}\n${stackTrace.toString()}',
                   screenName: 'グループ一覧画面',
                 );
 
                 // エラーダイアログ表示
-                if (!mounted) return;
-                await ErrorDialog.show(
-                  context: context,
-                  errorId: errorLog.id,
-                  errorMessage: 'グループの削除に失敗しました',
-                );
+                if (mounted) {
+                  await ErrorDialog.show(
+                    context: context,
+                    errorId: errorLog.id,
+                    errorMessage:
+                        '${ErrorMessages.groupDeleteFailed}\n${ErrorMessages.retryLater}',
+                  );
+                }
+
+                // データ更新系なのでリフレッシュ
+                await _cacheService.refreshCache();
               }
             },
             background: Container(

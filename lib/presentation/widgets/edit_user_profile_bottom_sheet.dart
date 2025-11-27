@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/constants/error_messages.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/utils/content_validator.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../data/models/user_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
-import '../../core/utils/snackbar_helper.dart';
-import 'error_dialog.dart';
-import '../../core/utils/content_validator.dart';
 import '../screens/content_policy_screen.dart';
+import 'error_dialog.dart';
+import 'maintenance_dialog.dart';
 
 /// プロフィール編集ボトムシート
 class EditUserProfileBottomSheet extends StatefulWidget {
@@ -155,11 +158,21 @@ class _EditUserProfileBottomSheetState
     } catch (e, stackTrace) {
       debugPrint('[EditUserProfileBottomSheet] ❌ プロフィール更新エラー: $e');
 
+      // メンテナンスモード時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(
+          context: context,
+          message: e.message, // api_client.dartで固定メッセージを生成済み
+        );
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'プロフィール更新エラー',
-        errorMessage: 'プロフィールの更新に失敗しました',
+        errorMessage: ErrorMessages.profileUpdateFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'プロフィール編集',
       );
@@ -169,8 +182,12 @@ class _EditUserProfileBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'プロフィールの更新に失敗しました',
+        errorMessage: '${ErrorMessages.profileUpdateFailed}\n${ErrorMessages.retryLater}',
       );
+
+      // ダイアログを閉じた後、全データをリフレッシュ
+      if (!mounted) return;
+      await _cacheService.refreshCache();
     } finally {
       if (mounted) {
         setState(() {

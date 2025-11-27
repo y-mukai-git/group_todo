@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../config/environment_config.dart';
+import '../constants/error_messages.dart';
 import '../../services/error_log_service.dart';
 import '../../presentation/widgets/maintenance_dialog.dart';
 
@@ -46,26 +47,27 @@ class ApiClient {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-        // メンテナンスモード・エラーチェック
+        // メンテナンスモードチェック（statusはメンテナンス判定のみで使用）
         if (data['status'] == 'maintenance') {
-          final message = data['message'] as String? ?? 'システムメンテナンス中です';
-
-          if (context != null && context.mounted) {
-            await MaintenanceDialog.show(context: context, message: message);
-            throw MaintenanceException(message: message);
-          } else {
-            throw MaintenanceException(message: message);
+          // 終了予定時刻を解析
+          DateTime? endTime;
+          final endTimeStr = data['end_time'] as String?;
+          if (endTimeStr != null) {
+            try {
+              endTime = DateTime.parse(endTimeStr);
+            } catch (e) {
+              debugPrint('[ApiClient] ⚠️ end_time解析エラー: $e');
+            }
           }
-        }
 
-        if (data['status'] == 'error') {
-          final message = data['message'] as String? ?? 'システムエラーが発生しました';
+          // メッセージを固定形式で生成
+          final message = ErrorMessages.buildMaintenanceMessage(endTime);
 
           if (context != null && context.mounted) {
             await MaintenanceDialog.show(context: context, message: message);
-            throw SystemErrorException(message: message);
+            throw MaintenanceException(message: message, endTime: endTime);
           } else {
-            throw SystemErrorException(message: message);
+            throw MaintenanceException(message: message, endTime: endTime);
           }
         }
 
@@ -112,8 +114,9 @@ class ApiException implements Exception {
 /// メンテナンス例外クラス
 class MaintenanceException implements Exception {
   final String message;
+  final DateTime? endTime;
 
-  MaintenanceException({required this.message});
+  MaintenanceException({required this.message, this.endTime});
 
   @override
   String toString() => 'MaintenanceException: $message';

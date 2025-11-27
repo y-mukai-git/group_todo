@@ -24,6 +24,15 @@ interface AcceptInvitationResponse {
     role: string
     joined_at: string
   }
+  group?: {
+    id: string
+    name: string
+    description: string | null
+    category: string | null
+    image_url: string | null
+    created_at: string
+    updated_at: string
+  }
   error?: string
 }
 
@@ -164,6 +173,29 @@ serve(async (req) => {
       console.error('Failed to delete invitation record:', deleteError)
     }
 
+    // 3. グループ情報を取得
+    const { data: group, error: groupError } = await supabaseClient
+      .from('groups')
+      .select('id, name, description, category, image_url, created_at, updated_at')
+      .eq('id', invitation.group_id)
+      .single()
+
+    if (groupError || !group) {
+      // グループ情報取得に失敗（メンバー追加は成功しているが異常な状態）
+      console.error('Failed to fetch group info:', groupError)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to fetch group info',
+          member_added: true  // メンバー追加は成功している
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
     const response: AcceptInvitationResponse = {
       success: true,
       member: {
@@ -172,6 +204,15 @@ serve(async (req) => {
         user_id: newMember.user_id,
         role: newMember.role,
         joined_at: newMember.joined_at
+      },
+      group: {
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        category: group.category,
+        image_url: group.image_url,
+        created_at: group.created_at,
+        updated_at: group.updated_at
       }
     }
 

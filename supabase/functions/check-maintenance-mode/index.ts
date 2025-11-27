@@ -9,7 +9,8 @@ declare var Deno: any;
 
 interface CheckMaintenanceModeResponse {
   status: 'ok' | 'maintenance' | 'error'
-  message?: string
+  end_time?: string // メンテナンス終了予定時刻（ISO 8601形式）
+  message?: string // エラー時のみ使用
 }
 
 serve(async (req) => {
@@ -25,7 +26,7 @@ serve(async (req) => {
 
     const { data: maintenanceData, error: maintenanceError } = await supabaseClient
       .from('maintenance_mode')
-      .select('is_maintenance, maintenance_message')
+      .select('is_maintenance, end_time')
       .single()
 
     if (maintenanceError) {
@@ -46,7 +47,7 @@ serve(async (req) => {
     if (maintenanceData.is_maintenance) {
       const response: CheckMaintenanceModeResponse = {
         status: 'maintenance',
-        message: maintenanceData.maintenance_message || 'システムメンテナンス中です',
+        end_time: maintenanceData.end_time || undefined, // 終了予定時刻（ISO 8601形式）
       }
       return new Response(
         JSON.stringify(response),

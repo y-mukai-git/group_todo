@@ -3,7 +3,10 @@ import 'package:flutter/cupertino.dart';
 import '../../data/models/quick_action_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import 'error_dialog.dart';
+import 'maintenance_dialog.dart';
 import '../../core/utils/content_validator.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../screens/content_policy_screen.dart';
@@ -199,19 +202,36 @@ class _CreateQuickActionBottomSheetState
       }
 
       if (!mounted) return;
+
+      // 成功メッセージ表示
+      final isUpdate = widget.existingQuickAction != null;
+      SnackBarHelper.showSuccessSnackBar(
+        context,
+        isUpdate ? 'セットTODOを更新しました' : 'セットTODOを作成しました',
+      );
+
       Navigator.pop(context, true); // 成功フラグを返す
     } catch (e, stackTrace) {
       debugPrint('[CreateQuickActionBottomSheet] ❌ エラー: $e');
 
+      final isUpdate = widget.existingQuickAction != null;
+      final errorMessage = isUpdate
+          ? ErrorMessages.quickActionUpdateFailed
+          : ErrorMessages.quickActionCreationFailed;
+
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        setState(() => _isLoading = false);
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.userId,
-        errorType: widget.existingQuickAction != null
-            ? 'セットTODO更新エラー'
-            : 'セットTODO作成エラー',
-        errorMessage: widget.existingQuickAction != null
-            ? 'セットTODOの更新に失敗しました'
-            : 'セットTODOの作成に失敗しました',
+        errorType: isUpdate ? 'セットTODO更新エラー' : 'セットTODO作成エラー',
+        errorMessage: errorMessage,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'セットTODO作成・編集',
       );
@@ -221,8 +241,11 @@ class _CreateQuickActionBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'セットTODOの保存に失敗しました',
+        errorMessage: '$errorMessage\n${ErrorMessages.retryLater}',
       );
+
+      // データリフレッシュ
+      await _cacheService.refreshCache();
 
       setState(() => _isLoading = false);
     }

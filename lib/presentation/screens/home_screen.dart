@@ -4,10 +4,14 @@ import '../../data/models/user_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
+import '../../services/todo_service.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/quick_action_list_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/maintenance_dialog.dart';
 
 /// ホーム画面（MyTODO - 自分のタスク表示）
 class HomeScreen extends StatefulWidget {
@@ -157,13 +161,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // 成功メッセージを表示
       if (mounted) {
         if (wasCompleted) {
-          _showSuccessSnackBar('タスクを未完了に戻しました');
+          _showSuccessSnackBar('TODOを未完了に戻しました');
         } else {
-          _showSuccessSnackBar('タスクを完了しました');
+          _showSuccessSnackBar('TODOを完了しました');
         }
       }
     } catch (e, stackTrace) {
-      debugPrint('[HomeScreen] ❌ タスク完了切り替えエラー: $e');
+      debugPrint('[HomeScreen] ❌ TODO完了切り替えエラー: $e');
 
       // ローディング状態を終了
       if (mounted) {
@@ -172,22 +176,30 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
 
-      // エラーログ記録
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
-        errorType: 'タスク完了切り替えエラー',
-        errorMessage: 'タスクの完了状態を更新できませんでした',
+        errorType: 'TODO完了切り替えエラー',
+        errorMessage: ErrorMessages.todoCompletionToggleFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'ホーム画面',
       );
-
-      // エラーダイアログ表示
-      if (!mounted) return;
-      await ErrorDialog.show(
-        context: context,
-        errorId: errorLog.id,
-        errorMessage: '完了状態の更新に失敗しました',
-      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage:
+              '${ErrorMessages.todoCompletionToggleFailed}\n${ErrorMessages.retryLater}',
+        );
+        await _cacheService.refreshCache();
+      }
     }
   }
 
@@ -206,22 +218,29 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e, stackTrace) {
       debugPrint('[HomeScreen] ❌ データ更新エラー: $e');
 
-      // エラーログ記録
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
+      // システムエラー時は ErrorDialog を表示
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'データ更新エラー',
-        errorMessage: 'データの更新に失敗しました',
+        errorMessage: ErrorMessages.dataRefreshFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'ホーム画面',
       );
-
-      // エラーダイアログ表示
-      if (!mounted) return;
-      await ErrorDialog.show(
-        context: context,
-        errorId: errorLog.id,
-        errorMessage: 'データの更新に失敗しました',
-      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage:
+              '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
+        );
+      }
     }
   }
 
@@ -318,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// タスク更新実行（楽観的更新）
+  /// TODO更新実行（楽観的更新）
   Future<void> _updateTodo({
     required String todoId,
     required String title,
@@ -337,36 +356,38 @@ class _HomeScreenState extends State<HomeScreen> {
         assignedUserIds: assigneeIds,
       );
     } catch (e, stackTrace) {
-      // エラーログをDB登録
-      await ErrorLogService().logError(
-        userId: widget.user.id,
-        errorType: 'todo_update_error',
-        errorMessage: 'タスクの更新に失敗しました',
-        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-        screenName: 'home_screen',
-      );
+      debugPrint('[HomeScreen] ❌ TODO更新エラー: $e');
 
-      // エラーダイアログ表示
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('エラー'),
-            content: Text('タスクの更新に失敗しました\n$e'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
       }
+
+      // システムエラー時は ErrorDialog を表示
+      final errorLog = await ErrorLogService().logError(
+        userId: widget.user.id,
+        errorType: 'TODO更新エラー',
+        errorMessage: ErrorMessages.todoUpdateFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'ホーム画面',
+      );
+      if (mounted) {
+        await ErrorDialog.show(
+          context: context,
+          errorId: errorLog.id,
+          errorMessage:
+              '${ErrorMessages.todoUpdateFailed}\n${ErrorMessages.retryLater}',
+        );
+        await _cacheService.refreshCache();
+      }
+      return;
     }
 
     // 成功時のメッセージ（楽観的更新なので即座に表示）
     if (mounted) {
-      _showSuccessSnackBar('タスクを更新しました');
+      _showSuccessSnackBar('TODOを更新しました');
     }
   }
 
@@ -474,44 +495,47 @@ class _HomeScreenState extends State<HomeScreen> {
               }
 
               try {
-                String groupId;
-
-                // 新規グループ作成の場合
+                // TODO作成（新規グループ作成も含めてトランザクションで処理）
                 if (isCreatingNewGroup == true) {
+                  // 新規グループ作成 + TODO作成
                   final groupName = result['group_name'] as String;
                   final groupDescription =
                       result['group_description'] as String?;
                   final groupCategory = result['group_category'] as String?;
                   final groupImageData = result['group_image_data'] as String?;
 
-                  // グループ作成
-                  final newGroup = await _cacheService.createGroup(
+                  await _cacheService.createTodo(
                     userId: widget.user.id,
-                    groupName: groupName,
-                    description: groupDescription,
-                    category: groupCategory,
-                    imageData: groupImageData,
+                    newGroup: NewGroupInfo(
+                      name: groupName,
+                      description: groupDescription,
+                      category: groupCategory,
+                      imageData: groupImageData,
+                    ),
+                    title: title,
+                    description: description?.isNotEmpty == true
+                        ? description
+                        : null,
+                    dueDate: deadline,
+                    assignedUserIds: assigneeIds,
                   );
-                  groupId = newGroup.id;
-                  _showSuccessSnackBar('グループを作成しました');
                 } else {
-                  // 既存グループ選択の場合
-                  groupId = result['group_id'] as String;
+                  // 既存グループにTODO作成
+                  final groupId = result['group_id'] as String;
+
+                  await _cacheService.createTodo(
+                    userId: widget.user.id,
+                    groupId: groupId,
+                    title: title,
+                    description: description?.isNotEmpty == true
+                        ? description
+                        : null,
+                    dueDate: deadline,
+                    assignedUserIds: assigneeIds,
+                  );
                 }
 
-                // タスク作成
-                await _cacheService.createTodo(
-                  userId: widget.user.id,
-                  groupId: groupId,
-                  title: title,
-                  description: description?.isNotEmpty == true
-                      ? description
-                      : null,
-                  dueDate: deadline,
-                  assignedUserIds: assigneeIds,
-                );
-
-                _showSuccessSnackBar('タスクを作成しました');
+                _showSuccessSnackBar('TODOを作成しました');
 
                 // ローディング非表示（フレーム完了後に実行）
                 if (mounted) {
@@ -523,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 }
               } catch (e, stackTrace) {
-                debugPrint('[HomeScreen] ❌ タスク/グループ作成エラー: $e');
+                debugPrint('[HomeScreen] ❌ TODO作成エラー: $e');
 
                 // ローディング非表示
                 if (mounted) {
@@ -535,27 +559,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 }
 
-                // エラーログ記録
+                // メンテナンス時は MaintenanceDialog を表示
+                if (e is MaintenanceException) {
+                  if (!mounted) return;
+                  await MaintenanceDialog.show(
+                    // ignore: use_build_context_synchronously
+                    context: localContext,
+                    message: e.message,
+                  );
+                  return;
+                }
+
+                // システムエラー時は ErrorDialog を表示
                 final errorLog = await ErrorLogService().logError(
                   userId: widget.user.id,
-                  errorType: 'タスク作成エラー',
-                  errorMessage: 'タスクの作成に失敗しました',
+                  errorType: 'TODO作成エラー',
+                  errorMessage: ErrorMessages.todoCreationFailed,
                   stackTrace: '${e.toString()}\n${stackTrace.toString()}',
                   screenName: 'ホーム画面',
                 );
-
-                // エラーメッセージ表示（フレーム完了後に安全に表示）
                 if (mounted) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      // ignore: use_build_context_synchronously
-                      SnackBarHelper.showErrorSnackBar(
-                        localContext,
-                        'タスク/グループの作成に失敗しました（ID: ${errorLog.id}）',
-                        duration: const Duration(seconds: 5),
-                      );
-                    }
-                  });
+                  // ignore: use_build_context_synchronously
+                  await ErrorDialog.show(
+                    // ignore: use_build_context_synchronously
+                    context: localContext,
+                    errorId: errorLog.id,
+                    errorMessage:
+                        '${ErrorMessages.todoCreationFailed}\n${ErrorMessages.retryLater}',
+                  );
+                  await _cacheService.refreshCache();
                 }
               }
             },

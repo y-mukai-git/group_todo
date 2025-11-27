@@ -4,8 +4,11 @@ import '../../data/models/inquiry_type.dart';
 import '../../data/models/user_model.dart';
 import '../../services/contact_service.dart';
 import '../../services/error_log_service.dart';
+import '../../core/utils/api_client.dart';
+import '../../core/constants/error_messages.dart';
 import '../../core/utils/snackbar_helper.dart';
 import 'error_dialog.dart';
+import 'maintenance_dialog.dart';
 
 /// お問い合わせボトムシート
 class ContactInquiryBottomSheet extends StatefulWidget {
@@ -109,11 +112,18 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
     } catch (e, stackTrace) {
       debugPrint('[ContactInquiryBottomSheet] ❌ お問い合わせ送信エラー: $e');
 
+      // メンテナンス時は MaintenanceDialog を表示
+      if (e is MaintenanceException) {
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: e.message);
+        return;
+      }
+
       // エラーログ記録
       final errorLog = await ErrorLogService().logError(
         userId: widget.user.id,
         errorType: 'お問い合わせ送信エラー',
-        errorMessage: 'お問い合わせの送信に失敗しました',
+        errorMessage: ErrorMessages.contactInquiryFailed,
         stackTrace: '${e.toString()}\n${stackTrace.toString()}',
         screenName: 'お問い合わせ',
       );
@@ -123,7 +133,8 @@ class _ContactInquiryBottomSheetState extends State<ContactInquiryBottomSheet> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: 'お問い合わせの送信に失敗しました',
+        errorMessage:
+            '${ErrorMessages.contactInquiryFailed}\n${ErrorMessages.retryLater}',
       );
     } finally {
       if (mounted) {

@@ -178,20 +178,28 @@ class DataCacheService extends ChangeNotifier {
     }
   }
 
-  /// タスク作成（DB + キャッシュ）
+  /// TODO作成（DB + キャッシュ）
+  ///
+  /// [groupId]: 既存グループに紐付ける場合に指定
+  /// [newGroup]: 新規グループを作成して紐付ける場合に指定
+  /// どちらか一方を指定する必要があります
+  ///
+  /// 戻り値: 作成されたTODO（新規グループ作成した場合はキャッシュに自動追加）
   Future<TodoModel> createTodo({
     required String userId,
-    required String groupId,
+    String? groupId,
+    NewGroupInfo? newGroup,
     required String title,
     String? description,
     DateTime? dueDate,
     List<String>? assignedUserIds,
   }) async {
     try {
-      // 1. DB作成
-      final newTodo = await _todoService.createTodo(
+      // 1. DB作成（グループ作成もあればトランザクションで処理）
+      final result = await _todoService.createTodo(
         userId: userId,
         groupId: groupId,
+        newGroup: newGroup,
         title: title,
         description: description,
         dueDate: dueDate,
@@ -199,12 +207,16 @@ class DataCacheService extends ChangeNotifier {
       );
 
       // 2. DB作成成功 → キャッシュに追加
-      _todos.add(newTodo);
+      // 新規グループが作成された場合はグループキャッシュにも追加
+      if (result.createdGroup != null) {
+        _groups.add(result.createdGroup!);
+      }
+      _todos.add(result.todo);
       notifyListeners();
 
-      return newTodo;
+      return result.todo;
     } catch (e) {
-      debugPrint('[DataCacheService] ❌ タスク作成エラー: $e');
+      debugPrint('[DataCacheService] ❌ TODO作成エラー: $e');
       rethrow;
     }
   }
@@ -624,20 +636,28 @@ class DataCacheService extends ChangeNotifier {
   }
 
   /// クイックアクション実行（複数TODO一括生成）
-  Future<void> executeQuickAction({
+  ///
+  /// 戻り値: 作成されたTODOのリスト
+  Future<List<TodoModel>> executeQuickAction({
     required String userId,
     required String quickActionId,
   }) async {
     try {
       // クイックアクション実行（TODO一括生成）
-      await _quickActionService.executeQuickAction(
+      final createdTodos = await _quickActionService.executeQuickAction(
         userId: userId,
         quickActionId: quickActionId,
       );
 
-      // TODO一覧を再取得してキャッシュ更新
-      // （ここでは手動リフレッシュをユーザーに促す想定）
-      debugPrint('[DataCacheService] ✅ クイックアクション実行完了');
+      // 作成されたTODOをキャッシュに追加
+      _todos.addAll(createdTodos);
+      notifyListeners();
+
+      debugPrint(
+        '[DataCacheService] ✅ クイックアクション実行完了: ${createdTodos.length}件のTODOをキャッシュに追加',
+      );
+
+      return createdTodos;
     } catch (e) {
       debugPrint('[DataCacheService] ❌ クイックアクション実行エラー: $e');
       rethrow;

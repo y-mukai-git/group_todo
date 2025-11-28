@@ -13,6 +13,7 @@ class UserModel {
   final DateTime updatedAt;
   final String? role; // 'owner' | 'member' | null(招待中)
   final bool isPending; // 承諾待ちフラグ
+  final bool isAdmin; // 管理者フラグ（メンテナンスモード中でもアプリ利用可能）
 
   UserModel({
     required this.id,
@@ -28,6 +29,7 @@ class UserModel {
     required this.updatedAt,
     this.role,
     this.isPending = false,
+    this.isAdmin = false,
   });
 
   /// JSONからモデル生成
@@ -46,6 +48,7 @@ class UserModel {
       updatedAt: DateTime.parse(json['updated_at'] as String),
       role: json['role'] as String?,
       isPending: json['is_pending'] as bool? ?? false,
+      isAdmin: json['is_admin'] as bool? ?? false,
     );
   }
 
@@ -80,6 +83,7 @@ class UserModel {
     DateTime? updatedAt,
     String? role,
     bool? isPending,
+    bool? isAdmin,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -95,6 +99,7 @@ class UserModel {
       updatedAt: updatedAt ?? this.updatedAt,
       role: role ?? this.role,
       isPending: isPending ?? this.isPending,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 }

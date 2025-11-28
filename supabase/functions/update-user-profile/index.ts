@@ -49,7 +49,7 @@ serve(async (req) => {
     )
 
     // メンテナンスモードチェック
-    const checkResult = await checkMaintenanceMode()
+    const checkResult = await checkMaintenanceMode(req)
     if (checkResult.status === 'error' || checkResult.status === 'maintenance') {
       return new Response(
         JSON.stringify(checkResult),

@@ -52,6 +52,9 @@ CREATE TABLE users (
   notification_new_todo BOOLEAN NOT NULL DEFAULT true, -- 新規TODO通知
   notification_assigned BOOLEAN NOT NULL DEFAULT true, -- 担当TODO通知
 
+  -- 管理者フラグ
+  is_admin BOOLEAN NOT NULL DEFAULT false, -- 管理者はメンテナンスモード中でもアプリ利用可能
+
   -- 日時情報
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -61,12 +64,14 @@ CREATE TABLE users (
 -- ユーザーテーブルのインデックス
 CREATE INDEX idx_users_device_id ON users(device_id);
 CREATE INDEX idx_users_display_id ON users(display_id);
+CREATE INDEX idx_users_is_admin ON users(is_admin) WHERE is_admin = true;
 
 COMMENT ON TABLE users IS 'ユーザー情報テーブル（デバイスベース認証）';
 COMMENT ON COLUMN users.device_id IS 'デバイス固有ID（iOS/Android/Web）';
 COMMENT ON COLUMN users.display_name IS 'ユーザー名（自動生成: ユーザー12345678）';
 COMMENT ON COLUMN users.display_id IS '8桁英数字ランダムID（表示・データ引き継ぎ・ユーザー招待用）';
 COMMENT ON COLUMN users.transfer_password_hash IS 'データ引き継ぎ用パスワードハッシュ（bcrypt・display_id + パスワード認証）';
+COMMENT ON COLUMN users.is_admin IS '管理者フラグ（true: 管理者、false: 一般ユーザー）。管理者はメンテナンスモード中でもアプリを利用可能';
 
 -- ===================================
 -- 2. Groups (グループ情報)

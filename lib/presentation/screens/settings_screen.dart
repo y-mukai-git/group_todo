@@ -14,6 +14,7 @@ import '../widgets/contact_inquiry_bottom_sheet.dart';
 import '../widgets/transfer_password_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/maintenance_dialog.dart';
+import '../widgets/maintenance_indicator.dart';
 import 'announcements_screen.dart';
 import 'content_policy_screen.dart';
 
@@ -370,7 +371,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(title: const Text('設定')),
+      appBar: AppBar(
+        title: const Text('設定'),
+        actions: const [MaintenanceIndicator()],
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [

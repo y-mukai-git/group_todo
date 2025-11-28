@@ -12,6 +12,7 @@ import '../../services/group_service.dart';
 import '../widgets/create_group_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/maintenance_dialog.dart';
+import '../widgets/maintenance_indicator.dart';
 import 'group_detail_screen.dart';
 
 /// グループ一覧画面
@@ -419,6 +420,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 label: const Text('並び替え'),
                 style: TextButton.styleFrom(foregroundColor: Colors.white),
               ),
+            const MaintenanceIndicator(),
           ],
         ),
         body: _groups.isEmpty

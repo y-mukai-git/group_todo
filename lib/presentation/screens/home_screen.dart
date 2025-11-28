@@ -12,6 +12,7 @@ import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/quick_action_list_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/maintenance_dialog.dart';
+import '../widgets/maintenance_indicator.dart';
 
 /// ホーム画面（MyTODO - 自分のタスク表示）
 class HomeScreen extends StatefulWidget {
@@ -395,7 +396,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(title: const Text('My TODO'), actions: []),
+      appBar: AppBar(
+        title: const Text('My TODO'),
+        actions: const [MaintenanceIndicator()],
+      ),
       body: _buildGroupPageView(),
       floatingActionButton: SpeedDial(
         icon: Icons.add,

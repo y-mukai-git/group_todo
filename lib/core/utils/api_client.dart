@@ -15,6 +15,29 @@ class ApiClient {
 
   final _config = EnvironmentConfig.instance;
 
+  // 管理者フラグ（メンテナンスモードスキップ用）
+  bool _isAdmin = false;
+  // メンテナンス状態（管理者用アイコン表示用）
+  bool _isMaintenance = false;
+
+  /// 管理者フラグを設定
+  void setAdminStatus(bool isAdmin) {
+    _isAdmin = isAdmin;
+    debugPrint('[ApiClient] 管理者フラグ設定: $_isAdmin');
+  }
+
+  /// メンテナンス状態を設定
+  void setMaintenanceStatus(bool isMaintenance) {
+    _isMaintenance = isMaintenance;
+    debugPrint('[ApiClient] メンテナンス状態設定: $_isMaintenance');
+  }
+
+  /// 管理者フラグを取得
+  bool get isAdmin => _isAdmin;
+
+  /// メンテナンス状態を取得
+  bool get isMaintenance => _isMaintenance;
+
   /// Edge Function呼び出し
   Future<Map<String, dynamic>> callFunction({
     required String functionName,
@@ -33,13 +56,19 @@ class ApiClient {
         '${_config.supabaseUrl}/functions/v1/$functionName',
       );
 
+      // ヘッダー構築（管理者の場合はメンテナンススキップヘッダーを付与）
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${_config.supabaseAnonKey}',
+      };
+      if (_isAdmin) {
+        headers['x-admin-skip-maintenance'] = 'true';
+      }
+
       final response = await http
           .post(
             url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ${_config.supabaseAnonKey}',
-            },
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(timeout);

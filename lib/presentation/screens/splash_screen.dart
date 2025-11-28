@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/error_messages.dart';
 import '../../core/utils/api_client.dart';
+import '../../core/utils/device_id_helper.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/storage_helper.dart';
 import '../../data/models/user_model.dart';
@@ -60,7 +61,38 @@ class _SplashScreenState extends State<SplashScreen>
   /// アプリ初期化処理
   Future<void> _initializeApp() async {
     try {
-      // アプリ状態チェック（メンテナンス・強制アップデート）
+      // 1. 管理者・メンテナンスチェック（最初に実行）
+      final adminMaintenanceResult = await _checkAdminAndMaintenance();
+      if (adminMaintenanceResult == null) {
+        // エラー発生時は処理中断（エラーダイアログは_checkAdminAndMaintenance内で表示済み）
+        return;
+      }
+
+      final isAdmin = adminMaintenanceResult['is_admin'] as bool;
+      final isMaintenance = adminMaintenanceResult['is_maintenance'] as bool;
+
+      // ApiClientに管理者フラグとメンテナンス状態を設定
+      ApiClient().setAdminStatus(isAdmin);
+      ApiClient().setMaintenanceStatus(isMaintenance);
+
+      // 一般ユーザーでメンテナンス中の場合はメンテナンスダイアログを表示
+      if (!isAdmin && isMaintenance) {
+        final endTimeStr = adminMaintenanceResult['maintenance_end_time'] as String?;
+        DateTime? endTime;
+        if (endTimeStr != null) {
+          try {
+            endTime = DateTime.parse(endTimeStr);
+          } catch (e) {
+            debugPrint('[SplashScreen] ⚠️ end_time解析エラー: $e');
+          }
+        }
+        final message = ErrorMessages.buildMaintenanceMessage(endTime);
+        if (!mounted) return;
+        await MaintenanceDialog.show(context: context, message: message);
+        return;
+      }
+
+      // 2. アプリ状態チェック（強制アップデート・バージョン情報）
       final appStatus = await AppStatusService().checkAppStatus();
 
       // 強制アップデートチェック
@@ -73,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
 
-      // SharedPreferencesからユーザーID取得（ローカルチェック）
+      // 3. SharedPreferencesからユーザーID取得（ローカルチェック）
       final savedUserId = await StorageHelper.getUserId();
 
       if (savedUserId != null) {
@@ -289,5 +321,49 @@ class _SplashScreenState extends State<SplashScreen>
         );
       },
     );
+  }
+
+  /// 管理者・メンテナンスチェック
+  /// device_idから管理者フラグとメンテナンス状態を取得
+  Future<Map<String, dynamic>?> _checkAdminAndMaintenance() async {
+    try {
+      final deviceId = await DeviceIdHelper.getDeviceId();
+
+      final response = await ApiClient().callFunction(
+        functionName: 'check-admin-and-maintenance',
+        body: {'device_id': deviceId},
+      );
+
+      if (response['success'] != true) {
+        throw ApiException(
+          message: response['error'] as String? ?? 'システムエラーが発生しました',
+          statusCode: 200,
+        );
+      }
+
+      return response;
+    } catch (e, stackTrace) {
+      debugPrint('[SplashScreen] ❌ 管理者・メンテナンスチェックエラー: $e');
+
+      // エラーログ記録
+      final errorLog = await ErrorLogService().logError(
+        userId: null,
+        errorType: '管理者・メンテナンスチェックエラー',
+        errorMessage: ErrorMessages.appInitializationFailed,
+        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+        screenName: 'スプラッシュ画面',
+      );
+
+      // エラーダイアログ表示
+      if (!mounted) return null;
+      await ErrorDialog.show(
+        context: context,
+        errorId: errorLog.id,
+        errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+        canDismiss: false,
+      );
+
+      return null;
+    }
   }
 }

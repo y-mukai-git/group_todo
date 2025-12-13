@@ -1,12 +1,14 @@
--- 定期TODO生成時の担当者自動割り振りロジック追加
--- グループ離脱者がいる場合、以下の順で自動割り振り:
--- 1. 定期TODO作成者
--- 2. グループ作成者
--- 3. グループオーナー
+-- =====================================================
+-- Migration: 定期TODO生成関数のバグ修正
+-- Date: 2025-12-13
+-- Description: g.created_by を g.owner_id に修正
+--              groups テーブルには created_by カラムが存在しない
+-- =====================================================
 
 CREATE OR REPLACE FUNCTION execute_recurring_todos()
 RETURNS void
 LANGUAGE plpgsql
+SET search_path TO 'public'
 AS $$
 DECLARE
   recurring_todo_record RECORD;
@@ -80,7 +82,7 @@ BEGIN
                WHERE group_members.group_id = g.id
                AND group_members.user_id = g.owner_id
              )),
-            -- 優先順位3: グループオーナー
+            -- 優先順位3: グループオーナー（role='owner'のメンバー）
             (SELECT gm.user_id FROM group_members gm
              WHERE gm.group_id = recurring_todo_record.group_id
              AND gm.role = 'owner'

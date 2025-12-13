@@ -653,6 +653,16 @@
             "nullable": false,
             "type": "uuid"
           },
+          "is_ad_free": {
+            "default": "false",
+            "nullable": false,
+            "type": "boolean"
+          },
+          "is_admin": {
+            "default": "false",
+            "nullable": false,
+            "type": "boolean"
+          },
           "last_accessed_at": {
             "default": "now()",
             "nullable": false,

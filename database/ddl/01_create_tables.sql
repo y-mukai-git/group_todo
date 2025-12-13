@@ -696,13 +696,13 @@ BEGIN
                WHERE group_members.group_id = recurring_todo_record.group_id
                AND group_members.user_id = recurring_todo_record.created_by
              )),
-            -- 優先順位2: グループ作成者（グループメンバーの場合）
-            (SELECT g.created_by FROM groups g
+            -- 優先順位2: グループオーナー（owner_id）（グループメンバーの場合）
+            (SELECT g.owner_id FROM groups g
              WHERE g.id = recurring_todo_record.group_id
              AND EXISTS (
                SELECT 1 FROM group_members
                WHERE group_members.group_id = g.id
-               AND group_members.user_id = g.created_by
+               AND group_members.user_id = g.owner_id
              )),
             -- 優先順位3: グループオーナー
             (SELECT gm.user_id FROM group_members gm
@@ -728,12 +728,12 @@ BEGIN
              WHERE group_members.group_id = recurring_todo_record.group_id
              AND group_members.user_id = recurring_todo_record.created_by
            )) IS NOT NULL,
-          (SELECT g.created_by FROM groups g
+          (SELECT g.owner_id FROM groups g
            WHERE g.id = recurring_todo_record.group_id
            AND EXISTS (
              SELECT 1 FROM group_members
              WHERE group_members.group_id = g.id
-             AND group_members.user_id = g.created_by
+             AND group_members.user_id = g.owner_id
            )) IS NOT NULL,
           (SELECT gm.user_id FROM group_members gm
            WHERE gm.group_id = recurring_todo_record.group_id

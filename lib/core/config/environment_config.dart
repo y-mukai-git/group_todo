@@ -93,6 +93,12 @@ class EnvironmentConfig {
         : (_config?['admob']?['adUnitIds']?['android']?['banner'] ?? '');
   }
 
+  String get admobRewardedId {
+    return defaultTargetPlatform == TargetPlatform.iOS
+        ? (_config?['admob']?['adUnitIds']?['ios']?['rewarded'] ?? '')
+        : (_config?['admob']?['adUnitIds']?['android']?['rewarded'] ?? '');
+  }
+
   // ========================================
   // 機能フラグ
   // ========================================

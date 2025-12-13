@@ -14,6 +14,7 @@ class UserModel {
   final String? role; // 'owner' | 'member' | null(招待中)
   final bool isPending; // 承諾待ちフラグ
   final bool isAdmin; // 管理者フラグ（メンテナンスモード中でもアプリ利用可能）
+  final bool isAdFree; // 広告スキップフラグ（バナー非表示＋動画広告スキップ）
 
   UserModel({
     required this.id,
@@ -30,6 +31,7 @@ class UserModel {
     this.role,
     this.isPending = false,
     this.isAdmin = false,
+    this.isAdFree = false,
   });
 
   /// JSONからモデル生成
@@ -49,6 +51,7 @@ class UserModel {
       role: json['role'] as String?,
       isPending: json['is_pending'] as bool? ?? false,
       isAdmin: json['is_admin'] as bool? ?? false,
+      isAdFree: json['is_ad_free'] as bool? ?? false,
     );
   }
 
@@ -84,6 +87,7 @@ class UserModel {
     String? role,
     bool? isPending,
     bool? isAdmin,
+    bool? isAdFree,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -100,6 +104,7 @@ class UserModel {
       role: role ?? this.role,
       isPending: isPending ?? this.isPending,
       isAdmin: isAdmin ?? this.isAdmin,
+      isAdFree: isAdFree ?? this.isAdFree,
     );
   }
 }

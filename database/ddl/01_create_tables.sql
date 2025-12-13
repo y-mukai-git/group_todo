@@ -55,6 +55,9 @@ CREATE TABLE users (
   -- 管理者フラグ
   is_admin BOOLEAN NOT NULL DEFAULT false, -- 管理者はメンテナンスモード中でもアプリ利用可能
 
+  -- 広告スキップフラグ
+  is_ad_free BOOLEAN NOT NULL DEFAULT false, -- 広告スキップ（バナー非表示＋動画広告スキップ）
+
   -- 日時情報
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -65,6 +68,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_device_id ON users(device_id);
 CREATE INDEX idx_users_display_id ON users(display_id);
 CREATE INDEX idx_users_is_admin ON users(is_admin) WHERE is_admin = true;
+CREATE INDEX idx_users_is_ad_free ON users(is_ad_free) WHERE is_ad_free = true;
 
 COMMENT ON TABLE users IS 'ユーザー情報テーブル（デバイスベース認証）';
 COMMENT ON COLUMN users.device_id IS 'デバイス固有ID（iOS/Android/Web）';
@@ -72,6 +76,7 @@ COMMENT ON COLUMN users.display_name IS 'ユーザー名（自動生成: ユー�
 COMMENT ON COLUMN users.display_id IS '8桁英数字ランダムID（表示・データ引き継ぎ・ユーザー招待用）';
 COMMENT ON COLUMN users.transfer_password_hash IS 'データ引き継ぎ用パスワードハッシュ（bcrypt・display_id + パスワード認証）';
 COMMENT ON COLUMN users.is_admin IS '管理者フラグ（true: 管理者、false: 一般ユーザー）。管理者はメンテナンスモード中でもアプリを利用可能';
+COMMENT ON COLUMN users.is_ad_free IS '広告スキップフラグ（true: バナー広告非表示＋動画広告スキップ）';
 
 -- ===================================
 -- 2. Groups (グループ情報)

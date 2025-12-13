@@ -5,13 +5,16 @@ import '../../data/models/group_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../data/models/recurring_todo_model.dart';
 import '../../data/models/quick_action_model.dart';
+import '../../services/creation_limit_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
 import '../../services/recurring_todo_service.dart';
+import '../../services/rewarded_ad_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/api_client.dart';
 import '../../core/constants/error_messages.dart';
+import '../widgets/ad_required_dialog.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/edit_group_bottom_sheet.dart';
 import '../widgets/group_members_bottom_sheet.dart';
@@ -35,6 +38,8 @@ class GroupDetailScreen extends StatefulWidget {
 class _GroupDetailScreenState extends State<GroupDetailScreen> {
   final DataCacheService _cacheService = DataCacheService();
   final RecurringTodoService _recurringTodoService = RecurringTodoService();
+  final CreationLimitService _limitService = CreationLimitService();
+  final RewardedAdService _rewardedAdService = RewardedAdService();
   List<TodoModel> _todos = [];
   late GroupModel _currentGroup;
   String _selectedFilter =
@@ -53,6 +58,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     _cacheService.addListener(_updateGroupData);
     // 初回データ取得
     _updateGroupData();
+    // リワード広告の事前読み込み
+    _rewardedAdService.loadAd();
   }
 
   /// グループメンバー一覧ボトムシート表示
@@ -280,6 +287,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
   /// 定期タスク作成ボトムシート表示
   Future<void> _showCreateRecurringTodoDialog() async {
+    // 作成上限チェック
+    final canCreate = await AdRequiredDialog.checkAndShowForRecurringTodo(
+      context,
+      widget.group.id,
+    );
+    if (!canCreate || !mounted) {
+      return; // キャンセルまたは広告視聴失敗
+    }
+
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -318,6 +334,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     );
 
     if (result == true && mounted) {
+      // 作成成功時、一時権限を消費
+      _limitService.consumeTemporaryRecurringTodoPermission(widget.group.id);
       _showSuccessSnackBar('定期タスクを作成しました');
       await _updateGroupData();
     }
@@ -415,7 +433,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
   /// クイックアクション作成ボトムシート表示
   Future<void> _showCreateQuickActionDialog() async {
-    await showModalBottomSheet<bool>(
+    // 作成上限チェック
+    final canCreate = await AdRequiredDialog.checkAndShowForQuickAction(
+      context,
+      widget.group.id,
+    );
+    if (!canCreate || !mounted) {
+      return; // キャンセルまたは広告視聴失敗
+    }
+
+    final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -452,6 +479,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     );
 
     // キャッシュサービスがnotifyListeners()を呼ぶので自動的に更新される
+    // 作成成功時、一時権限を消費
+    if (result == true) {
+      _limitService.consumeTemporaryQuickActionPermission(widget.group.id);
+    }
   }
 
   /// クイックアクション編集ボトムシート表示
@@ -1214,6 +1245,96 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     }
   }
 
+  /// FAB構築（タブに応じて切り替え）
+  Widget _buildFloatingActionButton() {
+    switch (_selectedViewIndex) {
+      case 0:
+        // TODOタブ: SpeedDial（複数選択肢）
+        return SpeedDial(
+          icon: Icons.add,
+          activeIcon: Icons.close,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          overlayColor: Colors.black,
+          overlayOpacity: 0.4,
+          spacing: 12,
+          childPadding: const EdgeInsets.all(5),
+          spaceBetweenChildren: 12,
+          children: [
+            SpeedDialChild(
+              child: const Icon(Icons.add_task),
+              label: 'TODO作成',
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+              onTap: _showCreateTodoDialog,
+            ),
+            SpeedDialChild(
+              child: const Icon(Icons.flash_on),
+              label: 'クイックアクション',
+              backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+              foregroundColor:
+                  Theme.of(context).colorScheme.onTertiaryContainer,
+              onTap: () async {
+                final result = await showModalBottomSheet<bool>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  enableDrag: true,
+                  isDismissible: true,
+                  useRootNavigator: false,
+                  builder: (context) {
+                    final mediaQuery = MediaQuery.of(context);
+                    final contentHeight =
+                        mediaQuery.size.height -
+                        mediaQuery.padding.top -
+                        mediaQuery.padding.bottom;
+
+                    return Container(
+                      height: contentHeight * 0.8,
+                      margin: EdgeInsets.only(top: contentHeight * 0.2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      child: QuickActionListBottomSheet(
+                        fixedGroupId: widget.group.id,
+                        userId: widget.user.id,
+                      ),
+                    );
+                  },
+                );
+
+                // クイックアクション実行成功時にグループデータを更新
+                if (result == true && mounted) {
+                  await _updateGroupData();
+                }
+              },
+            ),
+          ],
+        );
+      case 1:
+        // 定期TODOタブ: 通常のFAB
+        return FloatingActionButton(
+          onPressed: _showCreateRecurringTodoDialog,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          child: const Icon(Icons.add),
+        );
+      case 2:
+        // クイックアクションタブ: 通常のFAB
+        return FloatingActionButton(
+          onPressed: _showCreateQuickActionDialog,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          child: const Icon(Icons.add),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   /// 手動リフレッシュ
   Future<void> _refreshData() async {
     try {
@@ -1906,108 +2027,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: SpeedDial(
-        icon: Icons.add,
-        activeIcon: Icons.close,
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-        overlayColor: Colors.black,
-        overlayOpacity: 0.4,
-        spacing: 12,
-        childPadding: const EdgeInsets.all(5),
-        spaceBetweenChildren: 12,
-        children: _selectedViewIndex == 0
-            ? [
-                // TODOタブ: TODO作成 + クイックアクション実行
-                SpeedDialChild(
-                  child: const Icon(Icons.add_task),
-                  label: 'TODO作成',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onPrimaryContainer,
-                  onTap: _showCreateTodoDialog,
-                ),
-                SpeedDialChild(
-                  child: const Icon(Icons.flash_on),
-                  label: 'クイックアクション',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.tertiaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onTertiaryContainer,
-                  onTap: () async {
-                    final result = await showModalBottomSheet<bool>(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      enableDrag: true,
-                      isDismissible: true,
-                      useRootNavigator: false,
-                      builder: (context) {
-                        final mediaQuery = MediaQuery.of(context);
-                        final contentHeight =
-                            mediaQuery.size.height -
-                            mediaQuery.padding.top -
-                            mediaQuery.padding.bottom;
-
-                        return Container(
-                          height: contentHeight * 0.8,
-                          margin: EdgeInsets.only(top: contentHeight * 0.2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(20),
-                            ),
-                          ),
-                          child: QuickActionListBottomSheet(
-                            fixedGroupId: widget.group.id,
-                            userId: widget.user.id,
-                          ),
-                        );
-                      },
-                    );
-
-                    // クイックアクション実行成功時にグループデータを更新
-                    if (result == true && mounted) {
-                      await _updateGroupData();
-                    }
-                  },
-                ),
-              ]
-            : _selectedViewIndex == 1
-            ? [
-                // 定期TODOタブ: 定期TODO作成
-                SpeedDialChild(
-                  child: const Icon(Icons.repeat),
-                  label: '定期TODO作成',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onPrimaryContainer,
-                  onTap: _showCreateRecurringTodoDialog,
-                ),
-              ]
-            : [
-                // クイックアクションタブ: クイックアクション作成
-                SpeedDialChild(
-                  child: const Icon(Icons.flash_on),
-                  label: 'クイックアクション作成',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onPrimaryContainer,
-                  onTap: _showCreateQuickActionDialog,
-                ),
-              ],
-      ),
+      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 }

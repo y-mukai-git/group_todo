@@ -15,10 +15,12 @@
       },
       "adUnitIds": {
         "ios": {
-          "banner": "ca-app-pub-3940256099942544/2934735716"
+          "banner": "ca-app-pub-3940256099942544/2934735716",
+          "rewarded": "ca-app-pub-3940256099942544/1712485313"
         },
         "android": {
-          "banner": "ca-app-pub-3940256099942544/6300978111"
+          "banner": "ca-app-pub-3940256099942544/6300978111",
+          "rewarded": "ca-app-pub-3940256099942544/5224354917"
         }
       }
     },
@@ -44,10 +46,12 @@
       },
       "adUnitIds": {
         "ios": {
-          "banner": "ca-app-pub-3940256099942544/2934735716"
+          "banner": "ca-app-pub-3940256099942544/2934735716",
+          "rewarded": "ca-app-pub-3940256099942544/1712485313"
         },
         "android": {
-          "banner": "ca-app-pub-3940256099942544/6300978111"
+          "banner": "ca-app-pub-3940256099942544/6300978111",
+          "rewarded": "ca-app-pub-3940256099942544/5224354917"
         }
       }
     },
@@ -73,10 +77,12 @@
       },
       "adUnitIds": {
         "ios": {
-          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX",
+          "rewarded": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
         },
         "android": {
-          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
+          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX",
+          "rewarded": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
         }
       }
     },

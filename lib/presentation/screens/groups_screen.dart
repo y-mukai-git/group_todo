@@ -6,9 +6,12 @@ import '../../core/utils/snackbar_helper.dart';
 import '../../data/models/group_invitation.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/user_model.dart';
+import '../../services/creation_limit_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/group_service.dart';
+import '../../services/rewarded_ad_service.dart';
+import '../widgets/ad_required_dialog.dart';
 import '../widgets/create_group_bottom_sheet.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/maintenance_dialog.dart';
@@ -28,6 +31,8 @@ class GroupsScreen extends StatefulWidget {
 class _GroupsScreenState extends State<GroupsScreen> {
   final DataCacheService _cacheService = DataCacheService();
   final GroupService _groupService = GroupService();
+  final CreationLimitService _limitService = CreationLimitService();
+  final RewardedAdService _rewardedAdService = RewardedAdService();
   List<GroupModel> _groups = [];
   List<GroupModel> _reorderingGroups = []; // 並び替え中の一時リスト
   List<GroupInvitationModel> _pendingInvitations = []; // 承認待ち招待一覧
@@ -41,6 +46,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
     _cacheService.addListener(_updateGroups);
     // 初回データ取得
     _updateGroups();
+    // リワード広告の事前読み込み
+    _rewardedAdService.loadAd();
   }
 
   @override
@@ -115,6 +122,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   /// グループ作成ボトムシート表示
   Future<void> _showCreateGroupDialog() async {
+    // 作成上限チェック
+    final canCreate = await AdRequiredDialog.checkAndShowForGroup(context);
+    if (!canCreate || !mounted) {
+      return; // キャンセルまたは広告視聴失敗
+    }
+
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
@@ -188,6 +201,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
         category: category,
         imageData: imageData,
       );
+
+      // 作成成功時、一時権限を消費
+      _limitService.consumeTemporaryGroupPermission();
 
       _showSuccessSnackBar('グループを作成しました');
     } catch (e, stackTrace) {

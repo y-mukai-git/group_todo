@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../presentation/widgets/banner_ad_widget.dart';
+import '../../services/data_cache_service.dart';
 import '../widgets/app_navigation_bar.dart';
 import 'home_screen.dart';
 import 'groups_screen.dart';
@@ -17,12 +18,16 @@ class MainTabScreen extends StatefulWidget {
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
+  final DataCacheService _cacheService = DataCacheService();
   int _currentIndex = 0;
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
   ];
+
+  /// 広告スキップ対象ユーザーか（is_ad_free=true）
+  bool get _isAdFreeUser => _cacheService.currentUser?.isAdFree ?? false;
 
   void _onTabTapped(int index) {
     if (_currentIndex == index) {
@@ -71,8 +76,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // バナー広告
-          const BannerAdWidget(),
+          // バナー広告（広告スキップユーザーは非表示）
+          if (!_isAdFreeUser) const BannerAdWidget(),
 
           // ボトムナビゲーションバー
           AppNavigationBar(

@@ -184,7 +184,9 @@ class RewardedAdService {
 
     await _rewardedAd!.show(
       onUserEarnedReward: (ad, reward) {
-        debugPrint('[RewardedAdService] 🎁 報酬獲得: ${reward.amount} ${reward.type}');
+        debugPrint(
+          '[RewardedAdService] 🎁 報酬獲得: ${reward.amount} ${reward.type}',
+        );
         if (!completer.isCompleted) {
           completer.complete(AdShowResult.rewarded);
         }

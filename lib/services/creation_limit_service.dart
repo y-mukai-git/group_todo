@@ -46,8 +46,13 @@ class CreationLimitService {
   bool get isAdFreeUser => _cacheService.currentUser?.isAdFree ?? false;
 
   /// グループ作成可能かチェック
+  /// 自分が作成した（オーナーである）グループのみカウント
   CreationLimitResult checkGroupCreation() {
-    final currentCount = _cacheService.groups.length;
+    final userId = _cacheService.currentUser?.id;
+    // 自分がオーナーのグループのみカウント
+    final currentCount = _cacheService.groups
+        .where((g) => g.ownerId == userId)
+        .length;
 
     // 広告スキップユーザーは常に作成可能
     if (isAdFreeUser) {
@@ -90,8 +95,9 @@ class CreationLimitService {
 
   /// 定期TODO作成可能かチェック
   CreationLimitResult checkRecurringTodoCreation(String groupId) {
-    final currentCount =
-        _cacheService.getRecurringTodosByGroupId(groupId).length;
+    final currentCount = _cacheService
+        .getRecurringTodosByGroupId(groupId)
+        .length;
 
     // 広告スキップユーザーは常に作成可能
     if (isAdFreeUser) {
@@ -134,8 +140,7 @@ class CreationLimitService {
 
   /// クイックアクション作成可能かチェック
   CreationLimitResult checkQuickActionCreation(String groupId) {
-    final currentCount =
-        _cacheService.getQuickActionsByGroupId(groupId).length;
+    final currentCount = _cacheService.getQuickActionsByGroupId(groupId).length;
 
     // 広告スキップユーザーは常に作成可能
     if (isAdFreeUser) {

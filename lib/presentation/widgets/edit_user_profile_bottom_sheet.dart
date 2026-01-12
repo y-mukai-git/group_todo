@@ -182,7 +182,8 @@ class _EditUserProfileBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.profileUpdateFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.profileUpdateFailed}\n${ErrorMessages.retryLater}',
       );
 
       // ダイアログを閉じた後、全データをリフレッシュ

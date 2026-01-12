@@ -98,7 +98,8 @@ class _TransferPasswordBottomSheetState
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.transferPasswordSetFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.transferPasswordSetFailed}\n${ErrorMessages.retryLater}',
       );
     } finally {
       if (mounted) {

@@ -74,7 +74,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
           canDismiss: false,
         );
         setState(() => _isLoading = false);
@@ -114,7 +115,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.userCreationFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.userCreationFailed}\n${ErrorMessages.retryLater}',
         canDismiss: false,
       );
       setState(() => _isLoading = false);
@@ -196,7 +198,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
           canDismiss: false,
         );
         setState(() => _isLoading = false);
@@ -236,7 +239,8 @@ class _DataTransferScreenState extends State<DataTransferScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.transferDataSystemError}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.transferDataSystemError}\n${ErrorMessages.retryLater}',
         canDismiss: false,
       );
       setState(() => _isLoading = false);

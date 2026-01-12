@@ -8,7 +8,6 @@ import '../../data/models/quick_action_model.dart';
 import '../../services/creation_limit_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/group_service.dart';
-import '../../services/recurring_todo_service.dart';
 import '../../services/rewarded_ad_service.dart';
 import '../../services/error_log_service.dart';
 import '../../core/utils/snackbar_helper.dart';
@@ -37,7 +36,6 @@ class GroupDetailScreen extends StatefulWidget {
 
 class _GroupDetailScreenState extends State<GroupDetailScreen> {
   final DataCacheService _cacheService = DataCacheService();
-  final RecurringTodoService _recurringTodoService = RecurringTodoService();
   final CreationLimitService _limitService = CreationLimitService();
   final RewardedAdService _rewardedAdService = RewardedAdService();
   List<TodoModel> _todos = [];
@@ -49,6 +47,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   List<RecurringTodoModel> _recurringTodos = []; // 定期TODOリスト
   List<QuickActionModel> _quickActions = []; // クイックアクションリスト
   final Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
+  final Set<String> _togglingRecurringTodoIds = {}; // 切り替え中の定期TODO IDを追跡
 
   @override
   void initState() {
@@ -336,8 +335,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     if (result == true && mounted) {
       // 作成成功時、一時権限を消費
       _limitService.consumeTemporaryRecurringTodoPermission(widget.group.id);
-      _showSuccessSnackBar('定期タスクを作成しました');
-      await _updateGroupData();
     }
   }
 
@@ -345,7 +342,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Future<void> _showEditRecurringTodoDialog(
     RecurringTodoModel recurringTodo,
   ) async {
-    final result = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -383,22 +380,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       },
     );
 
-    if (result == true && mounted) {
-      _showSuccessSnackBar('定期タスクを更新しました');
-      await _updateGroupData();
-    }
+    // キャッシュサービスがnotifyListeners()を呼ぶので自動的に更新される
   }
 
   /// 定期タスク削除
   Future<void> _deleteRecurringTodo(RecurringTodoModel recurringTodo) async {
     try {
-      await _recurringTodoService.deleteRecurringTodo(
+      await _cacheService.deleteRecurringTodo(
         userId: widget.user.id,
+        groupId: widget.group.id,
         recurringTodoId: recurringTodo.id,
       );
 
       if (mounted) {
-        _showSuccessSnackBar('定期タスクを削除しました');
+        _showSuccessSnackBar('定期TODOを削除しました');
       }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ 定期タスク削除エラー: $e');
@@ -533,7 +528,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('削除確認'),
-        content: Text('クイックアクション「${quickAction.name}」を削除しますか？'),
+        content: Text('セットTODO「${quickAction.name}」を削除しますか？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -560,7 +555,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
 
       if (mounted) {
-        _showSuccessSnackBar('クイックアクションを削除しました');
+        _showSuccessSnackBar('セットTODOを削除しました');
       }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ クイックアクション削除エラー: $e');
@@ -597,20 +592,42 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Future<void> _toggleRecurringTodoActive(
     RecurringTodoModel recurringTodo,
   ) async {
+    // 連打防止
+    if (_togglingRecurringTodoIds.contains(recurringTodo.id)) return;
+
+    setState(() {
+      _togglingRecurringTodoIds.add(recurringTodo.id);
+    });
+
     try {
-      await _recurringTodoService.toggleRecurringTodoActive(
+      await _cacheService.toggleRecurringTodoActive(
         userId: widget.user.id,
+        groupId: widget.group.id,
         recurringTodoId: recurringTodo.id,
       );
 
       if (mounted) {
         final message = recurringTodo.isActive
-            ? '定期タスクを無効にしました'
-            : '定期タスクを有効にしました';
-        _showSuccessSnackBar(message);
+            ? '定期TODOを無効にしました'
+            : '定期TODOを有効にしました';
+        // 既存のスナックバーをクリアしてから表示（連続操作時のズレ防止）
+        SnackBarHelper.showSuccessSnackBar(
+          context,
+          message,
+          clearPrevious: true,
+        );
+        setState(() {
+          _togglingRecurringTodoIds.remove(recurringTodo.id);
+        });
       }
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ 定期TODO切り替えエラー: $e');
+
+      if (mounted) {
+        setState(() {
+          _togglingRecurringTodoIds.remove(recurringTodo.id);
+        });
+      }
 
       // メンテナンス時は MaintenanceDialog を表示
       if (e is MaintenanceException) {
@@ -871,7 +888,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
 
       if (!mounted) return;
-      _showSuccessSnackBar('タスクを作成しました');
+      _showSuccessSnackBar('TODOを作成しました');
     } catch (e, stackTrace) {
       debugPrint('[GroupDetailScreen] ❌ タスク作成エラー: $e');
 
@@ -894,7 +911,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.todoCreationFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.todoCreationFailed}\n${ErrorMessages.retryLater}',
         );
         await _cacheService.refreshCache();
       }
@@ -944,7 +962,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.todoUpdateFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.todoUpdateFailed}\n${ErrorMessages.retryLater}',
         );
         await _cacheService.refreshCache();
       }
@@ -1063,7 +1082,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.groupUpdateFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.groupUpdateFailed}\n${ErrorMessages.retryLater}',
         );
         await _cacheService.refreshCache();
       }
@@ -1162,7 +1182,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.todoDeleteFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.todoDeleteFailed}\n${ErrorMessages.retryLater}',
         );
         await _cacheService.refreshCache();
       }
@@ -1270,10 +1291,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             ),
             SpeedDialChild(
               child: const Icon(Icons.flash_on),
-              label: 'クイックアクション',
+              label: 'セットTODO',
               backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-              foregroundColor:
-                  Theme.of(context).colorScheme.onTertiaryContainer,
+              foregroundColor: Theme.of(
+                context,
+              ).colorScheme.onTertiaryContainer,
               onTap: () async {
                 final result = await showModalBottomSheet<bool>(
                   context: context,
@@ -1361,7 +1383,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         await ErrorDialog.show(
           context: context,
           errorId: errorLog.id,
-          errorMessage: '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
+          errorMessage:
+              '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
         );
       }
     }
@@ -1607,7 +1630,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'クイック\nアクション',
+                              'セット\nTODO',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
@@ -1860,13 +1883,30 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                                           ),
                                         ),
                                         // ON/OFFスイッチ
-                                        Switch(
-                                          value: recurringTodo.isActive,
-                                          onChanged: (_) =>
-                                              _toggleRecurringTodoActive(
-                                                recurringTodo,
+                                        _togglingRecurringTodoIds.contains(
+                                              recurringTodo.id,
+                                            )
+                                            ? const SizedBox(
+                                                width: 48,
+                                                height: 24,
+                                                child: Center(
+                                                  child: SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
+                                                ),
+                                              )
+                                            : Switch(
+                                                value: recurringTodo.isActive,
+                                                onChanged: (_) =>
+                                                    _toggleRecurringTodoActive(
+                                                      recurringTodo,
+                                                    ),
                                               ),
-                                        ),
                                       ],
                                     ),
                                   ),
@@ -1906,7 +1946,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                               ],
                             ),
                             child: Text(
-                              'クイックアクションがありません',
+                              'セットTODOがありません',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: Theme.of(

@@ -5,11 +5,7 @@ import '../../services/data_cache_service.dart';
 import '../../services/error_log_service.dart';
 
 /// 広告視聴必須ダイアログの種別
-enum AdRequiredType {
-  group,
-  recurringTodo,
-  quickAction,
-}
+enum AdRequiredType { group, recurringTodo, quickAction }
 
 /// 広告視聴必須ダイアログ
 /// 無料枠を超過した場合に表示し、広告視聴で作成を許可する
@@ -33,10 +29,10 @@ class AdRequiredDialog {
     final creationLimitService = CreationLimitService();
 
     // ダイアログのタイトルとメッセージを設定
-    final (title, itemName) = switch (type) {
-      AdRequiredType.group => ('グループ作成', 'グループ'),
-      AdRequiredType.recurringTodo => ('定期TODO作成', '定期TODO'),
-      AdRequiredType.quickAction => ('クイックアクション作成', 'クイックアクション'),
+    final (title, itemName, countLabel) = switch (type) {
+      AdRequiredType.group => ('グループ作成', 'グループ', '自分で作成したグループ'),
+      AdRequiredType.recurringTodo => ('定期TODO作成', '定期TODO', '現在の件数'),
+      AdRequiredType.quickAction => ('セットTODO作成', 'セットTODO', '現在の件数'),
     };
 
     final result = await showDialog<bool>(
@@ -61,11 +57,8 @@ class AdRequiredDialog {
               ),
               const SizedBox(height: 8),
               Text(
-                '現在の件数: $currentCount件',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                ),
+                '$countLabel: $currentCount件',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 16),
               Container(
@@ -100,9 +93,8 @@ class AdRequiredDialog {
                 showDialog(
                   context: dialogContext,
                   barrierDismissible: false,
-                  builder: (context) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  builder: (context) =>
+                      const Center(child: CircularProgressIndicator()),
                 );
 
                 // 広告表示（リトライ付き）
@@ -130,9 +122,7 @@ class AdRequiredDialog {
                     if (dialogContext.mounted) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         SnackBar(
-                          content: const Text(
-                            '広告システムの障害により、広告SKIPします。',
-                          ),
+                          content: const Text('広告システムの障害により、広告SKIPします。'),
                           backgroundColor: Colors.orange.shade700,
                           duration: const Duration(seconds: 4),
                         ),
@@ -191,7 +181,7 @@ class AdRequiredDialog {
     final typeName = switch (type) {
       AdRequiredType.group => 'グループ作成',
       AdRequiredType.recurringTodo => '定期TODO作成',
-      AdRequiredType.quickAction => 'クイックアクション作成',
+      AdRequiredType.quickAction => 'セットTODO作成',
     };
 
     errorLogService.logError(

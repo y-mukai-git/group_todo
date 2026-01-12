@@ -78,25 +78,19 @@ class EnvironmentConfig {
   }
 
   // ========================================
-  // AdMob設定
+  // AdMob設定（iOS専用）
   // ========================================
 
   String get admobAppId {
-    return defaultTargetPlatform == TargetPlatform.iOS
-        ? (_config?['admob']?['appId']?['ios'] ?? '')
-        : (_config?['admob']?['appId']?['android'] ?? '');
+    return _config?['admob']?['appId'] ?? '';
   }
 
   String get admobBannerId {
-    return defaultTargetPlatform == TargetPlatform.iOS
-        ? (_config?['admob']?['adUnitIds']?['ios']?['banner'] ?? '')
-        : (_config?['admob']?['adUnitIds']?['android']?['banner'] ?? '');
+    return _config?['admob']?['adUnitIds']?['banner'] ?? '';
   }
 
   String get admobRewardedId {
-    return defaultTargetPlatform == TargetPlatform.iOS
-        ? (_config?['admob']?['adUnitIds']?['ios']?['rewarded'] ?? '')
-        : (_config?['admob']?['adUnitIds']?['android']?['rewarded'] ?? '');
+    return _config?['admob']?['adUnitIds']?['rewarded'] ?? '';
   }
 
   // ========================================

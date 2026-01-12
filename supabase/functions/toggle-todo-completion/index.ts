@@ -65,24 +65,6 @@ serve(async (req) => {
       )
     }
 
-    // ユーザーがこのTODOの担当者かチェック
-    const { data: assignment, error: assignmentError } = await supabaseClient
-      .from('todo_assignments')
-      .select('id')
-      .eq('todo_id', todo_id)
-      .eq('user_id', user_id)
-      .single()
-
-    if (assignmentError || !assignment) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'User is not assigned to this TODO' }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
     // 現在の完了状態とグループIDを取得
     const { data: currentTodo, error: getTodoError } = await supabaseClient
       .from('todos')
@@ -100,7 +82,7 @@ serve(async (req) => {
       )
     }
 
-    // メンバーシップチェック
+    // メンバーシップチェック（グループメンバーであることを確認）
     const membershipCheck = await checkGroupMembership(supabaseClient, currentTodo.group_id, user_id)
     if (!membershipCheck.success) {
       return new Response(
@@ -111,6 +93,37 @@ serve(async (req) => {
         }
       )
     }
+
+    // 担当者チェック：担当者がいる場合は自分が担当者であることを確認
+    // 担当者なし（全員に表示）の場合はグループメンバーなら操作可能
+    const { data: assignments, error: assignmentsError } = await supabaseClient
+      .from('todo_assignments')
+      .select('user_id')
+      .eq('todo_id', todo_id)
+
+    if (assignmentsError) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to check assignments: ${assignmentsError.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const assignedUserIds = (assignments || []).map(a => a.user_id)
+
+    // 担当者がいる場合は、自分が担当者でなければエラー
+    if (assignedUserIds.length > 0 && !assignedUserIds.includes(user_id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'User is not assigned to this TODO' }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+    // 担当者なし（assignedUserIds.length === 0）の場合は、グループメンバーチェック済みなのでOK
 
     // 完了状態を反転
     const newCompletedState = !currentTodo.is_completed
@@ -137,13 +150,7 @@ serve(async (req) => {
       )
     }
 
-    // 担当者ID一覧を取得
-    const { data: assignments } = await supabaseClient
-      .from('todo_assignments')
-      .select('user_id')
-      .eq('todo_id', todo_id)
-
-    const assignedUserIds = assignments?.map((a: { user_id: string }) => a.user_id) ?? []
+    // 担当者ID一覧は既に取得済み（assignedUserIds）
 
     const response: ToggleTodoResponse = {
       success: true,

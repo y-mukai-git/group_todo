@@ -1,5 +1,6 @@
 // 自分の担当TODO取得 Edge Function
 // 期限フィルター対応（当日・3日以内・1週間以内）
+// 担当者なし（全員に見える）TODOにも対応
 
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -77,7 +78,7 @@ serve(async (req) => {
       deadlineEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     }
 
-    // 自分が担当のTODO IDを取得
+    // 1. 自分が担当のTODO IDを取得
     const { data: assignments, error: assignmentError } = await supabaseClient
       .from('todo_assignments')
       .select('todo_id')
@@ -93,16 +94,87 @@ serve(async (req) => {
       )
     }
 
-    const todoIds = (assignments || []).map(a => a.todo_id)
+    const assignedTodoIds = (assignments || []).map(a => a.todo_id)
 
-    if (todoIds.length === 0) {
+    // 2. 自分が所属するグループIDを取得（担当者なしTODO用）
+    const { data: memberships, error: membershipError } = await supabaseClient
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', user_id)
+
+    if (membershipError) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to get memberships: ${membershipError.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const memberGroupIds = (memberships || []).map(m => m.group_id)
+
+    if (assignedTodoIds.length === 0 && memberGroupIds.length === 0) {
       return new Response(
         JSON.stringify({ success: true, todos: [] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // TODOを取得（グループ情報も含む）
+    // 3. 担当者なしのTODO IDを取得（自分が所属するグループから）
+    // まず、担当者が1人以上いるTODO IDを取得
+    const { data: todosWithAssignees, error: todosWithAssigneesError } = await supabaseClient
+      .from('todo_assignments')
+      .select('todo_id')
+
+    if (todosWithAssigneesError) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to get todos with assignees: ${todosWithAssigneesError.message}` }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const todoIdsWithAssignees = new Set((todosWithAssignees || []).map(t => t.todo_id))
+
+    // 自分が所属するグループの全TODO IDを取得
+    let unassignedTodoIds: string[] = []
+    if (memberGroupIds.length > 0) {
+      const { data: groupTodos, error: groupTodosError } = await supabaseClient
+        .from('todos')
+        .select('id')
+        .in('group_id', memberGroupIds)
+        .eq('is_completed', false)
+
+      if (groupTodosError) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to get group todos: ${groupTodosError.message}` }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      // 担当者がいないTODOのみ抽出
+      unassignedTodoIds = (groupTodos || [])
+        .filter(t => !todoIdsWithAssignees.has(t.id))
+        .map(t => t.id)
+    }
+
+    // 4. 自分が担当 + 担当者なし のTODO IDを統合
+    const allTodoIds = [...new Set([...assignedTodoIds, ...unassignedTodoIds])]
+
+    if (allTodoIds.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, todos: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 5. TODOを取得（グループ情報も含む）
     let query = supabaseClient
       .from('todos')
       .select(`
@@ -118,7 +190,7 @@ serve(async (req) => {
         created_by,
         created_at
       `)
-      .in('id', todoIds)
+      .in('id', allTodoIds)
       .eq('is_completed', false)
 
     // 期限フィルター適用

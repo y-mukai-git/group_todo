@@ -703,22 +703,49 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         return;
       }
 
-      // システムエラー対応
-      final errorLog = await ErrorLogService().logError(
-        userId: widget.currentUserId,
-        errorType: 'ユーザー検証エラー',
-        errorMessage: ErrorMessages.userValidationFailed,
-        stackTrace: '${e.toString()}\n${stackTrace.toString()}',
-        screenName: 'グループメンバー一覧',
-      );
-
-      if (mounted) {
-        await ErrorDialog.show(
-          context: context,
-          errorId: errorLog.id,
-          errorMessage:
-              '${ErrorMessages.userValidationFailed}\n${ErrorMessages.retryLater}',
+      // ApiExceptionの場合、ステータスコードで判定
+      if (e is ApiException) {
+        if (e.statusCode == 200) {
+          // ビジネスエラー（200 + success:false）→ SnackBar
+          final errorMessage = _getErrorMessage(e.message);
+          if (mounted) {
+            SnackBarHelper.showErrorSnackBar(context, errorMessage);
+          }
+        } else {
+          // システムエラー（400/500）→ ErrorDialog + ログ
+          final errorLog = await ErrorLogService().logError(
+            userId: widget.currentUserId,
+            errorType: 'ユーザー検証エラー',
+            errorMessage: ErrorMessages.userValidationFailed,
+            stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+            screenName: 'グループメンバー一覧',
+          );
+          if (mounted) {
+            await ErrorDialog.show(
+              context: context,
+              errorId: errorLog.id,
+              errorMessage:
+                  '${ErrorMessages.userValidationFailed}\n${ErrorMessages.retryLater}',
+            );
+          }
+        }
+      } else {
+        // その他のシステムエラー
+        final errorLog = await ErrorLogService().logError(
+          userId: widget.currentUserId,
+          errorType: 'ユーザー検証エラー',
+          errorMessage: ErrorMessages.userValidationFailed,
+          stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+          screenName: 'グループメンバー一覧',
         );
+        if (mounted) {
+          await ErrorDialog.show(
+            context: context,
+            errorId: errorLog.id,
+            errorMessage:
+                '${ErrorMessages.userValidationFailed}\n${ErrorMessages.retryLater}',
+          );
+        }
       }
       return;
     }
@@ -767,11 +794,31 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         return;
       }
 
-      // ApiExceptionの場合、ビジネスエラーとして扱う
+      // ApiExceptionの場合、ステータスコードで判定
       if (e is ApiException) {
-        final errorMessage = _getErrorMessage(e.message);
-        if (mounted) {
-          SnackBarHelper.showErrorSnackBar(context, errorMessage);
+        if (e.statusCode == 200) {
+          // ビジネスエラー（200 + success:false）→ SnackBar
+          final errorMessage = _getErrorMessage(e.message);
+          if (mounted) {
+            SnackBarHelper.showErrorSnackBar(context, errorMessage);
+          }
+        } else {
+          // システムエラー（400/500）→ ErrorDialog + ログ
+          final errorLog = await ErrorLogService().logError(
+            userId: widget.currentUserId,
+            errorType: '招待エラー',
+            errorMessage: ErrorMessages.invitationFailed,
+            stackTrace: '${e.toString()}\n${stackTrace.toString()}',
+            screenName: 'グループメンバー一覧',
+          );
+          if (mounted) {
+            await ErrorDialog.show(
+              context: context,
+              errorId: errorLog.id,
+              errorMessage:
+                  '${ErrorMessages.invitationFailed}\n${ErrorMessages.retryLater}',
+            );
+          }
         }
       } else {
         // システムエラーの場合、エラーダイアログを表示
@@ -815,8 +862,13 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
         return 'このユーザーは既に招待済みです';
       case 'Only group owner can invite members':
         return 'オーナーのみが招待できます';
+      case 'Inviter is not a member of this group':
+        return '招待者がグループのメンバーではありません';
+      case 'メンバーでないため操作できません':
+        return 'メンバーでないため操作できません';
       default:
-        return '招待に失敗しました';
+        // 未知のビジネスエラーはそのまま表示
+        return error;
     }
   }
 

@@ -39,7 +39,7 @@ class QuickActionService {
 
       if (response['success'] != true) {
         final errorMessage =
-            response['error'] as String? ?? 'クイックアクションの作成に失敗しました';
+            response['error'] as String? ?? 'セットTODOの作成に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
 
@@ -65,7 +65,7 @@ class QuickActionService {
 
       if (response['success'] != true) {
         final errorMessage =
-            response['error'] as String? ?? 'クイックアクション一覧の取得に失敗しました';
+            response['error'] as String? ?? 'セットTODO一覧の取得に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
 
@@ -122,7 +122,7 @@ class QuickActionService {
 
       if (response['success'] != true) {
         final errorMessage =
-            response['error'] as String? ?? 'クイックアクションの更新に失敗しました';
+            response['error'] as String? ?? 'セットTODOの更新に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
 
@@ -148,7 +148,7 @@ class QuickActionService {
 
       if (response['success'] != true) {
         final errorMessage =
-            response['error'] as String? ?? 'クイックアクションの削除に失敗しました';
+            response['error'] as String? ?? 'セットTODOの削除に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
     } catch (e) {
@@ -172,7 +172,7 @@ class QuickActionService {
 
       if (response['success'] != true) {
         final errorMessage =
-            response['error'] as String? ?? 'クイックアクションの実行に失敗しました';
+            response['error'] as String? ?? 'セットTODOの実行に失敗しました';
         throw ApiException(message: errorMessage, statusCode: 200);
       }
 

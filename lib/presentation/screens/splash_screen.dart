@@ -77,7 +77,8 @@ class _SplashScreenState extends State<SplashScreen>
 
       // 一般ユーザーでメンテナンス中の場合はメンテナンスダイアログを表示
       if (!isAdmin && isMaintenance) {
-        final endTimeStr = adminMaintenanceResult['maintenance_end_time'] as String?;
+        final endTimeStr =
+            adminMaintenanceResult['maintenance_end_time'] as String?;
         DateTime? endTime;
         if (endTimeStr != null) {
           try {
@@ -180,7 +181,8 @@ class _SplashScreenState extends State<SplashScreen>
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
         canDismiss: false,
       );
     }
@@ -359,7 +361,8 @@ class _SplashScreenState extends State<SplashScreen>
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.appInitializationFailed}\n${ErrorMessages.retryLater}',
         canDismiss: false,
       );
 

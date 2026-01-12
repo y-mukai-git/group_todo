@@ -84,15 +84,18 @@ serve(async (req) => {
       )
     }
 
-    if (!title || !assigned_user_ids || assigned_user_ids.length === 0 || !created_by) {
+    if (!title || !created_by) {
       return new Response(
-        JSON.stringify({ success: false, error: 'title, assigned_user_ids, and created_by are required' }),
+        JSON.stringify({ success: false, error: 'title and created_by are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
+
+    // assigned_user_idsが未定義の場合は空配列に（指定なし = 全員に見える）
+    const effectiveAssignedUserIds = assigned_user_ids || []
 
     if (new_group && !new_group.name) {
       return new Response(
@@ -255,25 +258,27 @@ serve(async (req) => {
       }
 
       // ========================================
-      // 2. 担当者メンバーチェック
+      // 2. 担当者メンバーチェック（担当者指定がある場合のみ）
       // ========================================
-      const assigneeCheck = await checkAssigneesAreMembers(supabaseClient, targetGroupId, assigned_user_ids)
-      if (!assigneeCheck.success) {
-        // ロールバック: 新規グループ作成していた場合は削除
-        if (createdGroupId) {
-          await supabaseClient.from('group_members').delete().eq('group_id', createdGroupId)
-          await supabaseClient.from('groups').delete().eq('id', createdGroupId)
-          if (uploadedIconPath) {
-            await supabaseClient.storage.from('group-icons').remove([uploadedIconPath])
+      if (effectiveAssignedUserIds.length > 0) {
+        const assigneeCheck = await checkAssigneesAreMembers(supabaseClient, targetGroupId, effectiveAssignedUserIds)
+        if (!assigneeCheck.success) {
+          // ロールバック: 新規グループ作成していた場合は削除
+          if (createdGroupId) {
+            await supabaseClient.from('group_members').delete().eq('group_id', createdGroupId)
+            await supabaseClient.from('groups').delete().eq('id', createdGroupId)
+            if (uploadedIconPath) {
+              await supabaseClient.storage.from('group-icons').remove([uploadedIconPath])
+            }
           }
+          return new Response(
+            JSON.stringify({ success: false, error: assigneeCheck.error }),
+            {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
         }
-        return new Response(
-          JSON.stringify({ success: false, error: assigneeCheck.error }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
       }
 
       // ========================================
@@ -315,35 +320,37 @@ serve(async (req) => {
       createdTodoId = newTodo.id
 
       // ========================================
-      // 4. 担当者を追加
+      // 4. 担当者を追加（担当者指定がある場合のみ）
       // ========================================
-      const assignmentInserts = assigned_user_ids.map(user_id => ({
-        todo_id: newTodo.id,
-        user_id: user_id,
-        assigned_at: now
-      }))
+      if (effectiveAssignedUserIds.length > 0) {
+        const assignmentInserts = effectiveAssignedUserIds.map(user_id => ({
+          todo_id: newTodo.id,
+          user_id: user_id,
+          assigned_at: now
+        }))
 
-      const { error: assignmentError } = await supabaseClient
-        .from('todo_assignments')
-        .insert(assignmentInserts)
+        const { error: assignmentError } = await supabaseClient
+          .from('todo_assignments')
+          .insert(assignmentInserts)
 
-      if (assignmentError) {
-        // ロールバック: TODO削除、新規グループ作成していた場合はグループも削除
-        await supabaseClient.from('todos').delete().eq('id', newTodo.id)
-        if (createdGroupId) {
-          await supabaseClient.from('group_members').delete().eq('group_id', createdGroupId)
-          await supabaseClient.from('groups').delete().eq('id', createdGroupId)
-          if (uploadedIconPath) {
-            await supabaseClient.storage.from('group-icons').remove([uploadedIconPath])
+        if (assignmentError) {
+          // ロールバック: TODO削除、新規グループ作成していた場合はグループも削除
+          await supabaseClient.from('todos').delete().eq('id', newTodo.id)
+          if (createdGroupId) {
+            await supabaseClient.from('group_members').delete().eq('group_id', createdGroupId)
+            await supabaseClient.from('groups').delete().eq('id', createdGroupId)
+            if (uploadedIconPath) {
+              await supabaseClient.storage.from('group-icons').remove([uploadedIconPath])
+            }
           }
+          return new Response(
+            JSON.stringify({ success: false, error: `Assignment creation failed: ${assignmentError.message}` }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
         }
-        return new Response(
-          JSON.stringify({ success: false, error: `Assignment creation failed: ${assignmentError.message}` }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
       }
 
       // ========================================
@@ -370,7 +377,7 @@ serve(async (req) => {
           is_completed: newTodo.is_completed,
           created_by: newTodo.created_by,
           created_at: newTodo.created_at,
-          assigned_users: assigned_user_ids
+          assigned_users: effectiveAssignedUserIds
         },
         created_group: createdGroupData ? {
           id: createdGroupData.id,

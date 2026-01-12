@@ -3,6 +3,7 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/todo_model.dart';
 import '../../services/data_cache_service.dart';
+import '../../services/creation_limit_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/todo_service.dart';
 import '../../core/utils/snackbar_helper.dart';
@@ -10,6 +11,7 @@ import '../../core/utils/api_client.dart';
 import '../../core/constants/error_messages.dart';
 import '../widgets/create_todo_bottom_sheet.dart';
 import '../widgets/quick_action_list_bottom_sheet.dart';
+import '../widgets/ad_required_dialog.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/maintenance_dialog.dart';
 import '../widgets/maintenance_indicator.dart';
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<TodoModel> _todos = [];
   String _filterDays = 'all'; // デフォルト: 全て
   late PageController _pageController;
+  final ScrollController _tabScrollController = ScrollController(); // タブバー用
   int _currentGroupIndex = 0;
   String? _selectedGroupId; // 選択中のグループIDを追跡（並び替え対応）
   final Set<String> _updatingTodoIds = {}; // 更新中のTODO IDを追跡
@@ -48,6 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     // PageController破棄
     _pageController.dispose();
+    // タブスクロールコントローラー破棄
+    _tabScrollController.dispose();
     // リスナー解除
     _cacheService.removeListener(_updateTodos);
     super.dispose();
@@ -131,6 +136,33 @@ class _HomeScreenState extends State<HomeScreen> {
         _todos = filteredTodos;
       });
     }
+  }
+
+  /// 選択中のタブが画面内に見えるようにスクロール
+  void _scrollToSelectedTab(int index, int totalTabs) {
+    if (!_tabScrollController.hasClients) return;
+
+    // タブ1つの幅（130px + margin 6px）
+    const tabWidth = 136.0;
+    // パディング
+    const padding = 16.0;
+    // 画面幅
+    final screenWidth = MediaQuery.of(context).size.width;
+    // スクロール可能な最大値
+    final maxScroll = _tabScrollController.position.maxScrollExtent;
+
+    // 選択タブの中心位置
+    final tabCenter = padding + (index * tabWidth) + (tabWidth / 2);
+    // 画面中央に表示するためのスクロール位置
+    final targetScroll = tabCenter - (screenWidth / 2);
+    // 範囲内に収める
+    final clampedScroll = targetScroll.clamp(0.0, maxScroll);
+
+    _tabScrollController.animateTo(
+      clampedScroll,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   /// タスク完了状態切り替え（キャッシュサービス経由）
@@ -487,6 +519,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   (result['assignee_ids'] as List<dynamic>?)?.cast<String>() ??
                   [widget.user.id];
 
+              // 新規グループ作成時は上限チェック
+              if (isCreatingNewGroup == true) {
+                final canCreate = await AdRequiredDialog.checkAndShowForGroup(
+                  // ignore: use_build_context_synchronously
+                  localContext,
+                );
+                if (!canCreate || !mounted) {
+                  return; // キャンセルまたは広告視聴失敗
+                }
+              }
+
               // ローディング表示
               if (mounted) {
                 showDialog(
@@ -539,7 +582,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                _showSuccessSnackBar('TODOを作成しました');
+                // 新規グループ作成成功時、一時権限を消費
+                if (isCreatingNewGroup == true) {
+                  CreationLimitService().consumeTemporaryGroupPermission();
+                  final groupName = result['group_name'] as String;
+                  _showSuccessSnackBar('「$groupName」グループを作成し、TODOを追加しました');
+                } else {
+                  _showSuccessSnackBar('TODOを作成しました');
+                }
 
                 // ローディング非表示（フレーム完了後に実行）
                 if (mounted) {
@@ -598,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SpeedDialChild(
             child: const Icon(Icons.flash_on),
-            label: 'クイックアクション',
+            label: 'セットTODO',
             backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
             foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
             onTap: () {
@@ -709,6 +759,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: myGroups.isEmpty
               ? const SizedBox.expand()
               : SingleChildScrollView(
+                  controller: _tabScrollController,
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ConstrainedBox(
@@ -861,6 +912,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         _selectedGroupId = myGroups[index].id;
                       }
                     });
+                    // タブバーのスクロール位置を調整
+                    _scrollToSelectedTab(index, myGroups.length);
                   },
                   itemCount: myGroups.length,
                   itemBuilder: (context, index) {

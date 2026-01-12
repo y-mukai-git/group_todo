@@ -29,7 +29,7 @@ interface AcceptInvitationResponse {
     name: string
     description: string | null
     category: string | null
-    image_url: string | null
+    icon_url: string | null
     created_at: string
     updated_at: string
   }
@@ -176,7 +176,7 @@ serve(async (req) => {
     // 3. グループ情報を取得
     const { data: group, error: groupError } = await supabaseClient
       .from('groups')
-      .select('id, name, description, category, image_url, created_at, updated_at')
+      .select('id, name, description, category, icon_url, created_at, updated_at')
       .eq('id', invitation.group_id)
       .single()
 
@@ -210,7 +210,7 @@ serve(async (req) => {
         name: group.name,
         description: group.description,
         category: group.category,
-        image_url: group.image_url,
+        icon_url: group.icon_url,
         created_at: group.created_at,
         updated_at: group.updated_at
       }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../data/models/recurring_todo_model.dart';
-import '../../services/recurring_todo_service.dart';
 import '../../services/error_log_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../core/utils/snackbar_helper.dart';
@@ -38,7 +37,7 @@ class _CreateRecurringTodoBottomSheetState
     extends State<CreateRecurringTodoBottomSheet> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final RecurringTodoService _recurringTodoService = RecurringTodoService();
+  final DataCacheService _cacheService = DataCacheService();
 
   String _selectedPattern = 'daily'; // daily, weekly, monthly
   Set<int> _selectedWeekdays = {}; // 0=日曜, 6=土曜
@@ -388,8 +387,9 @@ class _CreateRecurringTodoBottomSheetState
 
       if (widget.existingRecurringTodo != null) {
         // 更新モード
-        await _recurringTodoService.updateRecurringTodo(
+        await _cacheService.updateRecurringTodo(
           userId: widget.userId,
+          groupId: widget.groupId,
           recurringTodoId: widget.existingRecurringTodo!.id,
           title: title,
           description: _descriptionController.text.trim(),
@@ -401,7 +401,7 @@ class _CreateRecurringTodoBottomSheetState
         );
       } else {
         // 作成モード
-        await _recurringTodoService.createRecurringTodo(
+        await _cacheService.createRecurringTodo(
           userId: widget.userId,
           groupId: widget.groupId,
           title: title,

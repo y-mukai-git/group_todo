@@ -9,19 +9,10 @@
       "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocmNwdmloZXh4a2pudGxlb3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTc5NjEsImV4cCI6MjA3NDg3Mzk2MX0.z07GR5xWHZ5sZZ-waTAfiulUZxsraxxGX7kC_ycVrgw"
     },
     "admob": {
-      "appId": {
-        "ios": "ca-app-pub-3940256099942544~1458002511",
-        "android": "ca-app-pub-3940256099942544~3347511713"
-      },
+      "appId": "ca-app-pub-3940256099942544~1458002511",
       "adUnitIds": {
-        "ios": {
-          "banner": "ca-app-pub-3940256099942544/2934735716",
-          "rewarded": "ca-app-pub-3940256099942544/1712485313"
-        },
-        "android": {
-          "banner": "ca-app-pub-3940256099942544/6300978111",
-          "rewarded": "ca-app-pub-3940256099942544/5224354917"
-        }
+        "banner": "ca-app-pub-3940256099942544/2934735716",
+        "rewarded": "ca-app-pub-3940256099942544/1712485313"
       }
     },
     "features": {
@@ -40,19 +31,10 @@
       "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaGNsa2ZlaWptb2lka2tzbXhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzNjY3NzQsImV4cCI6MjA3Njk0Mjc3NH0.kkj5tMc50kKVLBCfK98fZVJLBNwhcympqsYkhPhFpTY"
     },
     "admob": {
-      "appId": {
-        "ios": "ca-app-pub-3940256099942544~1458002511",
-        "android": "ca-app-pub-3940256099942544~3347511713"
-      },
+      "appId": "ca-app-pub-3940256099942544~1458002511",
       "adUnitIds": {
-        "ios": {
-          "banner": "ca-app-pub-3940256099942544/2934735716",
-          "rewarded": "ca-app-pub-3940256099942544/1712485313"
-        },
-        "android": {
-          "banner": "ca-app-pub-3940256099942544/6300978111",
-          "rewarded": "ca-app-pub-3940256099942544/5224354917"
-        }
+        "banner": "ca-app-pub-3940256099942544/2934735716",
+        "rewarded": "ca-app-pub-3940256099942544/1712485313"
       }
     },
     "features": {
@@ -71,19 +53,10 @@
       "anonKey": "your-prod-anon-key"
     },
     "admob": {
-      "appId": {
-        "ios": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX",
-        "android": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
-      },
+      "appId": "ca-app-pub-7125698946425907~4555379217",
       "adUnitIds": {
-        "ios": {
-          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX",
-          "rewarded": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
-        },
-        "android": {
-          "banner": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX",
-          "rewarded": "ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX"
-        }
+        "banner": "ca-app-pub-7125698946425907/3330102779",
+        "rewarded": "ca-app-pub-7125698946425907/9125354931"
       }
     },
     "features": {

@@ -24,11 +24,7 @@ class MaintenanceIndicator extends StatelessWidget {
           color: Colors.orange.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Icon(
-          Icons.build,
-          color: Colors.orange,
-          size: 20,
-        ),
+        child: const Icon(Icons.build, color: Colors.orange, size: 20),
       ),
     );
   }

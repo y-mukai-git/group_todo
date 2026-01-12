@@ -25,6 +25,7 @@ interface CreateGroupResponse {
     signed_icon_url: string | null
     owner_id: string
     created_at: string
+    display_order: number
   }
   error?: string
 }
@@ -204,7 +205,8 @@ serve(async (req) => {
         icon_url: newGroup.icon_url,
         signed_icon_url: signedIconUrl,
         owner_id: newGroup.owner_id,
-        created_at: newGroup.created_at
+        created_at: newGroup.created_at,
+        display_order: displayOrder
       }
     }
 

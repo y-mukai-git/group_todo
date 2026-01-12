@@ -11,6 +11,7 @@ import 'group_service.dart';
 import 'user_service.dart';
 import 'announcement_service.dart';
 import 'quick_action_service.dart';
+import 'recurring_todo_service.dart';
 
 /// データキャッシュサービス（シングルトン + ChangeNotifier）
 ///
@@ -28,6 +29,7 @@ class DataCacheService extends ChangeNotifier {
   final UserService _userService = UserService();
   final AnnouncementService _announcementService = AnnouncementService();
   final QuickActionService _quickActionService = QuickActionService();
+  final RecurringTodoService _recurringTodoService = RecurringTodoService();
 
   // キャッシュデータ
   List<TodoModel> _todos = [];
@@ -210,6 +212,13 @@ class DataCacheService extends ChangeNotifier {
       // 新規グループが作成された場合はグループキャッシュにも追加
       if (result.createdGroup != null) {
         _groups.add(result.createdGroup!);
+
+        // メンバー情報もキャッシュに追加（グループ詳細画面で必要）
+        final membersResponse = await _groupService.getGroupMembers(
+          groupId: result.createdGroup!.id,
+          requesterId: userId,
+        );
+        _groupMembers[result.createdGroup!.id] = membersResponse;
       }
       _todos.add(result.todo);
       notifyListeners();
@@ -484,16 +493,22 @@ class DataCacheService extends ChangeNotifier {
   }
 
   /// 自分のタスク一覧を取得
-  /// 自分が担当している未完了タスクを返す
+  /// 自分が担当している未完了タスク、または担当者なし（全員に表示）のタスクを返す
   List<TodoModel> getMyTodos(String userId, {String? filterDays}) {
-    return _todos
-        .where(
-          (t) =>
-              t.assignedUserIds != null &&
-              t.assignedUserIds!.contains(userId) &&
-              !t.isCompleted,
-        )
-        .toList();
+    // 自分が所属するグループIDを取得
+    final myGroupIds = _groups.map((g) => g.id).toSet();
+
+    return _todos.where((t) {
+      if (t.isCompleted) return false;
+
+      // 担当者なし（空配列またはnull）の場合、自分が所属するグループのTODOなら表示
+      if (t.assignedUserIds == null || t.assignedUserIds!.isEmpty) {
+        return myGroupIds.contains(t.groupId);
+      }
+
+      // 自分が担当者に含まれている場合
+      return t.assignedUserIds!.contains(userId);
+    }).toList();
   }
 
   // ==================== お知らせ関連 ====================
@@ -660,6 +675,153 @@ class DataCacheService extends ChangeNotifier {
       return createdTodos;
     } catch (e) {
       debugPrint('[DataCacheService] ❌ クイックアクション実行エラー: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== 定期TODO関連 ====================
+
+  /// 定期TODO作成（DB + キャッシュ）
+  Future<RecurringTodoModel> createRecurringTodo({
+    required String userId,
+    required String groupId,
+    required String title,
+    String? description,
+    required String recurrencePattern,
+    List<int>? recurrenceDays,
+    required String generationTime,
+    int? deadlineDaysAfter,
+    List<String>? assignedUserIds,
+  }) async {
+    try {
+      // 1. DB作成
+      final newRecurringTodo = await _recurringTodoService.createRecurringTodo(
+        userId: userId,
+        groupId: groupId,
+        title: title,
+        description: description,
+        recurrencePattern: recurrencePattern,
+        recurrenceDays: recurrenceDays,
+        generationTime: generationTime,
+        deadlineDaysAfter: deadlineDaysAfter,
+        assignedUserIds: assignedUserIds,
+      );
+
+      // 2. DB作成成功 → キャッシュに追加
+      final currentList = _groupRecurringTodos[groupId] ?? [];
+      currentList.add(newRecurringTodo);
+      _groupRecurringTodos[groupId] = currentList;
+      notifyListeners();
+
+      debugPrint('[DataCacheService] ✅ 定期TODO作成完了: ${newRecurringTodo.id}');
+
+      return newRecurringTodo;
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ 定期TODO作成エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 定期TODO更新（DB + キャッシュ）
+  Future<RecurringTodoModel> updateRecurringTodo({
+    required String userId,
+    required String groupId,
+    required String recurringTodoId,
+    String? title,
+    String? description,
+    String? recurrencePattern,
+    List<int>? recurrenceDays,
+    String? generationTime,
+    int? deadlineDaysAfter,
+    List<String>? assignedUserIds,
+  }) async {
+    try {
+      // 1. DB更新
+      final updatedRecurringTodo = await _recurringTodoService
+          .updateRecurringTodo(
+            userId: userId,
+            recurringTodoId: recurringTodoId,
+            title: title,
+            description: description,
+            recurrencePattern: recurrencePattern,
+            recurrenceDays: recurrenceDays,
+            generationTime: generationTime,
+            deadlineDaysAfter: deadlineDaysAfter,
+            assignedUserIds: assignedUserIds,
+          );
+
+      // 2. DB更新成功 → キャッシュ更新
+      final currentList = _groupRecurringTodos[groupId] ?? [];
+      final index = currentList.indexWhere((rt) => rt.id == recurringTodoId);
+      if (index != -1) {
+        currentList[index] = updatedRecurringTodo;
+        _groupRecurringTodos[groupId] = currentList;
+        notifyListeners();
+      }
+
+      debugPrint('[DataCacheService] ✅ 定期TODO更新完了: $recurringTodoId');
+
+      return updatedRecurringTodo;
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ 定期TODO更新エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 定期TODO削除（DB + キャッシュ）
+  Future<void> deleteRecurringTodo({
+    required String userId,
+    required String groupId,
+    required String recurringTodoId,
+  }) async {
+    try {
+      // 1. DB削除
+      await _recurringTodoService.deleteRecurringTodo(
+        userId: userId,
+        recurringTodoId: recurringTodoId,
+      );
+
+      // 2. DB削除成功 → キャッシュから削除
+      final currentList = _groupRecurringTodos[groupId] ?? [];
+      currentList.removeWhere((rt) => rt.id == recurringTodoId);
+      _groupRecurringTodos[groupId] = currentList;
+      notifyListeners();
+
+      debugPrint('[DataCacheService] ✅ 定期TODO削除完了: $recurringTodoId');
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ 定期TODO削除エラー: $e');
+      rethrow;
+    }
+  }
+
+  /// 定期TODO有効/無効切り替え（DB + キャッシュ）
+  Future<RecurringTodoModel> toggleRecurringTodoActive({
+    required String userId,
+    required String groupId,
+    required String recurringTodoId,
+  }) async {
+    try {
+      // 1. DB更新
+      final updatedRecurringTodo = await _recurringTodoService
+          .toggleRecurringTodoActive(
+            userId: userId,
+            recurringTodoId: recurringTodoId,
+          );
+
+      // 2. DB更新成功 → キャッシュ更新
+      final currentList = _groupRecurringTodos[groupId] ?? [];
+      final index = currentList.indexWhere((rt) => rt.id == recurringTodoId);
+      if (index != -1) {
+        currentList[index] = updatedRecurringTodo;
+        _groupRecurringTodos[groupId] = currentList;
+        notifyListeners();
+      }
+
+      debugPrint('[DataCacheService] ✅ 定期TODO切り替え完了: $recurringTodoId');
+
+      return updatedRecurringTodo;
+    } catch (e) {
+      debugPrint('[DataCacheService] ❌ 定期TODO切り替えエラー: $e');
       rethrow;
     }
   }

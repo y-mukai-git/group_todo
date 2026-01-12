@@ -123,7 +123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.versionInfoFetchFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.versionInfoFetchFailed}\n${ErrorMessages.retryLater}',
       );
     }
   }

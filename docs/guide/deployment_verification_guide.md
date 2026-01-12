@@ -233,6 +233,11 @@ get_tables_cmd = f'PGPASSWORD="{db_password}" psql "{conn_str}" -t -c "SELECT ta
 result = subprocess.run(get_tables_cmd, shell=True, capture_output=True, text=True)
 tables = [t.strip() for t in result.stdout.strip().split('\n') if t.strip()]
 
+# RLS設定を取得
+get_rls_cmd = f'PGPASSWORD="{db_password}" psql "{conn_str}" -t -c "SELECT jsonb_object_agg(tablename, rowsecurity) FROM pg_tables WHERE schemaname = \'public\'"'
+result = subprocess.run(get_rls_cmd, shell=True, capture_output=True, text=True)
+rls_settings = json.loads(result.stdout.strip()) if result.stdout.strip() else {}
+
 # 各テーブルの構造を取得
 db_structure = {}
 for table in tables:
@@ -250,7 +255,10 @@ for table in tables:
 
     result = subprocess.run(get_columns_cmd, shell=True, capture_output=True, text=True)
     columns = json.loads(result.stdout.strip())
-    db_structure[table] = {"columns": columns}
+    db_structure[table] = {
+        "columns": columns,
+        "rls_enabled": rls_settings.get(table, False)
+    }
 
 # 既存のJSONファイルを読み込み
 with open('supabase/deployment_history_dev.json', 'r') as f:
@@ -320,6 +328,27 @@ $ diff supabase/deployment_history_dev.json supabase/deployment_history_stg.json
 3. STG環境のJSONファイルを更新
 4. 再度diffコマンドで確認
 
+### 手順2: RLS設定の直接確認（補助的な確認）
+
+JSONファイルにRLS情報が含まれていない場合や、直接DBを確認したい場合に使用します。
+
+```bash
+# DEV環境のRLS設定を確認
+PGPASSWORD="<dev-db-password>" psql "postgresql://postgres@db.<dev-project-ref>.supabase.co:5432/postgres" \
+  -c "SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
+
+# STG環境のRLS設定を確認
+PGPASSWORD="<stg-db-password>" psql "postgresql://postgres@db.<stg-project-ref>.supabase.co:5432/postgres" \
+  -c "SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
+```
+
+**期待結果**: 両環境で全テーブルの`rowsecurity`が`t`（有効）であること
+
+**RLSが無効なテーブルがある場合**:
+1. 該当するマイグレーションファイルを特定（`database/migrations/`内を検索）
+2. マイグレーションを対象環境に実行
+3. 再度RLS設定を確認
+
 ---
 
 ## 📊 検証完了チェックリスト
@@ -341,6 +370,7 @@ $ diff supabase/deployment_history_dev.json supabase/deployment_history_stg.json
 □ デプロイ元環境とデプロイ先環境のJSONファイルを比較
 □ Edge Functions構成が一致（Function数: __個）
 □ Database構成が一致（テーブル数: __個）
+□ RLS設定が一致（全テーブルでrowsecurity = t）
 □ diffコマンドで差分なしを確認
 
 ■ 総合判定

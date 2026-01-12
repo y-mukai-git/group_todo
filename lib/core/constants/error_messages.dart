@@ -72,8 +72,8 @@ class ErrorMessages {
   /// 定期タスク更新失敗メッセージ
   static const String recurringTodoUpdateFailed = '定期TODOの更新に失敗しました';
 
-  /// クイックアクション削除失敗メッセージ
-  static const String quickActionDeleteFailed = 'クイックアクションの削除に失敗しました';
+  /// セットTODO削除失敗メッセージ
+  static const String quickActionDeleteFailed = 'セットTODOの削除に失敗しました';
 
   /// セットTODO作成失敗メッセージ
   static const String quickActionCreationFailed = 'セットTODOの作成に失敗しました';

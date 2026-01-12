@@ -72,10 +72,7 @@ class _QuickActionListBottomSheetState
       if (!mounted) return;
 
       // 成功メッセージ
-      SnackBarHelper.showSuccessSnackBar(
-        context,
-        'TODOを追加しました',
-      );
+      SnackBarHelper.showSuccessSnackBar(context, 'TODOを追加しました');
 
       // ボトムシートを閉じる（成功を通知）
       Navigator.pop(context, true);
@@ -249,7 +246,7 @@ class _QuickActionListBottomSheetState
         ),
         // タイトル
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(
             children: [
               Icon(
@@ -258,12 +255,22 @@ class _QuickActionListBottomSheetState
               ),
               const SizedBox(width: 8),
               Text(
-                'クイックアクション',
+                'セットTODO',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
+          ),
+        ),
+        // 説明文
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Text(
+            'よく使うTODOの組み合わせをワンタップで追加できます',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         // グループ選択（fixedGroupIdがnullの場合のみ表示）
@@ -285,7 +292,7 @@ class _QuickActionListBottomSheetState
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'クイックアクションがありません',
+                  'セットTODOがありません',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

@@ -115,7 +115,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.invitationsFetchFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.invitationsFetchFailed}\n${ErrorMessages.retryLater}',
       );
     }
   }
@@ -233,7 +234,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.groupCreationFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.groupCreationFailed}\n${ErrorMessages.retryLater}',
       );
 
       // ダイアログを閉じた後、全データをリフレッシュ
@@ -273,7 +275,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.dataRefreshFailed}\n${ErrorMessages.retryLater}',
       );
 
       // リフレッシュ不要
@@ -356,7 +359,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await ErrorDialog.show(
         context: context,
         errorId: errorLog.id,
-        errorMessage: '${ErrorMessages.groupOrderSaveFailed}\n${ErrorMessages.retryLater}',
+        errorMessage:
+            '${ErrorMessages.groupOrderSaveFailed}\n${ErrorMessages.retryLater}',
       );
 
       // エラー時は変更をキャンセル
@@ -875,57 +879,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          group.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      // カテゴリ表示
-                      if (group.category != null && categoryInfo != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.tertiaryContainer,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                categoryInfo['icon'] as IconData,
-                                size: 14,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onTertiaryContainer,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                categoryInfo['name'] as String,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onTertiaryContainer,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    group.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -962,6 +921,38 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ],
               ),
             ),
+            // カテゴリ表示（>アイコンの左側に配置）
+            if (group.category != null && categoryInfo != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      categoryInfo['icon'] as IconData,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      categoryInfo['name'] as String,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onTertiaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             Icon(
               Icons.chevron_right,
               color: Theme.of(context).colorScheme.outline,
@@ -1015,7 +1006,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 if (e is MaintenanceException) {
                   if (mounted) {
                     await MaintenanceDialog.show(
-                        context: context, message: e.message);
+                      context: context,
+                      message: e.message,
+                    );
                   }
                   return;
                 }
@@ -1135,58 +1128,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              group.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          // カテゴリ表示
-                          if (group.category != null &&
-                              categoryInfo != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.tertiaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    categoryInfo['icon'] as IconData,
-                                    size: 14,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onTertiaryContainer,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    categoryInfo['name'] as String,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onTertiaryContainer,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
+                      Text(
+                        group.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -1223,6 +1170,42 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     ],
                   ),
                 ),
+                // カテゴリ表示（右端に配置）
+                if (group.category != null && categoryInfo != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          categoryInfo['icon'] as IconData,
+                          size: 14,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onTertiaryContainer,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          categoryInfo['name'] as String,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

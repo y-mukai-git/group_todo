@@ -16,12 +16,20 @@ class SnackBarHelper {
   /// [message] 表示するメッセージ
   /// [backgroundColor] 背景色（省略可）
   /// [duration] 表示時間（デフォルト: 4秒）
+  /// [clearPrevious] trueの場合、既存のスナックバーをクリアしてから表示
   static void showSnackBar(
     BuildContext context,
     String message, {
     Color? backgroundColor,
     Duration duration = const Duration(seconds: 4),
+    bool clearPrevious = false,
   }) {
+    // 既存のスナックバーをクリアする場合
+    if (clearPrevious) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      _activeMessages.clear();
+    }
+
     // 同じメッセージが既に表示中なら無視
     if (_activeMessages.contains(message)) {
       return;
@@ -51,12 +59,14 @@ class SnackBarHelper {
     BuildContext context,
     String message, {
     Duration duration = const Duration(seconds: 4),
+    bool clearPrevious = false,
   }) {
     showSnackBar(
       context,
       message,
       backgroundColor: Colors.green,
       duration: duration,
+      clearPrevious: clearPrevious,
     );
   }
 

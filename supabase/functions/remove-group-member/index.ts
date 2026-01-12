@@ -189,6 +189,13 @@ serve(async (req) => {
       )
     }
 
+    // 招待履歴を削除（再招待を可能にするため）
+    await supabaseClient
+      .from('group_invitations')
+      .delete()
+      .eq('group_id', group_id)
+      .eq('invited_user_id', target_user_id)
+
     const response: RemoveGroupMemberResponse = {
       success: true
     }

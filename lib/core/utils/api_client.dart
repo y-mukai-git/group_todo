@@ -66,11 +66,7 @@ class ApiClient {
       }
 
       final response = await http
-          .post(
-            url,
-            headers: headers,
-            body: jsonEncode(body),
-          )
+          .post(url, headers: headers, body: jsonEncode(body))
           .timeout(timeout);
 
       if (response.statusCode == 200) {

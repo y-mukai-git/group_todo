@@ -158,25 +158,27 @@ serve(async (req) => {
       )
     }
 
-    // 担当者更新
-    if (assigned_user_ids && assigned_user_ids.length > 0) {
+    // 担当者更新（assigned_user_idsが指定された場合のみ更新）
+    if (assigned_user_ids !== undefined) {
       // 既存の担当者を削除
       await supabaseClient
         .from('todo_assignments')
         .delete()
         .eq('todo_id', todo_id)
 
-      // 新しい担当者を追加
-      const now = new Date().toISOString()
-      const assignmentInserts = assigned_user_ids.map(uid => ({
-        todo_id: todo_id,
-        user_id: uid,
-        assigned_at: now
-      }))
+      // 新しい担当者を追加（空配列の場合は全員に見える状態）
+      if (assigned_user_ids.length > 0) {
+        const now = new Date().toISOString()
+        const assignmentInserts = assigned_user_ids.map(uid => ({
+          todo_id: todo_id,
+          user_id: uid,
+          assigned_at: now
+        }))
 
-      await supabaseClient
-        .from('todo_assignments')
-        .insert(assignmentInserts)
+        await supabaseClient
+          .from('todo_assignments')
+          .insert(assignmentInserts)
+      }
     }
 
     // 担当者情報を取得

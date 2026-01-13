@@ -42,6 +42,9 @@ class _CreateQuickActionBottomSheetState
   List<TemplateItem> _templates = [];
   bool _isLoading = false;
 
+  // タブ管理
+  int _currentTabIndex = 0; // 0: 基本, 1: TODOリスト
+
   @override
   void initState() {
     super.initState();
@@ -84,7 +87,7 @@ class _CreateQuickActionBottomSheetState
     final newTemplate = TemplateItem(
       titleController: TextEditingController(),
       descriptionController: TextEditingController(),
-      assignedUserIds: {widget.userId},
+      assignedUserIds: {}, // デフォルトは「指定なし」
     );
 
     final result = await showDialog<bool>(
@@ -98,6 +101,7 @@ class _CreateQuickActionBottomSheetState
     if (result == true) {
       setState(() {
         _templates.add(newTemplate);
+        _currentTabIndex = 1; // TODOリストタブに切り替え
       });
     } else {
       newTemplate.titleController.dispose();
@@ -324,314 +328,538 @@ class _CreateQuickActionBottomSheetState
 
                 const Divider(height: 1),
 
-                // コンテンツ（スクロール可能）
-                Expanded(
-                  child: Column(
-                    children: [
-                      // 上部コンテンツ
-                      Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.all(24),
-                          children: [
-                            // コンテンツポリシーリンク
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ContentPolicyScreen(),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  '入力における注意事項',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
+                // タブ切り替え
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _currentTabIndex = 0;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _currentTabIndex == 0
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // セットTODO名入力
-                            TextField(
-                              controller: _nameController,
-                              decoration: InputDecoration(
-                                labelText: 'セットTODO名',
-                                hintText: 'セットTODO名を入力',
-                                prefixIcon: const Icon(Icons.flash_on),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              autofocus: false,
-                              textInputAction: TextInputAction.next,
-                              maxLength: 100,
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // 説明入力
-                            TextField(
-                              controller: _descriptionController,
-                              decoration: InputDecoration(
-                                labelText: '説明（任意）',
-                                hintText: '説明を入力',
-                                prefixIcon: const Icon(Icons.description),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              maxLines: 2,
-                              maxLength: 200,
-                              textInputAction: TextInputAction.done,
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // TODOテンプレート見出し
-                            Text(
-                              'TODOテンプレート',
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // テンプレートリスト
-                            ...List.generate(_templates.length, (index) {
-                              final template = _templates[index];
-                              final assignedUser = widget.availableAssignees
-                                  ?.firstWhere(
-                                    (a) =>
-                                        a['id'] ==
-                                        template.assignedUserIds.firstOrNull,
-                                    orElse: () => {'id': '', 'name': '未設定'},
-                                  );
-
-                              return Dismissible(
-                                key: Key(index.toString()),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.only(right: 20),
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 6,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.edit_note,
+                                    size: 20,
+                                    color: _currentTabIndex == 0
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.error,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    Icons.delete,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onError,
-                                  ),
-                                ),
-                                confirmDismiss: (direction) async {
-                                  return await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('削除確認'),
-                                      content: Text(
-                                        '「${template.titleController.text.isEmpty ? 'テンプレート ${index + 1}' : template.titleController.text}」を削除しますか？',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(false),
-                                          child: const Text('キャンセル'),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '基本',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: _currentTabIndex == 0
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
                                         ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(true),
-                                          child: Text(
-                                            '削除',
-                                            style: TextStyle(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.error,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                onDismissed: (direction) =>
-                                    _removeTemplate(index),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 6,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.surface,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .shadow
-                                            .withValues(alpha: 0.08),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: InkWell(
-                                    onTap: () => _editTemplate(index),
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  template
-                                                          .titleController
-                                                          .text
-                                                          .isEmpty
-                                                      ? 'テンプレート ${index + 1}'
-                                                      : template
-                                                            .titleController
-                                                            .text,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Wrap(
-                                                  spacing: 8,
-                                                  children: [
-                                                    if (template
-                                                            .deadlineDaysAfter !=
-                                                        null)
-                                                      Chip(
-                                                        label: Text(
-                                                          '${template.deadlineDaysAfter}日後',
-                                                          style: Theme.of(
-                                                            context,
-                                                          ).textTheme.bodySmall,
-                                                        ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        materialTapTargetSize:
-                                                            MaterialTapTargetSize
-                                                                .shrinkWrap,
-                                                      ),
-                                                    if (assignedUser != null &&
-                                                        assignedUser['name'] !=
-                                                            '未設定')
-                                                      Chip(
-                                                        label: Text(
-                                                          assignedUser['name']!,
-                                                          style: Theme.of(
-                                                            context,
-                                                          ).textTheme.bodySmall,
-                                                        ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        materialTapTargetSize:
-                                                            MaterialTapTargetSize
-                                                                .shrinkWrap,
-                                                      ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-
-                            const SizedBox(height: 8),
-
-                            // テンプレート追加ボタン
-                            OutlinedButton.icon(
-                              onPressed: _addTemplate,
-                              icon: const Icon(Icons.add),
-                              label: const Text('テンプレート追加'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                ],
                               ),
                             ),
-
-                            const SizedBox(height: 24),
-
-                            // 保存ボタン
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                onPressed: _isLoading ? null : _save,
-                                icon: _isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Icon(
-                                        widget.existingQuickAction != null
-                                            ? Icons.edit
-                                            : Icons.add,
-                                      ),
-                                label: Text(
-                                  widget.existingQuickAction != null
-                                      ? '更新'
-                                      : '作成',
-                                ),
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _currentTabIndex = 1;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _currentTabIndex == 1
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.list_alt,
+                                    size: 20,
+                                    color: _currentTabIndex == 1
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'TODOリスト',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: _currentTabIndex == 1
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                        ),
+                                  ),
+                                  if (_templates.isNotEmpty) ...[
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _currentTabIndex == 1
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .onPrimary
+                                                  .withValues(alpha: 0.2)
+                                            : Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${_templates.length}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: _currentTabIndex == 1
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+
+                // タブコンテンツ
+                Expanded(
+                  child: _currentTabIndex == 0
+                      ? _buildBasicTab()
+                      : _buildTodoListTab(),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// 基本タブ
+  Widget _buildBasicTab() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      children: [
+        // コンテンツポリシーリンク
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ContentPolicyScreen(),
+                ),
+              );
+            },
+            child: Text(
+              '入力における注意事項',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // セットTODO名入力
+        TextField(
+          controller: _nameController,
+          decoration: InputDecoration(
+            labelText: 'セットTODO名',
+            hintText: 'セットTODO名を入力',
+            prefixIcon: const Icon(Icons.flash_on),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          autofocus: false,
+          textInputAction: TextInputAction.next,
+          maxLength: 100,
+        ),
+
+        const SizedBox(height: 8),
+
+        // 説明入力
+        TextField(
+          controller: _descriptionController,
+          decoration: InputDecoration(
+            labelText: '説明（任意）',
+            hintText: '説明を入力',
+            prefixIcon: const Icon(Icons.description),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          maxLines: 2,
+          maxLength: 200,
+          textInputAction: TextInputAction.done,
+        ),
+
+        const SizedBox(height: 16),
+
+        // テンプレート追加ボタン
+        OutlinedButton.icon(
+          onPressed: _addTemplate,
+          icon: const Icon(Icons.add),
+          label: const Text('TODOテンプレート追加'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 保存ボタン
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _isLoading ? null : _save,
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    widget.existingQuickAction != null ? Icons.edit : Icons.add,
+                  ),
+            label: Text(widget.existingQuickAction != null ? '更新' : '作成'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// TODOリストタブ
+  Widget _buildTodoListTab() {
+    return Column(
+      children: [
+        Expanded(
+          child: _templates.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.playlist_add,
+                        size: 64,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'TODOテンプレートがありません',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '下のボタンから追加してください',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+                  itemCount: _templates.length,
+                  itemBuilder: (context, index) {
+                    final template = _templates[index];
+                    final assignedUser = widget.availableAssignees?.firstWhere(
+                      (a) => a['id'] == template.assignedUserIds.firstOrNull,
+                      orElse: () => {'id': '', 'name': '未設定'},
+                    );
+
+                    return Dismissible(
+                      key: Key('template_$index'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.delete,
+                          color: Theme.of(context).colorScheme.onError,
+                        ),
+                      ),
+                      confirmDismiss: (direction) async {
+                        return await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('削除確認'),
+                            content: Text(
+                              '「${template.titleController.text.isEmpty ? 'テンプレート ${index + 1}' : template.titleController.text}」を削除しますか？',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('キャンセル'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text(
+                                  '削除',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      onDismissed: (direction) => _removeTemplate(index),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.shadow.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: InkWell(
+                          onTap: () => _editTemplate(index),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        template.titleController.text.isEmpty
+                                            ? 'テンプレート ${index + 1}'
+                                            : template.titleController.text,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      if (template.deadlineDaysAfter != null ||
+                                          (assignedUser != null &&
+                                              assignedUser['name'] !=
+                                                  '未設定')) ...[
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 8,
+                                          children: [
+                                            if (template.deadlineDaysAfter !=
+                                                null)
+                                              Text(
+                                                '${template.deadlineDaysAfter}日後',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            if (assignedUser != null &&
+                                                assignedUser['name'] != '未設定')
+                                              Text(
+                                                assignedUser['name']!,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+
+        // 下部固定ボタン
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            children: [
+              // テンプレート追加ボタン
+              OutlinedButton.icon(
+                onPressed: _addTemplate,
+                icon: const Icon(Icons.add),
+                label: const Text('TODOテンプレート追加'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  minimumSize: const Size(double.infinity, 0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // 保存ボタン
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isLoading ? null : _save,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          widget.existingQuickAction != null
+                              ? Icons.edit
+                              : Icons.add,
+                        ),
+                  label: Text(widget.existingQuickAction != null ? '更新' : '作成'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -768,87 +996,51 @@ class _TemplateEditDialogState extends State<_TemplateEditDialog> {
 
                 const SizedBox(height: 16),
 
-                // 担当者
-                if (widget.availableAssignees != null &&
-                    widget.availableAssignees!.isNotEmpty) ...[
-                  Text(
-                    '担当者',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // グループに1人のみ：表示のみ（変更不可）
-                  if (widget.availableAssignees!.length == 1)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
+                // 担当者選択（常にピッカーで選択可能：「指定なし」+ メンバー一覧）
+                Text(
+                  '担当者',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: _showAssigneePicker,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.person,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            widget.availableAssignees!.first['name']!,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.lock,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                        ],
-                      ),
-                    ),
-                  // グループに複数人：選択可能
-                  if (widget.availableAssignees!.length > 1)
-                    InkWell(
-                      onTap: _showAssigneePicker,
                       borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _assignedUserIds.isEmpty ? Icons.group : Icons.person,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.person,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              _assignedUserIds.isEmpty
-                                  ? '担当者を選択'
-                                  : widget.availableAssignees!.firstWhere(
+                        const SizedBox(width: 12),
+                        Text(
+                          _assignedUserIds.isEmpty
+                              ? '指定なし（全員に表示）'
+                              : widget.availableAssignees?.firstWhere(
                                       (a) => a['id'] == _assignedUserIds.first,
                                       orElse: () => {'id': '', 'name': '未設定'},
-                                    )['name']!,
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          ],
+                                    )['name'] ??
+                                    '未設定',
+                          style: Theme.of(context).textTheme.bodyLarge,
                         ),
-                      ),
+                        const Spacer(),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ],
                     ),
-                ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -935,23 +1127,28 @@ class _TemplateEditDialogState extends State<_TemplateEditDialog> {
   }
 
   void _showAssigneePicker() {
-    if (widget.availableAssignees == null ||
-        widget.availableAssignees!.isEmpty) {
-      return;
-    }
+    // 「指定なし」を先頭に追加
+    final assigneeOptions = [
+      {'id': '', 'name': '指定なし（全員に表示）'},
+      if (widget.availableAssignees != null) ...widget.availableAssignees!,
+    ];
 
-    final assignees = widget.availableAssignees!;
-    final currentAssigneeId = _assignedUserIds.isEmpty
-        ? null
-        : _assignedUserIds.first;
-    final currentIndex = assignees.indexWhere(
-      (a) => a['id'] == currentAssigneeId,
-    );
+    // 現在選択中のインデックスを計算
+    int currentIndex;
+    if (_assignedUserIds.isEmpty) {
+      currentIndex = 0; // 「指定なし」
+    } else {
+      final currentAssigneeId = _assignedUserIds.first;
+      currentIndex = assigneeOptions.indexWhere(
+        (a) => a['id'] == currentAssigneeId,
+      );
+      if (currentIndex < 0) currentIndex = 0;
+    }
 
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
-        int selectedIndex = currentIndex >= 0 ? currentIndex : 0;
+        int selectedIndex = currentIndex;
 
         return Container(
           height: 250,
@@ -967,8 +1164,13 @@ class _TemplateEditDialogState extends State<_TemplateEditDialog> {
                   ),
                   TextButton(
                     onPressed: () {
+                      final selectedId = assigneeOptions[selectedIndex]['id']!;
                       setState(() {
-                        _assignedUserIds = {assignees[selectedIndex]['id']!};
+                        if (selectedId.isEmpty) {
+                          _assignedUserIds = {}; // 「指定なし」
+                        } else {
+                          _assignedUserIds = {selectedId};
+                        }
                       });
                       Navigator.pop(context);
                     },
@@ -985,7 +1187,7 @@ class _TemplateEditDialogState extends State<_TemplateEditDialog> {
                   onSelectedItemChanged: (index) {
                     selectedIndex = index;
                   },
-                  children: assignees
+                  children: assigneeOptions
                       .map((assignee) => Center(child: Text(assignee['name']!)))
                       .toList(),
                 ),

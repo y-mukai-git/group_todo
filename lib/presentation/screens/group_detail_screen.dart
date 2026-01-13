@@ -1738,6 +1738,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     child: ListView(
                       padding: const EdgeInsets.only(top: 12),
                       children: [
+                        // 説明文
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            '指定した日時に自動でTODOを生成します',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
                         // 定期タスク一覧
                         if (_recurringTodos.isEmpty)
                           Container(
@@ -1924,6 +1940,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     child: ListView(
                       padding: const EdgeInsets.only(top: 12),
                       children: [
+                        // 説明文
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            '複数のTODOをまとめて一括作成できます',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
                         // クイックアクション一覧
                         if (_quickActions.isEmpty)
                           Container(

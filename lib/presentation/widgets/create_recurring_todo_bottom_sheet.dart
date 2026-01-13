@@ -47,6 +47,9 @@ class _CreateRecurringTodoBottomSheetState
   Set<String> _selectedAssigneeIds = {};
   bool _isLoading = false;
 
+  // タブ管理
+  int _currentTabIndex = 0; // 0: 基本, 1: オプション
+
   @override
   void initState() {
     super.initState();
@@ -76,10 +79,16 @@ class _CreateRecurringTodoBottomSheetState
       // 期限設定の初期値
       _selectedDeadlineDaysAfter = existing.deadlineDaysAfter;
 
-      _selectedAssigneeIds = existing.assignedUserIds?.toSet() ?? {};
+      // 担当者なし（null or 空配列）の場合は空のセット、指定ありの場合はそのまま
+      final existingAssignees = existing.assignedUserIds;
+      if (existingAssignees != null && existingAssignees.isNotEmpty) {
+        _selectedAssigneeIds = existingAssignees.toSet();
+      } else {
+        _selectedAssigneeIds = {}; // 担当者なし（全員に表示）
+      }
     } else {
-      // 新規作成モード：自分を担当者に設定
-      _selectedAssigneeIds = {widget.userId};
+      // 新規作成モード：デフォルトは「指定なし」（全員に表示）
+      _selectedAssigneeIds = {};
     }
   }
 
@@ -285,23 +294,28 @@ class _CreateRecurringTodoBottomSheetState
 
   /// 担当者選択ピッカー表示
   void _showAssigneePicker() {
-    if (widget.availableAssignees == null ||
-        widget.availableAssignees!.isEmpty) {
-      return;
-    }
+    // 「指定なし」を先頭に追加
+    final assigneeOptions = [
+      {'id': '', 'name': '指定なし（全員に表示）'},
+      if (widget.availableAssignees != null) ...widget.availableAssignees!,
+    ];
 
-    final assignees = widget.availableAssignees!;
-    final currentAssigneeId = _selectedAssigneeIds.isEmpty
-        ? null
-        : _selectedAssigneeIds.first;
-    final currentIndex = assignees.indexWhere(
-      (a) => a['id'] == currentAssigneeId,
-    );
+    // 現在選択中のインデックスを計算
+    int currentIndex;
+    if (_selectedAssigneeIds.isEmpty) {
+      currentIndex = 0; // 「指定なし」
+    } else {
+      final currentAssigneeId = _selectedAssigneeIds.first;
+      currentIndex = assigneeOptions.indexWhere(
+        (a) => a['id'] == currentAssigneeId,
+      );
+      if (currentIndex < 0) currentIndex = 0;
+    }
 
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
-        int selectedIndex = currentIndex >= 0 ? currentIndex : 0;
+        int selectedIndex = currentIndex;
 
         return Container(
           height: 250,
@@ -317,10 +331,13 @@ class _CreateRecurringTodoBottomSheetState
                   ),
                   TextButton(
                     onPressed: () {
+                      final selectedId = assigneeOptions[selectedIndex]['id']!;
                       setState(() {
-                        _selectedAssigneeIds = {
-                          assignees[selectedIndex]['id']!,
-                        };
+                        if (selectedId.isEmpty) {
+                          _selectedAssigneeIds = {}; // 「指定なし」
+                        } else {
+                          _selectedAssigneeIds = {selectedId};
+                        }
                       });
                       Navigator.pop(context);
                     },
@@ -337,7 +354,7 @@ class _CreateRecurringTodoBottomSheetState
                   onSelectedItemChanged: (index) {
                     selectedIndex = index;
                   },
-                  children: assignees
+                  children: assigneeOptions
                       .map((assignee) => Center(child: Text(assignee['name']!)))
                       .toList(),
                 ),
@@ -464,6 +481,63 @@ class _CreateRecurringTodoBottomSheetState
     }
   }
 
+  /// 毎月の日付選択ピッカー表示
+  void _showMonthDayPicker() {
+    // 1〜31日 + 月末(-1)
+    final dayOptions = [...List.generate(31, (index) => index + 1), -1];
+    final currentIndex = _selectedMonthDay == -1
+        ? dayOptions.length - 1
+        : dayOptions.indexOf(_selectedMonthDay);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        int selectedIndex = currentIndex >= 0 ? currentIndex : 0;
+
+        return Container(
+          height: 250,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('キャンセル'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedMonthDay = dayOptions[selectedIndex];
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('完了'),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 40,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: selectedIndex,
+                  ),
+                  onSelectedItemChanged: (index) {
+                    selectedIndex = index;
+                  },
+                  children: dayOptions.map((day) {
+                    return Center(child: Text(day == -1 ? '月末' : '$day日'));
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -537,400 +611,534 @@ class _CreateRecurringTodoBottomSheetState
 
                 const Divider(height: 1),
 
-                // コンテンツ（スクロール可能）
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      // コンテンツポリシーリンク
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ContentPolicyScreen(),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            '入力における注意事項',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // タイトル入力
-                      TextField(
-                        controller: _titleController,
-                        decoration: InputDecoration(
-                          labelText: 'タイトル',
-                          hintText: '定期タスクのタイトルを入力',
-                          prefixIcon: const Icon(Icons.title),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        autofocus: false,
-                        textInputAction: TextInputAction.next,
-                        maxLength: 15,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // 説明入力
-                      TextField(
-                        controller: _descriptionController,
-                        decoration: InputDecoration(
-                          labelText: '説明（任意）',
-                          hintText: 'タスクの詳細を入力',
-                          prefixIcon: const Icon(Icons.description),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        maxLines: 2,
-                        maxLength: 200,
-                        textInputAction: TextInputAction.done,
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // 繰り返しパターン選択
-                      Text(
-                        '繰り返しパターン',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _showPatternPicker,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.repeat,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _selectedPattern == 'daily'
-                                    ? '毎日'
-                                    : _selectedPattern == 'weekly'
-                                    ? '毎週'
-                                    : '毎月',
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                              const Spacer(),
-                              Icon(
-                                Icons.arrow_drop_down,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // 曜日選択（weeklyの場合のみ）
-                      if (_selectedPattern == 'weekly') ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '曜日選択',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            for (int i = 0; i < 7; i++)
-                              FilterChip(
-                                label: Text(
-                                  ['日', '月', '火', '水', '木', '金', '土'][i],
-                                ),
-                                selected: _selectedWeekdays.contains(i),
-                                onSelected: (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      _selectedWeekdays.add(i);
-                                    } else {
-                                      _selectedWeekdays.remove(i);
-                                    }
-                                  });
-                                },
-                              ),
-                          ],
-                        ),
-                      ],
-
-                      // 日付選択（monthlyの場合のみ）
-                      if (_selectedPattern == 'monthly') ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '日付選択',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<int>(
-                          initialValue: _selectedMonthDay,
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          items: [
-                            ...List.generate(31, (index) => index + 1).map(
-                              (day) => DropdownMenuItem(
-                                value: day,
-                                child: Text('$day日'),
-                              ),
-                            ),
-                            const DropdownMenuItem(
-                              value: -1,
-                              child: Text('月末'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
+                // タブ切り替え
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
                               setState(() {
-                                _selectedMonthDay = value;
+                                _currentTabIndex = 0;
                               });
-                            }
-                          },
-                        ),
-                      ],
-
-                      const SizedBox(height: 16),
-
-                      // 生成時刻選択
-                      Text(
-                        '生成時刻',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _showTimePicker,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // 期限設定
-                      Text(
-                        '期限設定',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _showDeadlinePicker,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _selectedDeadlineDaysAfter == null
-                                    ? '期限なし'
-                                    : '$_selectedDeadlineDaysAfter日後',
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                              const Spacer(),
-                              Icon(
-                                Icons.arrow_drop_down,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // 担当者選択
-                      if (widget.availableAssignees != null &&
-                          widget.availableAssignees!.isNotEmpty) ...[
-                        Text(
-                          '担当者',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        // グループに1人のみ：表示のみ（変更不可）
-                        if (widget.availableAssignees!.length == 1)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.person,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  widget.availableAssignees!.first['name']!,
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                const Spacer(),
-                                Icon(
-                                  Icons.lock,
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                              ],
-                            ),
-                          )
-                        // グループに複数人：ピッカーで選択可能
-                        else
-                          InkWell(
-                            onTap: _showAssigneePicker,
-                            borderRadius: BorderRadius.circular(12),
+                            },
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
+                                color: _currentTabIndex == 0
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    Icons.person,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                    Icons.edit_note,
+                                    size: 20,
+                                    color: _currentTabIndex == 0
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    _selectedAssigneeIds.isEmpty
-                                        ? '担当者を選択'
-                                        : widget.availableAssignees!.firstWhere(
-                                            (a) =>
-                                                a['id'] ==
-                                                _selectedAssigneeIds.first,
-                                          )['name']!,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge,
-                                  ),
-                                  const Spacer(),
-                                  Icon(
-                                    Icons.arrow_drop_down,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
+                                    '基本',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: _currentTabIndex == 0
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                        ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                        const SizedBox(height: 8),
-                      ],
-
-                      const SizedBox(height: 20),
-
-                      // 保存ボタン
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isLoading ? null : _saveTodo,
-                          icon: _isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _currentTabIndex = 1;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _currentTabIndex == 1
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.tune,
+                                    size: 20,
+                                    color: _currentTabIndex == 1
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                   ),
-                                )
-                              : Icon(
-                                  widget.existingRecurringTodo != null
-                                      ? Icons.edit
-                                      : Icons.add,
-                                ),
-                          label: Text(
-                            widget.existingRecurringTodo != null ? '更新' : '作成',
-                          ),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'オプション',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: _currentTabIndex == 1
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                ),
+
+                // タブコンテンツ
+                Expanded(
+                  child: _currentTabIndex == 0
+                      ? _buildBasicTab()
+                      : _buildOptionTab(),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// 基本タブ
+  Widget _buildBasicTab() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      children: [
+        // コンテンツポリシーリンク
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ContentPolicyScreen(),
+                ),
+              );
+            },
+            child: Text(
+              '入力における注意事項',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // タイトル入力
+        TextField(
+          controller: _titleController,
+          decoration: InputDecoration(
+            labelText: 'タイトル',
+            hintText: '定期タスクのタイトルを入力',
+            prefixIcon: const Icon(Icons.title),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          autofocus: false,
+          textInputAction: TextInputAction.next,
+          maxLength: 15,
+        ),
+
+        const SizedBox(height: 8),
+
+        // 繰り返しパターン選択
+        Text(
+          '繰り返しパターン',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _showPatternPicker,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.repeat,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _selectedPattern == 'daily'
+                      ? '毎日'
+                      : _selectedPattern == 'weekly'
+                      ? '毎週'
+                      : '毎月',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // 曜日選択（weeklyの場合のみ）
+        if (_selectedPattern == 'weekly') ...[
+          const SizedBox(height: 8),
+          Text(
+            '曜日選択',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 4,
+            children: [
+              for (int i = 0; i < 7; i++)
+                FilterChip(
+                  label: Text(['日', '月', '火', '水', '木', '金', '土'][i]),
+                  selected: _selectedWeekdays.contains(i),
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedWeekdays.add(i);
+                      } else {
+                        _selectedWeekdays.remove(i);
+                      }
+                    });
+                  },
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+            ],
+          ),
+        ],
+
+        // 日付選択（monthlyの場合のみ）- CupertinoPicker形式に統一
+        if (_selectedPattern == 'monthly') ...[
+          const SizedBox(height: 8),
+          Text(
+            '日付選択',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: _showMonthDayPicker,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_month,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _selectedMonthDay == -1 ? '月末' : '$_selectedMonthDay日',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.arrow_drop_down,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 16),
+
+        // 生成時刻選択
+        Text(
+          '生成時刻',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _showTimePicker,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 保存ボタン
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _isLoading ? null : _saveTodo,
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    widget.existingRecurringTodo != null
+                        ? Icons.edit
+                        : Icons.add,
+                  ),
+            label: Text(widget.existingRecurringTodo != null ? '更新' : '作成'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// オプションタブ
+  Widget _buildOptionTab() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      children: [
+        // コンテンツポリシーリンク
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ContentPolicyScreen(),
+                ),
+              );
+            },
+            child: Text(
+              '入力における注意事項',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 担当者選択
+        Text(
+          '担当者',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _showAssigneePicker,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _selectedAssigneeIds.isEmpty ? Icons.group : Icons.person,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _selectedAssigneeIds.isEmpty
+                      ? '指定なし（全員に表示）'
+                      : widget.availableAssignees?.firstWhere(
+                              (a) => a['id'] == _selectedAssigneeIds.first,
+                              orElse: () => {'id': '', 'name': '未設定'},
+                            )['name'] ??
+                            '未設定',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // 説明入力
+        TextField(
+          controller: _descriptionController,
+          decoration: InputDecoration(
+            labelText: '説明（任意）',
+            hintText: 'タスクの詳細を入力',
+            prefixIcon: const Icon(Icons.description),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          maxLines: 2,
+          maxLength: 200,
+          textInputAction: TextInputAction.done,
+        ),
+
+        const SizedBox(height: 16),
+
+        // 期限設定
+        Text(
+          '期限設定',
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _showDeadlinePicker,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _selectedDeadlineDaysAfter == null
+                      ? '期限なし'
+                      : '$_selectedDeadlineDaysAfter日後',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 保存ボタン
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _isLoading ? null : _saveTodo,
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    widget.existingRecurringTodo != null
+                        ? Icons.edit
+                        : Icons.add,
+                  ),
+            label: Text(widget.existingRecurringTodo != null ? '更新' : '作成'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

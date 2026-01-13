@@ -669,6 +669,14 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       return;
     }
 
+    // 日本語（ひらがな・カタカナ・漢字）が含まれているかチェック
+    final japaneseRegex = RegExp(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]');
+    if (japaneseRegex.hasMatch(displayId)) {
+      if (!mounted) return;
+      SnackBarHelper.showErrorSnackBar(context, 'ユーザーIDに日本語は使用できません');
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
     });
@@ -689,6 +697,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       if (validateResponse['success'] != true) {
         final errorMessage = _getErrorMessage(validateResponse['error']);
         if (!mounted) return;
+        setState(() {
+          _isProcessing = false;
+        });
         SnackBarHelper.showErrorSnackBar(context, errorMessage);
         return;
       }
@@ -698,6 +709,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
       // メンテナンスモード対応
       if (e is MaintenanceException) {
         if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
           await MaintenanceDialog.show(context: context, message: e.message);
         }
         return;
@@ -709,6 +723,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
           // ビジネスエラー（200 + success:false）→ SnackBar
           final errorMessage = _getErrorMessage(e.message);
           if (mounted) {
+            setState(() {
+              _isProcessing = false;
+            });
             SnackBarHelper.showErrorSnackBar(context, errorMessage);
           }
         } else {
@@ -721,6 +738,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
             screenName: 'グループメンバー一覧',
           );
           if (mounted) {
+            setState(() {
+              _isProcessing = false;
+            });
             await ErrorDialog.show(
               context: context,
               errorId: errorLog.id,
@@ -739,6 +759,9 @@ class _GroupMembersBottomSheetState extends State<GroupMembersBottomSheet> {
           screenName: 'グループメンバー一覧',
         );
         if (mounted) {
+          setState(() {
+            _isProcessing = false;
+          });
           await ErrorDialog.show(
             context: context,
             errorId: errorLog.id,

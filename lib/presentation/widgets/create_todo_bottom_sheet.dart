@@ -235,7 +235,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                   mode: CupertinoDatePickerMode.date,
                   initialDateTime: _selectedDeadline ?? now,
                   minimumDate: minimumDate,
-                  maximumDate: DateTime(now.year + 1),
+                  maximumDate: DateTime(now.year + 5),
                   onDateTimeChanged: (DateTime newDate) {
                     tempDate = newDate;
                   },
@@ -650,9 +650,7 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline,
-              ),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -667,7 +665,10 @@ class _CreateTodoBottomSheetState extends State<CreateTodoBottomSheet> {
                       ? '指定なし（全員に表示）'
                       : _availableAssignees.firstWhere(
                               (a) => a['id'] == _selectedAssigneeIds.first,
-                              orElse: () => {'id': '', 'name': widget.currentUserName},
+                              orElse: () => {
+                                'id': '',
+                                'name': widget.currentUserName,
+                              },
                             )['name'] ??
                             widget.currentUserName,
                   style: Theme.of(context).textTheme.bodyLarge,
